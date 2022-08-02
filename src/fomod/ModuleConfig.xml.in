@@ -1,0 +1,9 @@
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+    <moduleName>@PROJECT_FRIENDLY_NAME@</moduleName>
+    <requiredInstallFiles>
+        <file source="SkyrimHeartRate.esp"/>
+        <folder source="Sound" destination="Sound" />
+        <folder source="Config" destination="SKSE/Plugins" />
+        <folder source="Plugin@CMAKE_BUILD_TYPE@" destination="SKSE/Plugins" />
+    </requiredInstallFiles>
+</config>

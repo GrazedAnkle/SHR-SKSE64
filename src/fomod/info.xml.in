@@ -1,0 +1,6 @@
+<fomod> 
+    <Name>@PROJECT_FRIENDLY_NAME@</Name>
+    <Author>@PROJECT_AUTHOR@</Author>
+    <Version>@PROJECT_VERSION@</Version>
+    <Description>@PROJECT_DESCRIPTION@</Description>
+</fomod>

@@ -1,0 +1,37 @@
+[debug]
+log   = "trace"
+flush = "trace"
+
+[limit]
+resting   =  55.0
+idle      =  70.0
+walking   = 100.0
+running   = 150.0
+sprinting = 180.0
+combat    = 190.0
+
+[multiplier]
+general = 1.0
+increase_decrease_ratio = 3.0
+skip_chance = 1.0
+
+[input]
+listen = 0x23 # H key
+
+# Notifications are printed while the listen key is pressed.
+[notification]
+enabled = false
+# Array of 6 strings to be printed, in order of increasing HR. An invalid size
+# (not equal to 6) will cause notifications to be disabled.
+pulse = [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+]
+dying        = ""
+fibrillating = ""
+dead         = ""
+skipped      = ""
