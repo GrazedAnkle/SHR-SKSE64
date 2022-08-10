@@ -19,10 +19,10 @@ namespace SHR::Sound
 {
     void Init();
 
-    const RE::BGSSoundDescriptorForm *GetDescriptor(float heartRate);
+    RE::BGSSoundDescriptorForm *GetDescriptorForm(float heartRate);
 }
 
 namespace Sound
 {
-    bool Play(const RE::BGSSoundDescriptorForm *descriptor, const RE::Actor *actor);
+    bool Play(RE::BGSSoundDescriptorForm *form, const RE::Actor *actor);
 }

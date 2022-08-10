@@ -125,7 +125,7 @@ RE::BSEventNotifyControl SHR::InputHandler::ProcessEvent(
 
                 s_PreviousTime = currentTime;
 
-                ::Sound::Play(SHR::Sound::GetDescriptor(effectiveHeartRate), RE::PlayerCharacter::GetSingleton());
+                ::Sound::Play(SHR::Sound::GetDescriptorForm(effectiveHeartRate), RE::PlayerCharacter::GetSingleton());
             }
         }
         else if (keyCode == RE::ControlMap::GetSingleton()->GetMappedKey("Jump", it->GetDevice()))

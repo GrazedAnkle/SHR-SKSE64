@@ -17,12 +17,12 @@
 
 namespace
 {
-    const RE::BGSSoundDescriptorForm *HeartBeat = nullptr;
-    const RE::BGSSoundDescriptorForm *HeartBeatElevated = nullptr;
-    const RE::BGSSoundDescriptorForm *HeartBeatHigh = nullptr;
-    const RE::BGSSoundDescriptorForm *HeartBeatVeryHigh = nullptr;
+    RE::BGSSoundDescriptorForm *HeartBeat = nullptr;
+    RE::BGSSoundDescriptorForm *HeartBeatElevated = nullptr;
+    RE::BGSSoundDescriptorForm *HeartBeatHigh = nullptr;
+    RE::BGSSoundDescriptorForm *HeartBeatVeryHigh = nullptr;
 
-    const RE::BGSSoundDescriptorForm *LoadSound(RE::TESDataHandler *data, RE::FormID formId)
+    RE::BGSSoundDescriptorForm *LoadSoundDescriptorForm(RE::TESDataHandler *data, RE::FormID formId)
     {
         auto *sound = data->LookupForm<RE::BGSSoundDescriptorForm>(formId, "SkyrimHeartRate.esp");
 
@@ -33,22 +33,6 @@ namespace
         }
 
         return sound;
-    }
-
-    // Adapted from D7ry's Valhalla Combat, licensed under MIT. Originally named soundHelper_a.
-    bool BuildSoundDataFromFormID(
-        RE::BSAudioManager *manager,
-        RE::BSSoundHandle &handle,
-        RE::FormID formId,
-        std::uint32_t flags
-    )
-    {
-        using FunctionSignature = int (*)(RE::BSAudioManager *, RE::BSSoundHandle *, RE::FormID, std::uint32_t);
-
-        // Offset SE: 140BEEE70, AE: 140C13DA0
-        static REL::Relocation<FunctionSignature> buildSoundDataFromFormId(RELOCATION_ID(66401, 67663));
-
-        return buildSoundDataFromFormId(manager, &handle, formId, flags) != 0;
     }
 }
 
@@ -61,13 +45,13 @@ void SHR::Sound::Init()
         SKSE::stl::report_and_fail("Failed to retrieve TESDataHandler!");
     }
 
-    HeartBeat         = LoadSound(data, 0x1832);
-    HeartBeatElevated = LoadSound(data, 0x1834);
-    HeartBeatHigh     = LoadSound(data, 0x1DA6);
-    HeartBeatVeryHigh = LoadSound(data, 0x5E76);
+    HeartBeat         = LoadSoundDescriptorForm(data, 0x1832);
+    HeartBeatElevated = LoadSoundDescriptorForm(data, 0x1834);
+    HeartBeatHigh     = LoadSoundDescriptorForm(data, 0x1DA6);
+    HeartBeatVeryHigh = LoadSoundDescriptorForm(data, 0x5E76);
 }
 
-const RE::BGSSoundDescriptorForm *SHR::Sound::GetDescriptor(float heartRate)
+RE::BGSSoundDescriptorForm *SHR::Sound::GetDescriptorForm(float heartRate)
 {
     if (heartRate > 180.0F)
     {
@@ -87,7 +71,7 @@ const RE::BGSSoundDescriptorForm *SHR::Sound::GetDescriptor(float heartRate)
     }
 }
 
-bool Sound::Play(const RE::BGSSoundDescriptorForm *descriptor, const RE::Actor *actor)
+bool Sound::Play(RE::BGSSoundDescriptorForm *form, const RE::Actor *actor)
 {
     RE::BSSoundHandle sound;
     sound.soundID = RE::BSSoundHandle::kInvalidID;
@@ -95,7 +79,7 @@ bool Sound::Play(const RE::BGSSoundDescriptorForm *descriptor, const RE::Actor *
     sound.state = RE::BSSoundHandle::AssumedState::kInitialized;
 
     auto *manager = RE::BSAudioManager::GetSingleton();
-    if (!BuildSoundDataFromFormID(manager, sound, descriptor->GetFormID(), 16))
+    if (!manager->BuildSoundDataFromDescriptor(sound, form->soundDescriptor))
     {
         return false;
     }
