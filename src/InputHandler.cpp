@@ -16,25 +16,23 @@
 #include "InputHandler.hpp"
 
 #include "Config.hpp"
-#include "Random.hpp"
 #include "SkyrimHeartRate.hpp"
-#include "Sound.hpp"
 #include "Strings.hpp"
 
 namespace
 {
-    std::chrono::time_point<std::chrono::steady_clock> s_PreviousTime;
-
-    float s_SkipDuration = 0.0F;
-
-    bool s_ShouldSkip = false;
-    bool s_DidJustSkip = false;
+    std::atomic_int s_IsListening = false;
 }
 
 void SHR::InputHandler::Register()
 {
     auto *deviceManager = RE::BSInputDeviceManager::GetSingleton();
     deviceManager->AddEventSink(&GetInstance());
+}
+
+const std::atomic_int &SHR::InputHandler::IsListening()
+{
+    return s_IsListening;
 }
 
 RE::BSEventNotifyControl SHR::InputHandler::ProcessEvent(
@@ -54,12 +52,14 @@ RE::BSEventNotifyControl SHR::InputHandler::ProcessEvent(
             continue;
         }
 
-        const auto *buttonEvent = it->AsButtonEvent();
+        const RE::ButtonEvent *buttonEvent = it->AsButtonEvent();
         const std::uint32_t keyCode = buttonEvent->idCode;
         if (keyCode == Config::Get().Input.Listen)
         {
             if (buttonEvent->IsDown())
             {
+                s_IsListening.fetch_xor(1);
+
                 if (Config::Get().Notification.Enabled)
                 {
                     RE::DebugNotification(
@@ -69,63 +69,6 @@ RE::BSEventNotifyControl SHR::InputHandler::ProcessEvent(
                         )
                     );
                 }
-            }
-            else if (buttonEvent->IsHeld())
-            {
-                const auto currentTime = std::chrono::steady_clock::now();
-
-                const std::chrono::duration<float> deltaTime = currentTime - s_PreviousTime;
-                const float seconds = deltaTime.count();
-                float deathSeconds = -1.0F;
-                if (const auto maybeDeathTimestamp = HeartRateManager::GetDeathTimestamp())
-                {
-                    const auto deathTimestamp = maybeDeathTimestamp.value();
-                    const std::chrono::duration<float> deathDuration = currentTime - deathTimestamp;
-                    deathSeconds = deathDuration.count();
-                }
-
-                constexpr float maxSkipChanceAfterSeconds = 2.0F * HeartRateManager::DeathSkipChanceIncreaseDuration;
-
-                const float skipChanceFactor = deathSeconds == -1.0F
-                    ? 0.0F
-                    : std::min(deathSeconds, maxSkipChanceAfterSeconds) / maxSkipChanceAfterSeconds;
-
-                constexpr float normalSkipChance = 0.00001F;
-                constexpr float maxSkipChance = 0.001F;
-
-                const float skipMultiplier = Config::Get().Multiplier.SkipChance;
-                const float skipChance = skipMultiplier * std::lerp(normalSkipChance, maxSkipChance, skipChanceFactor);
-                s_ShouldSkip = s_ShouldSkip || !s_DidJustSkip && Random(0.0F, 1.0F) < skipChance;
-
-                const float heartRate = SHR::HeartRateManager::GetHeartRate();
-                const float period = 60.0F / heartRate;
-
-                constexpr float skipPeriodFraction = 0.7F;
-                const float effectivePeriod = s_ShouldSkip ? skipPeriodFraction * period : period;
-                if ((s_DidJustSkip && seconds < s_SkipDuration) || (seconds < effectivePeriod))
-                {
-                    continue;
-                }
-
-                const float effectiveHeartRate = s_ShouldSkip
-                    ? heartRate / skipPeriodFraction
-                    : heartRate;
-
-                s_DidJustSkip = s_ShouldSkip;
-                if (s_ShouldSkip)
-                {
-                    s_ShouldSkip = false;
-                    s_SkipDuration = Random(0.75F, 1.5F);
-
-                    if (Config::Get().Notification.Enabled)
-                    {
-                        RE::DebugNotification(Strings::GetSkippedText());
-                    }
-                }
-
-                s_PreviousTime = currentTime;
-
-                ::Sound::Play(SHR::Sound::GetDescriptorForm(effectiveHeartRate), RE::PlayerCharacter::GetSingleton());
             }
         }
         else if (keyCode == RE::ControlMap::GetSingleton()->GetMappedKey("Jump", it->GetDevice()))

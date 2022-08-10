@@ -27,7 +27,7 @@ namespace SHR
     public:
         using Timestamp = std::chrono::time_point<std::chrono::steady_clock>;
 
-        static constexpr float DeathSkipChanceIncreaseDuration = 180.0F;
+        static constexpr float DeathSkipChanceIncreaseDuration = 2.0F * 60.0F;
         static constexpr float HeartRateFibrillation = 350.0F;
 
         static void InstallHooks(SKSE::Trampoline &trampoline);
@@ -41,7 +41,5 @@ namespace SHR
         static void NotifyFastTravel(float duration);
 
         static float GetHeartRate();
-
-        static std::optional<Timestamp> GetDeathTimestamp();
     };
 }

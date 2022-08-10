@@ -15,6 +15,11 @@
  */
 #include "SkyrimHeartRate.hpp"
 
+#include "InputHandler.hpp"
+#include "Random.hpp"
+#include "Sound.hpp"
+#include "Strings.hpp"
+
 namespace
 {
     constexpr std::uint32_t CoSaveId = std::byteswap('SHRS');
@@ -37,16 +42,15 @@ namespace
     void InitSerialization();
 
     void OnSave(SKSE::SerializationInterface *serde);
-
     void OnRevert(SKSE::SerializationInterface *serde);
-
     void OnLoad(SKSE::SerializationInterface *serde);
 
     void Update(RE::PlayerCharacter *player, float delta);
 
-    void UpdateTargetHeartRate(const RE::PlayerCharacter *player);
-
+    void UpdateTargetHeartRate(const RE::PlayerCharacter *player, float delta);
     void UpdateCurrentHeartRate(const RE::PlayerCharacter *player, float delta);
+
+    void HandleFeedback();
 
     REL::Relocation<decltype(Update)> s_OriginalUpdate;
 
@@ -57,13 +61,17 @@ namespace
     std::atomic_bool s_DidJump;
 
     std::atomic<float> s_SleepDuration = Float::Sentinel;
-
     std::atomic<float> s_FastTravelDuration = Float::Sentinel;
 
-    bool s_DidStartDeathTimer = false;
-    SHR::HeartRateManager::Timestamp s_DeathTimestamp;
+    float s_DeathSeconds = Float::Sentinel;
 
     bool s_DidApplyAdrenaline = false;
+
+    SHR::HeartRateManager::Timestamp s_PreviousTime;
+
+    float s_SkipDuration = 0.0F;
+    bool s_ShouldSkip = false;
+    bool s_DidJustSkip = false;
 }
 
 void SHR::InstallHooks()
@@ -110,11 +118,6 @@ void SHR::HeartRateManager::NotifyFastTravel(float duration)
 float SHR::HeartRateManager::GetHeartRate()
 {
     return s_HeartRate;
-}
-
-std::optional<SHR::HeartRateManager::Timestamp> SHR::HeartRateManager::GetDeathTimestamp()
-{
-    return s_DidStartDeathTimer ? std::optional(s_DeathTimestamp) : std::nullopt;
 }
 
 namespace
@@ -177,22 +180,21 @@ namespace
     {
         s_OriginalUpdate(player, delta);
 
-        if (player)
-        {
-            UpdateTargetHeartRate(player);
-            UpdateCurrentHeartRate(player, delta);
-        }
+        UpdateTargetHeartRate(player, delta);
+        UpdateCurrentHeartRate(player, delta);
+        HandleFeedback();
     }
 
-    void UpdateTargetHeartRate(const RE::PlayerCharacter *player)
+    void UpdateTargetHeartRate(const RE::PlayerCharacter *player, float delta)
     {
         if (player->IsDead())
         {
-            if (!s_DidStartDeathTimer)
+            if (s_DeathSeconds == Float::Sentinel)
             {
-                s_DidStartDeathTimer = true;
-                s_DeathTimestamp = std::chrono::steady_clock::now();
+                s_DeathSeconds = 0.0F;
             }
+
+            s_DeathSeconds += delta;
 
             if (s_TargetHeartRate - s_HeartRate > HeartRateEqualEpsilon)
             {
@@ -206,7 +208,7 @@ namespace
             return;
         }
 
-        s_DidStartDeathTimer = false;
+        s_DeathSeconds = Float::Sentinel;
 
         const std::array movementLevelHeartRate = {
             SHR::Config::Get().Limit.Idle,
@@ -324,5 +326,60 @@ namespace
         {
             s_HeartRate = SHR::Config::Get().Limit.Resting;
         }
+    }
+
+    void HandleFeedback()
+    {
+        if (!SHR::InputHandler::IsListening())
+        {
+            return;
+        }
+
+        const auto currentTime = std::chrono::steady_clock::now();
+        const std::chrono::duration<float> deltaTime = currentTime - s_PreviousTime;
+        const float seconds = deltaTime.count();
+
+        constexpr float maxSkipChanceAfterSeconds = 2.0F * SHR::HeartRateManager::DeathSkipChanceIncreaseDuration;
+
+        const float skipChanceFactor = s_DeathSeconds == -1.0F
+            ? 0.0F
+            : std::min(s_DeathSeconds, maxSkipChanceAfterSeconds) / maxSkipChanceAfterSeconds;
+
+        constexpr float normalSkipChance = 0.00001F;
+        constexpr float maxSkipChance = 0.001F;
+
+        const float skipMultiplier = SHR::Config::Get().Multiplier.SkipChance;
+        const float skipChance = skipMultiplier * std::lerp(normalSkipChance, maxSkipChance, skipChanceFactor);
+        s_ShouldSkip = s_ShouldSkip || !s_DidJustSkip && Random(0.0F, 1.0F) < skipChance;
+
+        const float heartRate = SHR::HeartRateManager::GetHeartRate();
+        const float period = 60.0F / heartRate;
+
+        constexpr float skipPeriodFraction = 0.7F;
+        const float effectivePeriod = s_ShouldSkip ? skipPeriodFraction * period : period;
+        if ((s_DidJustSkip && seconds < s_SkipDuration) || (seconds < effectivePeriod))
+        {
+            return;
+        }
+
+        const float effectiveHeartRate = s_ShouldSkip
+            ? heartRate / skipPeriodFraction
+            : heartRate;
+
+        s_DidJustSkip = s_ShouldSkip;
+        if (s_ShouldSkip)
+        {
+            s_ShouldSkip = false;
+            s_SkipDuration = Random(0.75F, 1.5F);
+
+            if (SHR::Config::Get().Notification.Enabled)
+            {
+                RE::DebugNotification(SHR::Strings::GetSkippedText());
+            }
+        }
+
+        s_PreviousTime = currentTime;
+
+        ::Sound::Play(SHR::Sound::GetDescriptorForm(effectiveHeartRate), RE::PlayerCharacter::GetSingleton());
     }
 }

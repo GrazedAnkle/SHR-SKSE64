@@ -28,6 +28,8 @@ namespace SHR
 
         static void Register();
 
+        static const std::atomic_int &IsListening();
+
         RE::BSEventNotifyControl ProcessEvent(
             RE::InputEvent *const *event,
             RE::BSTEventSource<RE::InputEvent *> *source
