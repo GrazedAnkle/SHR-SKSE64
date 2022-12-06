@@ -2,8 +2,9 @@
 
 A mod that simulates heart rate and its effects on the player.
 
-## Mod Dependencies
-[Address Library for SKSE Plugins](https://www.nexusmods.com/skyrimspecialedition/mods/32444)
+## Mod Requirements
+- Skyrim SE version 1.6.353 or earlier (later versions are currently unsupported due to breaking changes)
+- [Address Library for SKSE Plugins](https://www.nexusmods.com/skyrimspecialedition/mods/32444)
 
 ## Build Dependencies
 
