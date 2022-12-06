@@ -44,8 +44,8 @@ namespace toml
     {
         static toml::value into_toml(const SHR::Debug &debug)
         {
-            std::string log(spdlog::level::to_string_view(debug.Log));
-            std::string flush(spdlog::level::to_string_view(debug.Flush));
+            std::string log = fmt::to_string(spdlog::level::to_string_view(debug.Log));
+            std::string flush = fmt::to_string(spdlog::level::to_string_view(debug.Flush));
 
             return toml::value{
                 { SHR::Debug::LogKey, std::move(log)     },
