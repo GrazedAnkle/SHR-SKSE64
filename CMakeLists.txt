@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 ## Define project
 ########################################################################################################################
 project(SHR
-    VERSION     0.2.0.0
+    VERSION     0.3.0.0
     LANGUAGES   CXX
     DESCRIPTION "A mod that simulates changes in heart rate and their effects on the player."
 )
