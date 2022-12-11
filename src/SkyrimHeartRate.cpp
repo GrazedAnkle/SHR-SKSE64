@@ -50,7 +50,7 @@ namespace
     void UpdateTargetHeartRate(const RE::PlayerCharacter *player, float delta);
     void UpdateCurrentHeartRate(const RE::PlayerCharacter *player, float delta);
 
-    void HandleFeedback();
+    void HandleFeedback(RE::PlayerCharacter *player);
 
     REL::Relocation<decltype(Update)> s_OriginalUpdate;
 
@@ -73,6 +73,8 @@ namespace
     float s_SkipDuration = 0.0F;
     bool s_ShouldSkip = false;
     bool s_DidJustSkip = false;
+
+    SHR::HeartRateLevel s_PreviousHeartRateLevel;
 }
 
 void SHR::InstallHooks()
@@ -183,7 +185,7 @@ namespace
 
         UpdateTargetHeartRate(player, delta);
         UpdateCurrentHeartRate(player, delta);
-        HandleFeedback();
+        HandleFeedback(player);
     }
 
     void UpdateTargetHeartRate(const RE::PlayerCharacter *player, float delta)
@@ -335,7 +337,7 @@ namespace
         }
     }
 
-    void HandleFeedback()
+    void HandleFeedback(RE::PlayerCharacter *player)
     {
         if (!SHR::InputHandler::IsListening())
         {
@@ -389,5 +391,12 @@ namespace
         s_PreviousTime = currentTime;
 
         ::Sound::Play(SHR::Sound::GetDescriptorForm(effectiveHeartRate), RE::PlayerCharacter::GetSingleton());
+
+        const SHR::HeartRateLevel currentLevel = SHR::GetHeartRateLevel(s_HeartRate);
+        if (currentLevel != s_PreviousHeartRateLevel)
+        {
+            s_PreviousHeartRateLevel = currentLevel;
+            RE::DebugNotification(SHR::Strings::GetText(player, s_HeartRate));
+        }
     }
 }

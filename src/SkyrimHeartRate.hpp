@@ -42,4 +42,48 @@ namespace SHR
 
         static float GetHeartRate();
     };
+
+    enum class HeartRateLevel
+    {
+        Resting,
+        Idle,
+        Elevated,
+        High,
+        VeryHigh,
+        Extreme,
+    };
+
+    constexpr float IdleHeartRateThreshold = 60.0F;
+    constexpr float ElevatedHeartRateThreshold = 130.0F;
+    constexpr float HighHeartRateThreshold = 150.0F;
+    constexpr float VeryHighHeartRateThreshold = 170.0F;
+    constexpr float ExtremeHeartRateThreshold = 190.0F;
+
+    constexpr HeartRateLevel GetHeartRateLevel(float heartRate)
+    {
+        if (heartRate > ExtremeHeartRateThreshold)
+        {
+            return HeartRateLevel::Extreme;
+        }
+        else if (heartRate > VeryHighHeartRateThreshold)
+        {
+            return HeartRateLevel::VeryHigh;
+        }
+        else if (heartRate > HighHeartRateThreshold)
+        {
+            return HeartRateLevel::High;
+        }
+        else if (heartRate > ElevatedHeartRateThreshold)
+        {
+            return HeartRateLevel::Elevated;
+        }
+        else if (heartRate > IdleHeartRateThreshold)
+        {
+            return HeartRateLevel::Idle;
+        }
+        else
+        {
+            return HeartRateLevel::Resting;
+        }
+    }
 }

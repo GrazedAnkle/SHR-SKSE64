@@ -37,23 +37,23 @@ const char *SHR::Strings::GetText(const RE::PlayerCharacter *player, float heart
 
     const std::vector<std::string> &notifications = Config::Get().Notification.Pulse;
 
-    if (heartRate > 190.0F)
+    if (heartRate > ExtremeHeartRateThreshold)
     {
         return notifications[5].c_str();
     }
-    else if (heartRate > 170.0F)
+    else if (heartRate > VeryHighHeartRateThreshold)
     {
         return notifications[4].c_str();
     }
-    else if (heartRate > 150.0F)
+    else if (heartRate > HighHeartRateThreshold)
     {
         return notifications[3].c_str();
     }
-    else if (heartRate > 130.0F)
+    else if (heartRate > ElevatedHeartRateThreshold)
     {
         return notifications[2].c_str();
     }
-    else if (heartRate > 60.0F)
+    else if (heartRate > IdleHeartRateThreshold)
     {
         return notifications[1].c_str();
     }
