@@ -65,6 +65,7 @@ namespace
 
     float s_DeathSeconds = Float::Sentinel;
 
+    std::uint32_t s_CombatStateDebounceCount = 0;
     bool s_DidApplyAdrenaline = false;
 
     SHR::HeartRateManager::Timestamp s_PreviousTime;
@@ -308,7 +309,12 @@ namespace
         constexpr float adrenalineAmount = 10.0F;
         if (player->IsInCombat())
         {
-            if (!s_DidApplyAdrenaline)
+            constexpr std::uint32_t combatDebounceThreshold = 2;
+            if (s_CombatStateDebounceCount < combatDebounceThreshold)
+            {
+                ++s_CombatStateDebounceCount;
+            }
+            else if (!s_DidApplyAdrenaline)
             {
                 s_DidApplyAdrenaline = true;
                 if (s_HeartRate + adrenalineAmount < SHR::Config::Get().Limit.Combat)
@@ -319,6 +325,7 @@ namespace
         }
         else
         {
+            s_CombatStateDebounceCount = 0;
             s_DidApplyAdrenaline = false;
         }
 
