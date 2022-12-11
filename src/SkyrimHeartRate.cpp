@@ -341,7 +341,7 @@ namespace
 
         constexpr float maxSkipChanceAfterSeconds = 2.0F * SHR::HeartRateManager::DeathSkipChanceIncreaseDuration;
 
-        const float skipChanceFactor = s_DeathSeconds == -1.0F
+        const float skipChanceFactor = s_DeathSeconds == Float::Sentinel
             ? 0.0F
             : std::min(s_DeathSeconds, maxSkipChanceAfterSeconds) / maxSkipChanceAfterSeconds;
 
@@ -355,7 +355,8 @@ namespace
         const float heartRate = SHR::HeartRateManager::GetHeartRate();
         const float period = 60.0F / heartRate;
 
-        constexpr float skipPeriodFraction = 0.7F;
+        // This determines how much the heartbeat period should be shortened.
+        constexpr float skipPeriodFraction = 0.65F;
         const float effectivePeriod = s_ShouldSkip ? skipPeriodFraction * period : period;
         if ((s_DidJustSkip && seconds < s_SkipDuration) || (seconds < effectivePeriod))
         {
