@@ -122,4 +122,8 @@
 #include <vector>
 #include <version>
 
+#if defined(__clang__)
+#undef cdecl // Workaround for Clang 14+ CMake configure error.
+#endif
+
 using namespace std::literals;
