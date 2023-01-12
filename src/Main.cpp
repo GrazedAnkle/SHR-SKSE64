@@ -14,10 +14,10 @@
  * SHR. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "Config.hpp"
+#include "EventHandler.hpp"
 #include "InputHandler.hpp"
 #include "Logging.hpp"
 #include "SkyrimHeartRate.hpp"
-#include "EventHandler.hpp"
 #include "Sound.hpp"
 
 namespace

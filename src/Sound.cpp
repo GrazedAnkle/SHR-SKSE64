@@ -71,7 +71,7 @@ RE::BGSSoundDescriptorForm *SHR::Sound::GetDescriptorForm(float heartRate)
     }
 }
 
-bool Sound::Play(RE::BGSSoundDescriptorForm *form, const RE::Actor *actor)
+bool Sound::Play(const RE::BGSSoundDescriptorForm *form, const RE::Actor *actor)
 {
     RE::BSSoundHandle sound;
     sound.soundID = RE::BSSoundHandle::kInvalidID;

@@ -24,5 +24,5 @@ namespace SHR::Sound
 
 namespace Sound
 {
-    bool Play(RE::BGSSoundDescriptorForm *form, const RE::Actor *actor);
+    bool Play(const RE::BGSSoundDescriptorForm *form, const RE::Actor *actor);
 }

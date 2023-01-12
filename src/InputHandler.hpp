@@ -17,7 +17,7 @@
 
 namespace SHR
 {
-    class InputHandler : public RE::BSTEventSink<RE::InputEvent *>
+    class InputHandler final : public RE::BSTEventSink<RE::InputEvent *>
     {
     public:
         static InputHandler &GetInstance()

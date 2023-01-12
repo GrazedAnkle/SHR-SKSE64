@@ -45,12 +45,12 @@ namespace
     void OnRevert(SKSE::SerializationInterface *serde);
     void OnLoad(SKSE::SerializationInterface *serde);
 
-    void Update(RE::PlayerCharacter *player, float delta);
+    void Update(const RE::PlayerCharacter *player, float delta);
 
     void UpdateTargetHeartRate(const RE::PlayerCharacter *player, float delta);
     void UpdateCurrentHeartRate(const RE::PlayerCharacter *player, float delta);
 
-    void HandleFeedback(RE::PlayerCharacter *player);
+    void HandleFeedback(const RE::PlayerCharacter *player);
 
     REL::Relocation<decltype(Update)> s_OriginalUpdate;
 
@@ -156,7 +156,7 @@ namespace
         std::uint32_t recordSize;
         std::uint32_t recordVersion;
 
-        while (serde->GetNextRecordInfo(recordType, recordSize, recordVersion))
+        while (serde->GetNextRecordInfo(recordType, recordVersion, recordSize))
         {
             switch (recordType)
             {
@@ -179,7 +179,7 @@ namespace
         }
     }
 
-    void Update(RE::PlayerCharacter *player, float delta)
+    void Update(const RE::PlayerCharacter *player, float delta)
     {
         s_OriginalUpdate(player, delta);
 
@@ -192,6 +192,7 @@ namespace
     {
         if (player->IsDead())
         {
+            // NOLINTNEXTLINE(clang-diagnostic-float-equal): `s_DeathSeconds` is explicitly set to `Float::Sentinel`.
             if (s_DeathSeconds == Float::Sentinel)
             {
                 s_DeathSeconds = 0.0F;
@@ -281,7 +282,7 @@ namespace
             s_HeartRate = s_TargetHeartRate;
         }
 
-        // Equals comparison is safe here since `s_HeartRate` is explicitly set to `s_TargetHeartRate`.
+        // NOLINTNEXTLINE(clang-diagnostic-float-equal): `s_HeartRate` is explicitly set to `s_TargetHeartRate`.
         if (s_HeartRate == s_TargetHeartRate)
         {
             return;
@@ -331,13 +332,14 @@ namespace
             s_DidApplyAdrenaline = false;
         }
 
+        // NOLINTNEXTLINE(clang-diagnostic-float-equal): `duration` is explicitly set to `Float::Sentinel`.
         if (const float duration = s_SleepDuration.exchange(Float::Sentinel); duration != Float::Sentinel)
         {
             s_HeartRate = SHR::Config::Get().Limit.Resting;
         }
     }
 
-    void HandleFeedback(RE::PlayerCharacter *player)
+    void HandleFeedback(const RE::PlayerCharacter *player)
     {
         if (!SHR::InputHandler::IsListening())
         {
@@ -350,6 +352,7 @@ namespace
 
         constexpr float maxSkipChanceAfterSeconds = 2.0F * SHR::HeartRateManager::DeathSkipChanceIncreaseDuration;
 
+        // NOLINTNEXTLINE(clang-diagnostic-float-equal): `s_DeathSeconds` is explicitly set to `Float::Sentinel`.
         const float skipChanceFactor = s_DeathSeconds == Float::Sentinel
             ? 0.0F
             : std::min(s_DeathSeconds, maxSkipChanceAfterSeconds) / maxSkipChanceAfterSeconds;

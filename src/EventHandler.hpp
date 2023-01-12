@@ -17,7 +17,7 @@
 
 namespace SHR
 {
-    class EventHandler
+    class EventHandler final
         : public RE::BSTEventSink<RE::TESSleepStartEvent>
         , public RE::BSTEventSink<RE::TESSleepStopEvent>
         , public RE::BSTEventSink<RE::TESFastTravelEndEvent>

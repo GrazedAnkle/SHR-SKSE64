@@ -21,7 +21,7 @@
 
 namespace
 {
-    std::atomic_int s_IsListening = false;
+    std::atomic_int s_IsListening = 0;
 }
 
 void SHR::InputHandler::Register()
