@@ -221,6 +221,7 @@ namespace
             SHR::Config::Get().Limit.Sprinting,
         };
 
+        // Movement level needs to be checked from highest to lowest because multiple states might be active at once.
         std::int32_t movementLevel = 0;
         if (s_DidJump.exchange(false))
         {
