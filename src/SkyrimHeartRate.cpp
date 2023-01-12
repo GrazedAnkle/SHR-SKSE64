@@ -222,33 +222,33 @@ namespace
         };
 
         std::int32_t movementLevel = 0;
-        if (player->IsWalking())
+        if (s_DidJump.exchange(false))
         {
-            movementLevel = 1;
-        }
-        else if (player->IsRunning())
-        {
-            movementLevel = 2;
+            movementLevel = 3;
         }
         else if (player->IsSprinting())
         {
             movementLevel = 3;
         }
-        else if (s_DidJump.exchange(false))
+        else if (player->IsRunning())
         {
-            movementLevel = 3;
+            movementLevel = 2;
+        }
+        else if (player->IsWalking())
+        {
+            movementLevel = 1;
         }
 
         float movementHeartRateOffset = 0.0F;
         if (movementLevel > 0)
         {
-            if (player->IsSneaking())
-            {
-                movementHeartRateOffset = 10.0F;
-            }
-            else if (player->IsSwimming())
+            if (player->IsSwimming())
             {
                 movementHeartRateOffset = 20.0F;
+            }
+            else if (player->IsSneaking())
+            {
+                movementHeartRateOffset = 10.0F;
             }
         }
 
