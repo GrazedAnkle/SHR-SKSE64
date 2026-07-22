@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <RE/Skyrim.h>
+
 namespace SHR
 {
     class InputHandler final : public RE::BSTEventSink<RE::InputEvent *>
@@ -28,7 +30,7 @@ namespace SHR
 
         static void Register();
 
-        static const std::atomic_int &IsListening();
+        static bool IsListening() noexcept;
 
         RE::BSEventNotifyControl ProcessEvent(
             RE::InputEvent *const *event,

@@ -1,0 +1,230 @@
+# Guarded prose figures and their source leaves in measurements.json.
+#
+# Guard distinctive figures only. The checker asserts the value's rounded string
+# appears in the doc, not that it appears in the right *context*, so a round or
+# low-precision number (e.g. an integer dB) will match unrelated prose and guard
+# nothing real. Prefer figures with a decimal and enough precision to be unique
+# (33.9, 85.2). Direct numeric leaves only: a figure the docs derive from a leaf
+# (e.g. crest in dB = 20*log10 of the stored linear s1_crest) cannot be guarded here.
+
+[[cite]]
+key = 'ref8.groups."peak (~180)".s1_attack_ms'
+precision = 1
+docs = ["REFERENCE_ANALYSIS.md", "SYNTHESIS_MODEL.md"]
+
+[[cite]]
+key = 'ref8.groups."peak (~180)".s1_centroid_hz'
+precision = 1
+docs = ["REFERENCE_ANALYSIS.md"]
+
+[[cite]]
+key = "systole_law.fit_intercept_ms"
+precision = 1
+docs = ["REFERENCE_ANALYSIS.md"]
+
+[[cite]]
+key = "systole_law.fit_slope_ms_per_bpm"
+precision = 3
+docs = ["REFERENCE_ANALYSIS.md"]
+
+[[cite]]
+key = "systole_law.residual_std_ms"
+precision = 1
+docs = ["REFERENCE_ANALYSIS.md"]
+
+# ============================================================ calibration bindings
+# `[[cite]]` guards a prose figure against measurements.json; `[[calibrate]]` guards a tuned constant
+# against a named measurement leaf. A reference-tuned constant must name that leaf or explicitly declare
+# that none is valid, preventing an engine output from becoming its own calibration target.
+#
+#   constant   a name in src/Constants.hpp                        (checked to exist)
+#   key        the leaf in measurements.json it is calibrated to  (checked to resolve)
+#   engine     what the engine reads on the SAME ruler
+#   tolerance  the accepted |engine - reference| gap
+#   ruler      the exact measurement rule - so that "same number" means "same quantity"
+#   state_key  a structured state object in measurements.json
+#   state_compatibility  why that observed state and the engine comparison are compatible;
+#                fixture choices remain here rather than masquerading as observed reference state
+#
+# `engine` and `tolerance` are each a plain NUMBER (a measured or hand-set literal) OR a FORMULA string
+# the checker evaluates live: arithmetic over Constants.hpp names (barewords) and measurements leaves
+# (`{dotted.key}` placeholders). A formula is what keeps a binding self-healing - a tolerance bound to the
+# reference line's own SE, or an engine bound to its closed form over the constants, both re-derive on
+# every `ref_analyze --all` regen instead of freezing stale. Use a formula when the value is DERIVED
+# (an analytic function of constants and/or leaves); use a literal when it is MEASURED (BreathAmpDepth's
+# engine comes from engine_offline, its tolerance from the ear) and no formula can stand in.
+#
+# Every [ref]- and [dsp]-tagged constant must appear here or in [[uncited]] below. A constant tuned
+# against a reference with no leaf to point at is the bug this relation exists to prevent.
+
+[[calibrate]]
+constant = "BreathAmpDepth"
+key = "ref20.breath.aw_swing_db"
+engine = -8.10
+tolerance = "{ref20.breath.jackknife_se_db}"
+anchor = "EAR. Direct A/B audition against ref20 audio sets the operating point; the six-cycle median statistic is only a gross-drift guardrail."
+ruler = "A-weighted S1 RMS (shrlib.a_weight, whole-signal then windowed), fixed 75 ms window from the S1 onset, median of the top 30% of beats by lung inflation vs the bottom 30% (shrlib.breath_swing_db). BOTH sides use this ONE rule: the reference gets continuous per-beat inflation from its BR= landmarks, the engine from its respiratory phase. Engine measured at 271 beats with the vigor jitter off, which converges ITS side."
+state_key = "ref20.breath.state"
+state_compatibility = "The reference state records in-exercise squats, measured HR/RR, qualitative elevated contractility, and unknown demand/depth. The engine's demand 0.75 near VT1 is an explicit threshold-region fixture choice, not an observed subject coordinate; RSA remains live on the engine side."
+tolerance_reason = "Live leave-one-breath-out jackknife SE, not discretionary slack. The short same-state plateau cannot resolve sub-dB tuning, so the ear remains the anchor. Tightening this guard requires a better reference, not more annotations outside that plateau. Coverage must be graded against the reference's raised-cosine inflation targets."
+
+[[calibrate]]
+constant = "SystoleSlope"
+key = "systole_law.fit_slope_ms_per_bpm"
+engine = "SystoleSlope*1000"
+tolerance = "{systole_law.fit_slope_se_ms_per_bpm}"
+anchor = "REFERENCE FIT. The shipped HR-dependent slope lies within the fit SE and is robust to a uniform S2-onset annotation bias, which moves the intercept but not the slope."
+ruler = "OLS of median systole_ms (S1-onset to S2-onset landmarks, s2a - s1a) against median HR, one point per reference group, in `ref_analyze.fit_systole_law`. CONSTANTS-FREE by construction - it must not read Constants.hpp, or a constant edit would move BOTH sides of this check and it could never fail. (Each group also carries `qs2_pred_ms` / `systole_residual_ms`, which DO read the constants: those are convenience columns, NOT calibration targets. Do not bind to them.) ref11's two respiratory-manipulated groups (deep inspiration, breath hold) are excluded as non-steady-state - see SYSTOLE_FIT_EXCLUDE."
+state_key = "systole_law.state"
+state_compatibility = "The target is deliberately a mixed-state population line whose state object names every contributing group. That is compatible with the HR slope, which averages across states, but not with a state-dependent excess-contractility correction on top of the line."
+tolerance_reason = "The fit's own live slope SE (`systole_law.fit_slope_se_ms_per_bpm`), not slack. Fit statistics move when annotations change and must not be frozen."
+
+[[calibrate]]
+constant = "SystoleIntercept"
+key = "systole_law.pred_at_mean_hr_ms"
+engine = "SystoleIntercept*1000 - SystoleSlope*1000*{systole_law.mean_hr} + 1.9"
+tolerance = "{systole_law.pred_se_at_mean_hr_ms}"
+anchor = "REFERENCE FIT. The constants-free systole line is evaluated near its measured mean HR and corrected for the S1/S2 source lead-in difference. Hand inspection confirms annotations mark the S2 rise rather than its body."
+ruler = "Compare the constants-free OLS reference line from `ref_analyze.fit_systole_law` at measured mean HR with the engine's audible S1-to-S2 interval there. The live engine formula adds the +1.9 ms source lead-in difference to `SystoleIntercept*1000 - SystoleSlope*1000*mean_hr`; mean HR is a leaf and must be re-evaluated after annotation changes. Engine constants belong on this comparison side; the reference fit alone must remain constants-free."
+state_key = "systole_law.state"
+state_compatibility = "The intercept comparison uses the same explicitly enumerated mixed-state fit as SystoleSlope and evaluates it near measured mean HR; it does not claim a resting or fixed-contractility intercept."
+tolerance_reason = "The reference line's live prediction SE at mean HR (`systole_law.pred_se_at_mean_hr_ms`), not slack. Because target and tolerance both move with the fit, this is a consistency check rather than an absolute one. If a perceptual floor is needed, add it explicitly; never substitute the much wider intercept-parameter SE from extrapolation to HR=0."
+
+[[uncited]]
+constant = "SystolePEPShortening"
+reason = "UNBINDABLE FROM CURRENT STATE EVIDENCE. The ledger supports only qualitative contractility, while audible S1-to-S2 combines PEP and LVET and recovery also changes filling and afterload. Using the measured systole residual to assign contractility would be circular. WI-012 owns a multi-mechanism audit; do not fit this coefficient from the present groups."
+state_keys = ['ref8.groups."peak (~180)".state', 'ref11.groups."resting, elevated supine".state', 'ref11.groups."post-exercise, elevated supine".state', 'ref13.groups."exercise clean segment (~168)".state', 'ref13.groups."recovery start (~150)".state', 'ref21.groups."recovery start (~159)".state']
+
+[[uncited]]
+constant = "AdrenalineContractilityScale"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "AttackBuildThreshold"
+reason = "Structural: 0.10 sits mid-gap between the source's 2.35% null and its 55% precursor lobe, and matches shrlib.onset_peak_idx. Chosen from the source's own envelope, not a reference."
+
+[[uncited]]
+constant = "AttackCompressMax"
+reason = "Set by ear against ref8's typical peak beats (k ~ 1.5-2.0) and corroborated by per-beat median hf_temporal_skew. A CEILING at peak vigor, not a per-beat value - it cannot be read off a reference leaf."
+
+[[uncited]]
+constant = "BreathDepthRestFraction"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "BreathLowPassMinHz"
+reason = "Current value reproduces a previously approved WITHIN-ENGINE spectral swing, not an independently calibrated cutoff. WI-008 now owns a physical-plausibility and fixed-band bound on the realized inspiratory/expiratory transfer response; ref20's absolute centroid remains an incompatible cross-recording ruler."
+
+[[uncited]]
+constant = "BreathLowPassOpenHz"
+reason = "Structural transparency setting, not a reference fit. With the current two-pole topology it still attenuates 200 Hz by about 1.6 dB, so WI-008 must declare the useful passband and allowable open-state loss before 'effectively open' is an audited rationale."
+
+[[uncited]]
+constant = "BreathLowPassPoles"
+reason = "Co-defines transition width and stopband attenuation with both breath cutoff constants. WI-008 audits the realized transfer family against physical, within-recording, and perceptual bounds; pole count has no independent setpoint."
+
+[[uncited]]
+constant = "BreathPitchDipDepth"
+reason = "SUSPECT - bound to ref11's F0 -14%, which WI-008 treats as physiologically unsupported and a fragile-estimator artifact. Do not bind until that is re-measured with a robust estimator."
+
+[[uncited]]
+constant = "ContractilityGainDb"
+reason = "Rest->peak loudness SPAN, anchored on dP/dt-max literature, not on a reference level: reference AGC destroys absolute span. Ear-verified in-game; 11/12/13 were indistinguishable."
+
+[[uncited]]
+constant = "CrossfadeMs"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "FrankStarlingMax"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "FrankStarlingMin"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "LobeTameDecayMs"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "LobeTameEnvMs"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "PVCS1Amplitude"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "PVCS2Amplitude"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "PVCSystoleMin"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "PVCSystoleScale"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "ResamplePVCRatio"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "S1SystoleFraction"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "S2WindowFraction"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "SoftClipKnee"
+reason = "A limiter, not a character stage. Set structurally (bounds |buffer| < 1.0), not fitted."
+
+[[uncited]]
+constant = "SourceHighPassHz"
+reason = "Corner picked on the subsonic knee + fundamental headroom of the SOURCE sample, not from a reference."
+
+[[uncited]]
+constant = "SourceRestLevel"
+reason = "Chosen for headroom against SoftClipKnee and set by ear in-game. A level floor, not a reference-matched quantity."
+
+[[uncited]]
+constant = "SystoleMax"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "TailDecayMs"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "TailExtraMs"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "TailRampMs"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "TailResonatorHz"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "TailRingLevel"
+reason = "not yet audited; provenance unknown."
+
+[[uncited]]
+constant = "TailSpliceMs"
+reason = "not yet audited; provenance unknown."
+
+
+[[uncited]]
+constant = "VigorJitterScale"
+reason = "UNBINDABLE FROM CURRENT STATE EVIDENCE. A recomputable ref8 peak-CV leaf exists, but eight beats give a wide interval, the ledger supplies only qualitative elevated contractility, and recording AGC biases level CV downward. A binding requires a level-invariant spread ruler and an independently identified contractility coordinate; do not derive that coordinate from the amplitude spread being calibrated."
+state_keys = ['ref8.groups."peak (~180)".state']
+
+[[uncited]]
+constant = "VigorJitterMaxSigma"
+reason = "An upper-tail clamp, not a reference value. In-game capture showed that unbounded draws flat-top loud beats into the soft knee; 2.5 sd removes that artifact while preserving ordinary spread. A distributional guard has no reference leaf to bind to."

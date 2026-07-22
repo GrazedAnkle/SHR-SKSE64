@@ -15,13 +15,18 @@
  */
 #include "SkyrimHeartRate.hpp"
 
+#include "Config.hpp"
+#include "Constants.hpp"
+#include "HeartbeatVoice.hpp"
 #include "InputHandler.hpp"
-#include "Random.hpp"
-#include "Sound.hpp"
-#include "Strings.hpp"
+#include "NotificationPolicy.hpp"
+#include "RhythmEngine.hpp"
+#include "Simulation.hpp"
 
 namespace
 {
+    namespace C = SHR::Constants;
+
     constexpr std::uint32_t CoSaveId = std::byteswap('SHRS');
 
     namespace Record
@@ -32,9 +37,57 @@ namespace
             static constexpr std::uint32_t Version = 0;
         };
 
-        struct LongTermStamina
+        struct Exertion
         {
-            static constexpr std::uint32_t Type = std::byteswap('LTSX');
+            static constexpr std::uint32_t Type = std::byteswap('EXRT');
+            static constexpr std::uint32_t Version = 0;
+        };
+
+        struct Adrenaline
+        {
+            static constexpr std::uint32_t Type = std::byteswap('ADRL');
+            static constexpr std::uint32_t Version = 0;
+        };
+
+        struct Fitness
+        {
+            static constexpr std::uint32_t Type = std::byteswap('FTNS');
+            static constexpr std::uint32_t Version = 0;
+        };
+
+        struct AcuteFatigue
+        {
+            static constexpr std::uint32_t Type = std::byteswap('AFTG');
+            static constexpr std::uint32_t Version = 0;
+        };
+
+        struct LongTermFatigue
+        {
+            static constexpr std::uint32_t Type = std::byteswap('LFTG');
+            static constexpr std::uint32_t Version = 0;
+        };
+
+        struct FastHR
+        {
+            static constexpr std::uint32_t Type = std::byteswap('FAHR');
+            static constexpr std::uint32_t Version = 0;
+        };
+
+        struct RespRate
+        {
+            static constexpr std::uint32_t Type = std::byteswap('RRTE');
+            static constexpr std::uint32_t Version = 0;
+        };
+
+        struct Contractility
+        {
+            static constexpr std::uint32_t Type = std::byteswap('CTLY');
+            static constexpr std::uint32_t Version = 0;
+        };
+
+        struct RespDepth
+        {
+            static constexpr std::uint32_t Type = std::byteswap('RDPT');
             static constexpr std::uint32_t Version = 0;
         };
     }
@@ -46,33 +99,17 @@ namespace
     void OnLoad(SKSE::SerializationInterface *serde);
 
     void Update(const RE::PlayerCharacter *player, float delta);
+    void HandleFeedback(const RE::PlayerCharacter *player, float delta);
 
-    void UpdateTargetHeartRate(const RE::PlayerCharacter *player, float delta);
-    void UpdateCurrentHeartRate(const RE::PlayerCharacter *player, float delta);
-
-    void HandleFeedback(const RE::PlayerCharacter *player);
+    SHR::PlayerState FromPlayer(const RE::PlayerCharacter *player);
 
     REL::Relocation<decltype(Update)> s_OriginalUpdate;
 
-    constexpr float HeartRateEqualEpsilon = 0.5F;
-    float s_TargetHeartRate = 0.0F;
-    float s_HeartRate = 60.0F;
+    SHR::HeartRateSimulation s_Simulation;
+    SHR::RhythmEngine        s_RhythmEngine;
+    SHR::HeartbeatVoice      s_HeartbeatVoice;
 
-    std::atomic_bool s_DidJump;
-
-    std::atomic<float> s_SleepDuration = Float::Sentinel;
-    std::atomic<float> s_FastTravelDuration = Float::Sentinel;
-
-    float s_DeathSeconds = Float::Sentinel;
-
-    std::uint32_t s_CombatStateDebounceCount = 0;
-    bool s_DidApplyAdrenaline = false;
-
-    SHR::HeartRateManager::Timestamp s_PreviousTime;
-
-    float s_SkipDuration = 0.0F;
-    bool s_ShouldSkip = false;
-    bool s_DidJustSkip = false;
+    float s_LastHoursPassed = 0.0F;
 
     SHR::HeartRateLevel s_PreviousHeartRateLevel;
 }
@@ -98,29 +135,40 @@ void SHR::HeartRateManager::InstallHooks(SKSE::Trampoline &trampoline)
 void SHR::HeartRateManager::Init()
 {
     InitSerialization();
-
-    s_HeartRate = Config::Get().Limit.Resting;
-    s_TargetHeartRate = s_HeartRate;
+    s_Simulation.Init();
+    s_RhythmEngine.Init();
+    s_HeartbeatVoice.Init();
+    s_LastHoursPassed = RE::Calendar::GetSingleton()->GetHoursPassed();
 }
 
 void SHR::HeartRateManager::NotifyJump()
 {
-    s_DidJump = true;
+    s_Simulation.NotifyJump();
 }
 
 void SHR::HeartRateManager::NotifySleep(float duration)
 {
-    s_SleepDuration = duration;
+    s_Simulation.NotifySleep(duration);
 }
 
 void SHR::HeartRateManager::NotifyFastTravel(float duration)
 {
-    s_FastTravelDuration = duration;
+    s_Simulation.NotifyFastTravel(duration);
+}
+
+void SHR::HeartRateManager::NotifyCombatEntry()
+{
+    s_Simulation.NotifyCombatEntry();
+}
+
+void SHR::HeartRateManager::NotifyHit()
+{
+    s_Simulation.NotifyHit();
 }
 
 float SHR::HeartRateManager::GetHeartRate()
 {
-    return s_HeartRate;
+    return s_Simulation.GetHeartRate();
 }
 
 namespace
@@ -138,16 +186,73 @@ namespace
 
     void OnSave(SKSE::SerializationInterface *serde)
     {
-        const float heartRate = s_HeartRate;
+        const float heartRate = s_Simulation.GetHeartRate();
         if (!serde->WriteRecord(Record::HeartRate::Type, Record::HeartRate::Version, heartRate))
         {
             SKSE::log::error("Failed to serialize heart rate");
+        }
+
+        const float fastHR = s_Simulation.GetFastHR();
+        if (!serde->WriteRecord(Record::FastHR::Type, Record::FastHR::Version, fastHR))
+        {
+            SKSE::log::error("Failed to serialize fast HR component");
+        }
+
+        const float exertion = s_Simulation.GetExertion();
+        if (!serde->WriteRecord(Record::Exertion::Type, Record::Exertion::Version, exertion))
+        {
+            SKSE::log::error("Failed to serialize exertion");
+        }
+
+        const float adrenaline = s_Simulation.GetAdrenaline();
+        if (!serde->WriteRecord(Record::Adrenaline::Type, Record::Adrenaline::Version, adrenaline))
+        {
+            SKSE::log::error("Failed to serialize adrenaline");
+        }
+
+        const float fitness = s_Simulation.GetFitness();
+        if (!serde->WriteRecord(Record::Fitness::Type, Record::Fitness::Version, fitness))
+        {
+            SKSE::log::error("Failed to serialize fitness");
+        }
+
+        const float acuteFatigue = s_Simulation.GetAcuteFatigue();
+        if (!serde->WriteRecord(Record::AcuteFatigue::Type, Record::AcuteFatigue::Version, acuteFatigue))
+        {
+            SKSE::log::error("Failed to serialize acute fatigue");
+        }
+
+        const float longTermFatigue = s_Simulation.GetLongTermFatigue();
+        if (!serde->WriteRecord(Record::LongTermFatigue::Type, Record::LongTermFatigue::Version, longTermFatigue))
+        {
+            SKSE::log::error("Failed to serialize long-term fatigue");
+        }
+
+        const float respRate = s_Simulation.GetRespRate();
+        if (!serde->WriteRecord(Record::RespRate::Type, Record::RespRate::Version, respRate))
+        {
+            SKSE::log::error("Failed to serialize respiratory rate");
+        }
+
+        const float contractility = s_Simulation.GetContractility();
+        if (!serde->WriteRecord(Record::Contractility::Type, Record::Contractility::Version, contractility))
+        {
+            SKSE::log::error("Failed to serialize contractility");
+        }
+
+        const float respDepth = s_Simulation.GetRespDepth();
+        if (!serde->WriteRecord(Record::RespDepth::Type, Record::RespDepth::Version, respDepth))
+        {
+            SKSE::log::error("Failed to serialize respiratory depth");
         }
     }
 
     void OnRevert([[maybe_unused]] SKSE::SerializationInterface *serde)
     {
-        s_HeartRate = SHR::Config::Get().Limit.Resting;
+        s_Simulation.Init();
+        s_RhythmEngine.Init();
+        s_HeartbeatVoice.FlushAndStop();
+        s_LastHoursPassed = RE::Calendar::GetSingleton()->GetHoursPassed();
     }
 
     void OnLoad(SKSE::SerializationInterface *serde)
@@ -156,251 +261,196 @@ namespace
         std::uint32_t recordSize;
         std::uint32_t recordVersion;
 
+        const float restingHR = SHR::Config::Get().HeartRate.Resting;
+        float heartRate = restingHR;
+        float fastHR = 0.0F;
+        float exertion = C::IdleMets;
+        float adrenaline = 0.0F;
+        float fitness = C::FitnessBaseMets + (C::BaseRestingHR - restingHR) / C::RestingHRSlope;
+        float acuteFatigue = 0.0F;
+        float longTermFatigue = 0.0F;
+        float respRate = C::RestingRespRate;
+        // Negative sentinels select backward-compatible defaults when older saves omit these records.
+        float contractility = -1.0F;
+        float respDepth = -1.0F;
+
         while (serde->GetNextRecordInfo(recordType, recordVersion, recordSize))
         {
             switch (recordType)
             {
             case Record::HeartRate::Type:
-            {
-                float heartRate;
                 serde->ReadRecordData(heartRate);
-                s_HeartRate = heartRate;
-            }
                 break;
-            case Record::LongTermStamina::Type:
-                SKSE::log::warn("Encountered LTSX record which is not yet implemented");
+            case Record::FastHR::Type:
+                serde->ReadRecordData(fastHR);
+                break;
+            case Record::Exertion::Type:
+                serde->ReadRecordData(exertion);
+                break;
+            case Record::Adrenaline::Type:
+                serde->ReadRecordData(adrenaline);
+                break;
+            case Record::Fitness::Type:
+                serde->ReadRecordData(fitness);
+                break;
+            case Record::AcuteFatigue::Type:
+                serde->ReadRecordData(acuteFatigue);
+                break;
+            case Record::LongTermFatigue::Type:
+                serde->ReadRecordData(longTermFatigue);
+                break;
+            case Record::RespRate::Type:
+                serde->ReadRecordData(respRate);
+                break;
+            case Record::Contractility::Type:
+                serde->ReadRecordData(contractility);
+                break;
+            case Record::RespDepth::Type:
+                serde->ReadRecordData(respDepth);
                 break;
             default:
-                const std::uint32_t type = std::byteswap(recordType);
-                const char *typeBytes = reinterpret_cast<const char *>(&type);
-                SKSE::log::warn(FMT_STRING("Encountered unknown record type in co-save: {:.{}}"), typeBytes, sizeof(type));
-                break;
+                {
+                    const std::uint32_t type = std::byteswap(recordType);
+                    const char *typeBytes = reinterpret_cast<const char *>(&type);
+                    SKSE::log::warn(FMT_STRING("Encountered unknown record type in co-save: {:.{}}"), typeBytes, sizeof(type));
+                    break;
+                }
             }
         }
+
+        s_Simulation.Restore(
+            heartRate,
+            exertion,
+            adrenaline,
+            fitness,
+            acuteFatigue,
+            longTermFatigue,
+            fastHR,
+            respRate,
+            contractility,
+            respDepth
+        );
     }
 
     void Update(const RE::PlayerCharacter *player, float delta)
     {
         s_OriginalUpdate(player, delta);
 
-        UpdateTargetHeartRate(player, delta);
-        UpdateCurrentHeartRate(player, delta);
-        HandleFeedback(player);
-    }
-
-    void UpdateTargetHeartRate(const RE::PlayerCharacter *player, float delta)
-    {
-        if (player->IsDead())
+        if (delta == 0.0F)
         {
-            // NOLINTNEXTLINE(clang-diagnostic-float-equal): `s_DeathSeconds` is explicitly set to `Float::Sentinel`.
-            if (s_DeathSeconds == Float::Sentinel)
-            {
-                s_DeathSeconds = 0.0F;
-            }
-
-            s_DeathSeconds += delta;
-
-            if (s_TargetHeartRate - s_HeartRate > HeartRateEqualEpsilon)
-            {
-                s_TargetHeartRate = SHR::HeartRateManager::HeartRateFibrillation;
-            }
-            else
-            {
-                s_TargetHeartRate = 0.0F;
-            }
-
+            s_HeartbeatVoice.Pause();
             return;
         }
 
-        s_DeathSeconds = Float::Sentinel;
+        s_HeartbeatVoice.Resume();
 
-        const std::array movementLevelHeartRate = {
-            SHR::Config::Get().Limit.Idle,
-            SHR::Config::Get().Limit.Walking,
-            SHR::Config::Get().Limit.Running,
-            SHR::Config::Get().Limit.Sprinting,
+        const float currentHours = RE::Calendar::GetSingleton()->GetHoursPassed();
+        const float gameHoursDelta = currentHours - s_LastHoursPassed;
+        s_LastHoursPassed = currentHours;
+
+        const SHR::PlayerState playerState = FromPlayer(player);
+        s_Simulation.Step(playerState, delta, gameHoursDelta);
+        HandleFeedback(player, delta);
+    }
+
+    SHR::PlayerState FromPlayer(const RE::PlayerCharacter *player)
+    {
+        return {
+            .IsDead      = player->IsDead(),
+            .IsSprinting = player->IsSprinting(),
+            .IsRunning   = player->IsRunning(),
+            .IsWalking   = player->IsWalking(),
+            .IsSwimming  = player->IsSwimming(),
+            .IsSneaking  = player->IsSneaking(),
+            .IsOnMount   = player->IsOnMount(),
         };
-
-        // Movement level needs to be checked from highest to lowest because multiple states might be active at once.
-        std::int32_t movementLevel = 0;
-        if (s_DidJump.exchange(false))
-        {
-            movementLevel = 3;
-        }
-        else if (player->IsSprinting())
-        {
-            movementLevel = 3;
-        }
-        else if (player->IsRunning())
-        {
-            movementLevel = 2;
-        }
-        else if (player->IsWalking())
-        {
-            movementLevel = 1;
-        }
-
-        float movementHeartRateOffset = 0.0F;
-        if (movementLevel > 0)
-        {
-            if (player->IsSwimming())
-            {
-                movementHeartRateOffset = 20.0F;
-            }
-            else if (player->IsSneaking())
-            {
-                movementHeartRateOffset = 10.0F;
-            }
-        }
-
-        if (player->IsOnMount())
-        {
-            movementLevel = std::max(movementLevel - 1, 0);
-        }
-
-        const float movementHeartRate = movementLevelHeartRate[movementLevel] + movementHeartRateOffset;
-
-        const float targetHeartRate = player->IsInCombat()
-            ? std::max(movementHeartRate, SHR::Config::Get().Limit.Combat)
-            : movementHeartRate;
-
-        s_TargetHeartRate = targetHeartRate;
     }
 
-    // This is basically just a proportional controller.
-    void UpdateCurrentHeartRate(const RE::PlayerCharacter *player, float delta)
-    {
-        // Comparison against 0 is safe here since 0 is set explicitly.
-        if (s_TargetHeartRate == 0.0F && s_HeartRate == 0.0F)
-        {
-            return;
-        }
-
-        const float difference = s_TargetHeartRate - s_HeartRate;
-
-        if (std::abs(difference) < HeartRateEqualEpsilon)
-        {
-            s_HeartRate = s_TargetHeartRate;
-        }
-
-        // NOLINTNEXTLINE(clang-diagnostic-float-equal): `s_HeartRate` is explicitly set to `s_TargetHeartRate`.
-        if (s_HeartRate == s_TargetHeartRate)
-        {
-            return;
-        }
-
-        const bool isNegative = std::signbit(difference);
-
-        // This is normalized to [0, 1].
-        const float incDecMultiplier = isNegative ? (1.0F / SHR::Config::Get().Multiplier.IncDecRatio) : 1.0F;
-
-        // This attempts to target a maximum mod amount per second given a rough upper bound on `difference` of 150.
-        constexpr float maxChangePerSecond = 4.0F;
-        constexpr float attenuationFactor = maxChangePerSecond / 150.0F;
-        const float modMultiplier = attenuationFactor * SHR::Config::Get().Multiplier.Mod;
-
-        // Cap to `maxChangePerSecond` to handle unusually large `difference` values.
-        const float modAmountPerSecond = std::clamp(
-            modMultiplier * incDecMultiplier * difference,
-            -maxChangePerSecond,
-            maxChangePerSecond
-        );
-
-        const float modAmount = delta * modAmountPerSecond;
-
-        s_HeartRate += modAmount;
-
-        constexpr float adrenalineAmount = 10.0F;
-        if (player->IsInCombat())
-        {
-            constexpr std::uint32_t combatDebounceThreshold = 2;
-            if (s_CombatStateDebounceCount < combatDebounceThreshold)
-            {
-                ++s_CombatStateDebounceCount;
-            }
-            else if (!s_DidApplyAdrenaline)
-            {
-                s_DidApplyAdrenaline = true;
-                if (s_HeartRate + adrenalineAmount < SHR::Config::Get().Limit.Combat)
-                {
-                    s_HeartRate += adrenalineAmount;
-                }
-            }
-        }
-        else
-        {
-            s_CombatStateDebounceCount = 0;
-            s_DidApplyAdrenaline = false;
-        }
-
-        // NOLINTNEXTLINE(clang-diagnostic-float-equal): `duration` is explicitly set to `Float::Sentinel`.
-        if (const float duration = s_SleepDuration.exchange(Float::Sentinel); duration != Float::Sentinel)
-        {
-            s_HeartRate = SHR::Config::Get().Limit.Resting;
-        }
-    }
-
-    void HandleFeedback(const RE::PlayerCharacter *player)
+    void HandleFeedback(const RE::PlayerCharacter *player, float delta)
     {
         if (!SHR::InputHandler::IsListening())
         {
             return;
         }
 
-        const auto currentTime = std::chrono::steady_clock::now();
-        const std::chrono::duration<float> deltaTime = currentTime - s_PreviousTime;
-        const float seconds = deltaTime.count();
+        const float heartRate = s_Simulation.GetHeartRate();
 
-        constexpr float maxSkipChanceAfterSeconds = 2.0F * SHR::HeartRateManager::DeathSkipChanceIncreaseDuration;
+        constexpr float maxDeathSeconds = 2.0F * SHR::HeartRateManager::DeathArrhythmiaChanceIncreaseDuration;
+        const float deathFactor =
+            s_Simulation.GetDeathSeconds()
+                .transform([maxDeathSeconds](float seconds) {
+                  return std::min(seconds, maxDeathSeconds) / maxDeathSeconds;
+                })
+                .value_or(0.0F);
+        const float hrRange = SHR::Config::Get().HeartRate.Max - SHR::VeryHighHeartRateThreshold;
+        const float extremeHRFactor = std::clamp((heartRate - SHR::VeryHighHeartRateThreshold) / hrRange, 0.0F, 1.0F);
+        const float fatigueFactor = s_Simulation.GetLongTermFatigue() / C::LongTermFatigueMax;
+        const float riskFactor = std::max({ deathFactor, extremeHRFactor, fatigueFactor });
 
-        // NOLINTNEXTLINE(clang-diagnostic-float-equal): `s_DeathSeconds` is explicitly set to `Float::Sentinel`.
-        const float skipChanceFactor = s_DeathSeconds == Float::Sentinel
-            ? 0.0F
-            : std::min(s_DeathSeconds, maxSkipChanceAfterSeconds) / maxSkipChanceAfterSeconds;
+        const float effectiveFitness = s_Simulation.GetEffectiveFitness();
+        const float exertionFraction = std::clamp(
+            (s_Simulation.GetExertion() - C::IdleMets) / (effectiveFitness - C::IdleMets),
+            0.0F,
+            1.0F
+        );
 
-        constexpr float normalSkipChance = 0.00001F;
-        constexpr float maxSkipChance = 0.001F;
+        const float susceptibility = SHR::Config::Get().Arrhythmia.Susceptibility;
 
-        const float skipMultiplier = SHR::Config::Get().Multiplier.SkipChance;
-        const float skipChance = skipMultiplier * std::lerp(normalSkipChance, maxSkipChance, skipChanceFactor);
-        s_ShouldSkip = s_ShouldSkip || !s_DidJustSkip && Random(0.0F, 1.0F) < skipChance;
+        const float pvcChance = susceptibility * std::lerp(C::PVCChanceNormal, C::PVCChanceMax, riskFactor);
 
-        const float heartRate = SHR::HeartRateManager::GetHeartRate();
-        const float period = 60.0F / heartRate;
+        const float adrenalineFactor   = std::min(s_Simulation.GetAdrenaline() / 5.0F, 1.0F);
+        const float acuteFatigueFactor = s_Simulation.GetAcuteFatigue() / C::AcuteFatigueMax;
+        const float runExtensionChance = std::min(
+            susceptibility *
+            C::PVCRunExtensionChance *
+            (1.0F + adrenalineFactor + acuteFatigueFactor + extremeHRFactor),
+            1.0F
+        );
 
-        // This determines how much the heartbeat period should be shortened.
-        constexpr float skipPeriodFraction = 0.65F;
-        const float effectivePeriod = s_ShouldSkip ? skipPeriodFraction * period : period;
-        if ((s_DidJustSkip && seconds < s_SkipDuration) || (seconds < effectivePeriod))
+        const auto beat = s_RhythmEngine.Advance(
+            delta,
+            heartRate,
+            s_Simulation.GetRespPhase(),
+            exertionFraction,
+            s_Simulation.GetRespDepth(),
+            s_Simulation.GetContractility(),
+            s_Simulation.GetContractilityExcess(),
+            pvcChance,
+            riskFactor,
+            runExtensionChance
+        );
+
+        if (!beat.ShouldFire)
         {
             return;
         }
 
-        const float effectiveHeartRate = s_ShouldSkip
-            ? heartRate / skipPeriodFraction
-            : heartRate;
-
-        s_DidJustSkip = s_ShouldSkip;
-        if (s_ShouldSkip)
+        if (beat.IsPVC)
         {
-            s_ShouldSkip = false;
-            s_SkipDuration = Random(0.75F, 1.5F);
-
-            if (SHR::Config::Get().Notification.Enabled)
+            const auto notification = SHR::NotificationPolicy::SelectArrhythmia(
+                SHR::Config::Get().Notification
+            );
+            if (notification)
             {
-                RE::DebugNotification(SHR::Strings::GetSkippedText());
+                RE::SendHUDMessage::ShowHUDMessage(notification->data());
             }
         }
 
-        s_PreviousTime = currentTime;
+        s_HeartbeatVoice.Play(beat);
 
-        ::Sound::Play(SHR::Sound::GetDescriptorForm(effectiveHeartRate), RE::PlayerCharacter::GetSingleton());
-
-        const SHR::HeartRateLevel currentLevel = SHR::GetHeartRateLevel(s_HeartRate);
+        const SHR::HeartRateLevel currentLevel = SHR::GetHeartRateLevel(heartRate);
         if (currentLevel != s_PreviousHeartRateLevel)
         {
             s_PreviousHeartRateLevel = currentLevel;
-            RE::DebugNotification(SHR::Strings::GetText(player, s_HeartRate));
+            const auto notification = SHR::NotificationPolicy::SelectStatus(
+                SHR::Config::Get().Notification,
+                player->IsDead(),
+                heartRate
+            );
+            if (notification)
+            {
+                RE::SendHUDMessage::ShowHUDMessage(notification->data());
+            }
         }
     }
 }

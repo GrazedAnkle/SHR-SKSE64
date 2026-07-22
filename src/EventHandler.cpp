@@ -15,10 +15,13 @@
  */
 #include "EventHandler.hpp"
 
+#include "Constants.hpp"
 #include "SkyrimHeartRate.hpp"
 
 namespace
 {
+    namespace C = SHR::Constants;
+
     SHR::EventHandler s_EventHandler;
 }
 
@@ -28,6 +31,8 @@ void SHR::EventHandler::Register()
     eventSourceHolder->AddEventSink<RE::TESSleepStartEvent>(&s_EventHandler);
     eventSourceHolder->AddEventSink<RE::TESSleepStopEvent>(&s_EventHandler);
     eventSourceHolder->AddEventSink<RE::TESFastTravelEndEvent>(&s_EventHandler);
+    eventSourceHolder->AddEventSink<RE::TESCombatEvent>(&s_EventHandler);
+    eventSourceHolder->AddEventSink<RE::TESHitEvent>(&s_EventHandler);
 }
 
 RE::BSEventNotifyControl SHR::EventHandler::ProcessEvent(
@@ -46,9 +51,9 @@ RE::BSEventNotifyControl SHR::EventHandler::ProcessEvent(
 )
 {
     const float currentTime = RE::Calendar::GetSingleton()->GetHoursPassed();
-    const float duration = currentTime - m_Timestamp;
+    const float durationHours = currentTime - m_Timestamp;
     m_Timestamp = currentTime;
-    HeartRateManager::NotifySleep(duration);
+    HeartRateManager::NotifySleep(durationHours * C::SecondsPerHour);
     return RE::BSEventNotifyControl::kContinue;
 }
 
@@ -57,7 +62,32 @@ RE::BSEventNotifyControl SHR::EventHandler::ProcessEvent(
     RE::BSTEventSource<RE::TESFastTravelEndEvent> *source
 )
 {
-    const float duration = event->fastTravelEndHours;
-    HeartRateManager::NotifyFastTravel(duration);
+    HeartRateManager::NotifyFastTravel(event->fastTravelEndHours * C::SecondsPerHour);
+    return RE::BSEventNotifyControl::kContinue;
+}
+
+RE::BSEventNotifyControl SHR::EventHandler::ProcessEvent(
+    const RE::TESCombatEvent *event,
+    RE::BSTEventSource<RE::TESCombatEvent> *source
+)
+{
+    const auto *player = RE::PlayerCharacter::GetSingleton();
+    if (event->actor.get() == player && event->newState != RE::ACTOR_COMBAT_STATE::kNone)
+    {
+        HeartRateManager::NotifyCombatEntry();
+    }
+    return RE::BSEventNotifyControl::kContinue;
+}
+
+RE::BSEventNotifyControl SHR::EventHandler::ProcessEvent(
+    const RE::TESHitEvent *event,
+    RE::BSTEventSource<RE::TESHitEvent> *source
+)
+{
+    const auto *player = RE::PlayerCharacter::GetSingleton();
+    if (event->target.get() == player)
+    {
+        HeartRateManager::NotifyHit();
+    }
     return RE::BSEventNotifyControl::kContinue;
 }

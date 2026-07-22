@@ -10,12 +10,21 @@
       "name": "base",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+        "CMAKE_EXPORT_COMPILE_COMMANDS": {
+          "type": "BOOL",
+          "value": true
+        }
+      }
+    },
+    {
+      "name": "vcpkg",
+      "hidden": true,
+      "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL",
         "VCPKG_TARGET_TRIPLET": "x64-windows-skse",
         "VCPKG_HOST_TRIPLET": "x64-windows-skse",
-        "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/cmake"
+        "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/cmake",
+        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
       }
     },
     {
@@ -23,9 +32,7 @@
       "hidden": true,
       "inherits": "base",
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "cl",
-        "CMAKE_CXX_COMPILER": "cl",
-        "CMAKE_CXX_FLAGS": "/permissive- /Zc:preprocessor /EHsc /Zc:__cplusplus $penv{CXXFLAGS}"
+        "CMAKE_CXX_FLAGS": "/permissive- /Zc:preprocessor /EHsc $penv{CXXFLAGS}"
       },
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -40,9 +47,16 @@
       "hidden": true,
       "inherits": "base",
       "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "/permissive- /EHsc -Wno-overloaded-virtual -Wno-delete-non-abstract-non-virtual-dtor $penv{CXXFLAGS}",
         "CMAKE_C_COMPILER": "clang-cl",
-        "CMAKE_CXX_COMPILER": "clang-cl",
-        "CMAKE_CXX_FLAGS": "/permissive- /EHsc /Zc:__cplusplus $penv{CXXFLAGS}"
+        "CMAKE_CXX_COMPILER": "clang-cl"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "intelliSenseMode": "windows-clang-x64",
+          "enableMicrosoftCodeAnalysis": true,
+          "enableClangTidyCodeAnalysis": true
+        }
       }
     },
     {
@@ -57,57 +71,73 @@
     {
       "name": "Debug-MSVC",
       "inherits": [
-        "msvc",
-        "build-tests"
+        "vcpkg",
+        "build-tests",
+        "msvc"
       ],
       "displayName": "Debug (MSVC)",
       "description": "Debug build for testing.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/debug-msvc",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": {
+          "type": "STRING",
+          "value": "Debug"
+        }
       }
     },
     {
       "name": "Release-MSVC",
       "inherits": [
-        "msvc",
-        "build-tests"
+        "vcpkg",
+        "build-tests",
+        "msvc"
       ],
       "displayName": "Release (MSVC)",
       "description": "Optimized release build.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/release-msvc",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": {
+          "type": "STRING",
+          "value": "Release"
+        }
       }
     },
     {
       "name": "Debug-Clang",
       "inherits": [
-        "clang",
-        "build-tests"
+        "vcpkg",
+        "build-tests",
+        "clang"
       ],
       "displayName": "Debug (Clang)",
       "description": "Debug build for testing.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/debug-clang",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": {
+          "type": "STRING",
+          "value": "Debug"
+        }
       }
     },
     {
       "name": "Release-Clang",
       "inherits": [
-        "clang",
-        "build-tests"
+        "vcpkg",
+        "build-tests",
+        "clang"
       ],
       "displayName": "Release (Clang)",
       "description": "Optimized release build.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/release-clang",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": {
+          "type": "STRING",
+          "value": "Release"
+        }
       }
     }
   ],
@@ -115,7 +145,7 @@
     {
       "name": "All-Tests",
       "displayName": "All Tests",
-      "configurePreset": "Debug-MSVC",
+      "configurePreset": "Debug-Clang",
       "output": {
         "outputOnFailure": true
       },

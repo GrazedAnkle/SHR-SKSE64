@@ -1,0 +1,75 @@
+# Reference recording catalog
+
+This is the navigation catalog for recordings that do not yet have committed landmark files. Detailed
+findings belong in ../REFERENCE_ANALYSIS.md; S1/S2/BR/EX landmarks belong in timestamps/<ref>.txt. An
+entry with a landmark file is listed only so its analysis status is visible.
+
+1 [catalog only]
+  usable interior: start-end; first seconds are noisy
+
+2 [catalog only]
+  usable: start-end
+
+3 [catalog only]
+  mostly tricuspid/site-change sequence: 00:04-00:12, 00:13-00:40, 00:41-00:43, 00:44-00:53
+
+4 [catalog only]
+  usable: 07:53-07:59
+
+5 [catalog only]
+  usable: start-end
+
+6 [catalog only]
+  base recording; useful for A2/P2 and S2 split
+  00:00-00:20 supine
+  00:21-00:40 seated upright
+  00:41-01:00 standing upright
+  01:01-01:21 post-exercise standing upright
+
+7 [catalog only]
+  PVCs: 00:09, 00:10, 00:17
+
+8 [landmarked]
+  see timestamps/8.txt
+
+9 [catalog only]
+  PVCs: 00:06, 00:07, 00:08, 00:12, 00:13, 00:15, 00:18
+
+10 [catalog only]
+  high-HR windows: 00:46-00:56 (~180), 01:41-01:44 (~195), 01:57-02:02 (~195)
+
+11 [landmarked]
+  see timestamps/11.txt
+
+12 [landmarked]
+  see timestamps/12.txt
+
+13 [landmarked]
+  see timestamps/13.txt
+
+14 [landmarked]
+  see timestamps/14.txt
+
+15 [landmarked]
+  see timestamps/15.txt
+
+16 [catalog only]
+  same subject as refs 17-19; moderate activity; arrhythmias
+
+17 [catalog only]
+  same subject as refs 16, 18, 19; moderate activity; possible S3
+
+18 [catalog only]
+  same subject as refs 16, 17, 19; arrhythmias and tachycardia
+
+19 [provisional, unanalysed]
+  same subject as refs 16-18; post-exercise recovery with arrhythmias
+
+20 [landmarked]
+  see timestamps/20.txt
+
+21 [landmarked]
+  see timestamps/21.txt
+
+22 [catalog only]
+  voluntary breath hold/release; mild PVCs; clear P2 clap and possible A2-P2 split; Erb's/pulmonary

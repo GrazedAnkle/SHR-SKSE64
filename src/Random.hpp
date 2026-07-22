@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <random>
+
 namespace Detail
 {
     inline std::mt19937 &rng()
@@ -28,5 +30,11 @@ template<typename Float>
 inline Float Random(Float min, Float max)
 {
     std::uniform_real_distribution<Float> distribution(min, max);
+    return distribution(Detail::rng());
+}
+
+inline float RandomNormal()
+{
+    std::normal_distribution<float> distribution(0.0F, 1.0F);
     return distribution(Detail::rng());
 }

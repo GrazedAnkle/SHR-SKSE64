@@ -15,7 +15,14 @@
  */
 #pragma once
 
-namespace SHR::Logging
+namespace SHR
 {
-    void Init();
+    struct Debug;
+
+    namespace Logging
+    {
+        void Init();
+
+        void Configure(const Debug &debug);
+    }
 }

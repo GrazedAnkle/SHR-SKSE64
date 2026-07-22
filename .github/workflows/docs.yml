@@ -1,0 +1,29 @@
+name: docs
+
+on:
+  push:
+    paths:
+      - "docs/**"
+      - "src/**"
+      - "tools/**"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    paths:
+      - "docs/**"
+      - "src/**"
+      - "tools/**"
+
+jobs:
+  check-doc-references:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Validate doc cross-references against docs and src
+        run: python tools/check_docs.py
+      - name: Validate every constant comes with a provenance tag
+        run: python tools/check_constants.py
+      - name: Validate doc data figure citations against measurements.json
+        run: python tools/check_data_citations.py

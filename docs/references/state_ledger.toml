@@ -1,0 +1,718 @@
+# Hand-authored physiological/context state for generated measurement scopes.
+# `tools/ref_analyze.py --all` validates these records and embeds them beside
+# the named measurement. Unknown is a result: `not_yet_sourced` is open work;
+# `not_recorded` and `not_identifiable` are durable limits of the current corpus.
+schema_version = 1
+
+[[state]]
+scope = "ref8.groups.\"segment 1 (~165)\""
+
+heart_rate.status = "measured"
+heart_rate.value_from = "ref8.groups.\"segment 1 (~165)\".hr"
+
+effort_phase.status = "unknown"
+effort_phase.reason = "not_identifiable"
+effort_phase.note = "The recording is spliced and the group cannot be placed uniquely within peak versus recovery."
+
+demand.status = "unknown"
+demand.reason = "not_identifiable"
+demand.note = "High HR in a post-exercise/excited recording does not determine metabolic demand."
+
+respiratory_rate.status = "unknown"
+respiratory_rate.reason = "not_yet_sourced"
+
+respiratory_depth.status = "unknown"
+respiratory_depth.reason = "not_identifiable"
+respiratory_depth.note = "The audible muffle cannot independently establish the transmission state it is used to evaluate."
+
+contractility.status = "context_inferred"
+contractility.value = "elevated"
+contractility.source = "REFERENCE_ANALYSIS.md / ref8 context"
+contractility.rationale = "Post-exercise and excited context supports a qualitative elevation without using S1 attack, level, or brightness."
+
+fatigue.status = "unknown"
+fatigue.reason = "not_recorded"
+
+posture.status = "reported"
+posture.value = "seated"
+posture.source = "REFERENCE_ANALYSIS.md / ref8 heading"
+
+auscultation_site.status = "unknown"
+auscultation_site.reason = "not_recorded"
+
+rhythm.status = "context_inferred"
+rhythm.value = "regular"
+rhythm.source = "references/timestamps/8.txt"
+rhythm.rationale = "The annotated run contains no identified ectopic beats; this does not claim an ECG-confirmed sinus origin."
+
+[[state]]
+scope = "ref8.groups.\"peak (~180)\""
+
+heart_rate.status = "measured"
+heart_rate.value_from = "ref8.groups.\"peak (~180)\".hr"
+
+effort_phase.status = "unknown"
+effort_phase.reason = "not_identifiable"
+effort_phase.note = "Peak names a local recording group, not a measured maximum-demand state; the recording is spliced."
+
+demand.status = "unknown"
+demand.reason = "not_identifiable"
+demand.note = "High HR in a post-exercise/excited recording does not determine metabolic demand."
+
+respiratory_rate.status = "unknown"
+respiratory_rate.reason = "not_yet_sourced"
+
+respiratory_depth.status = "unknown"
+respiratory_depth.reason = "not_identifiable"
+respiratory_depth.note = "The audible muffle cannot independently establish the transmission state it is used to evaluate."
+
+contractility.status = "context_inferred"
+contractility.value = "elevated"
+contractility.source = "REFERENCE_ANALYSIS.md / ref8 context"
+contractility.rationale = "Post-exercise and excited context supports a qualitative elevation without using S1 attack, level, or brightness."
+
+fatigue.status = "unknown"
+fatigue.reason = "not_recorded"
+
+posture.status = "reported"
+posture.value = "seated"
+posture.source = "REFERENCE_ANALYSIS.md / ref8 heading"
+
+auscultation_site.status = "unknown"
+auscultation_site.reason = "not_recorded"
+
+rhythm.status = "context_inferred"
+rhythm.value = "regular"
+rhythm.source = "references/timestamps/8.txt"
+rhythm.rationale = "The annotated run contains no identified ectopic beats; this does not claim an ECG-confirmed sinus origin."
+
+[[state]]
+scope = "ref8.groups.\"clean, long segment (~175)\""
+
+heart_rate.status = "measured"
+heart_rate.value_from = "ref8.groups.\"clean, long segment (~175)\".hr"
+
+effort_phase.status = "unknown"
+effort_phase.reason = "not_identifiable"
+effort_phase.note = "The recording is spliced and the group cannot be placed uniquely within peak versus recovery."
+
+demand.status = "unknown"
+demand.reason = "not_identifiable"
+demand.note = "High HR in a post-exercise/excited recording does not determine metabolic demand."
+
+respiratory_rate.status = "unknown"
+respiratory_rate.reason = "not_yet_sourced"
+
+respiratory_depth.status = "unknown"
+respiratory_depth.reason = "not_identifiable"
+respiratory_depth.note = "The audible muffle cannot independently establish the transmission state it is used to evaluate."
+
+contractility.status = "context_inferred"
+contractility.value = "elevated"
+contractility.source = "REFERENCE_ANALYSIS.md / ref8 context"
+contractility.rationale = "Post-exercise and excited context supports a qualitative elevation without using S1 attack, level, or brightness."
+
+fatigue.status = "unknown"
+fatigue.reason = "not_recorded"
+
+posture.status = "reported"
+posture.value = "seated"
+posture.source = "REFERENCE_ANALYSIS.md / ref8 heading"
+
+auscultation_site.status = "unknown"
+auscultation_site.reason = "not_recorded"
+
+rhythm.status = "context_inferred"
+rhythm.value = "regular"
+rhythm.source = "references/timestamps/8.txt"
+rhythm.rationale = "The annotated run contains no identified ectopic beats; this does not claim an ECG-confirmed sinus origin."
+
+[[state]]
+scope = "ref11.groups.\"resting, elevated supine\""
+
+heart_rate.status = "measured"
+heart_rate.value_from = "ref11.groups.\"resting, elevated supine\".hr"
+
+effort_phase.status = "reported"
+effort_phase.value = "rest"
+effort_phase.source = "references/timestamps/11.txt / group label"
+
+demand.status = "context_inferred"
+demand.value = "resting"
+demand.source = "references/timestamps/11.txt / group label"
+demand.rationale = "The protocol identifies rest; elevated HR does not turn that into measured metabolic demand."
+
+respiratory_rate.status = "unknown"
+respiratory_rate.reason = "not_yet_sourced"
+
+respiratory_depth.status = "unknown"
+respiratory_depth.reason = "not_recorded"
+
+contractility.status = "context_inferred"
+contractility.value = "baseline"
+contractility.source = "references/timestamps/11.txt / resting protocol"
+contractility.rationale = "The resting protocol supplies a within-session qualitative baseline without assigning a numerical inotropy coordinate or using acoustic morphology."
+
+fatigue.status = "unknown"
+fatigue.reason = "not_recorded"
+
+posture.status = "reported"
+posture.value = "supine"
+posture.source = "references/timestamps/11.txt / group label"
+
+auscultation_site.status = "reported"
+auscultation_site.value = "between_tricuspid_and_pulmonary"
+auscultation_site.source = "review of accompanying ref11 video"
+
+rhythm.status = "context_inferred"
+rhythm.value = "regular"
+rhythm.source = "references/timestamps/11.txt"
+rhythm.rationale = "The annotated run contains no identified ectopic beats."
+
+[[state]]
+scope = "ref11.groups.\"deeper inspiration (~79)\""
+
+heart_rate.status = "measured"
+heart_rate.value_from = "ref11.groups.\"deeper inspiration (~79)\".hr"
+
+effort_phase.status = "reported"
+effort_phase.value = "rest"
+effort_phase.source = "REFERENCE_ANALYSIS.md / ref11 deep-inspiration context"
+
+demand.status = "context_inferred"
+demand.value = "resting"
+demand.source = "REFERENCE_ANALYSIS.md / ref11 deep-inspiration context"
+demand.rationale = "The maneuver occurs in the resting examination before exercise."
+
+respiratory_rate.status = "unknown"
+respiratory_rate.reason = "not_yet_sourced"
+
+respiratory_depth.status = "reported"
+respiratory_depth.value = "deeper_inspiration"
+respiratory_depth.source = "references/timestamps/11.txt / group label"
+
+contractility.status = "unknown"
+contractility.reason = "not_identifiable"
+
+fatigue.status = "unknown"
+fatigue.reason = "not_recorded"
+
+posture.status = "context_inferred"
+posture.value = "supine"
+posture.source = "references/timestamps/11.txt / adjacent examination groups"
+posture.rationale = "The maneuver is within the same continuous resting examination window as the explicitly supine group."
+
+auscultation_site.status = "reported"
+auscultation_site.value = "between_tricuspid_and_pulmonary"
+auscultation_site.source = "review of accompanying ref11 video"
+
+rhythm.status = "context_inferred"
+rhythm.value = "regular"
+rhythm.source = "references/timestamps/11.txt"
+rhythm.rationale = "The annotated run contains no identified ectopic beats."
+
+[[state]]
+scope = "ref11.groups.\"breath hold peak inspiration (~71)\""
+
+heart_rate.status = "measured"
+heart_rate.value_from = "ref11.groups.\"breath hold peak inspiration (~71)\".hr"
+
+effort_phase.status = "reported"
+effort_phase.value = "breath_hold"
+effort_phase.source = "references/timestamps/11.txt / group label"
+
+demand.status = "context_inferred"
+demand.value = "resting"
+demand.source = "REFERENCE_ANALYSIS.md / ref11 breath-hold context"
+demand.rationale = "The maneuver occurs in the resting examination before exercise."
+
+respiratory_rate.status = "unknown"
+respiratory_rate.reason = "not_applicable"
+respiratory_rate.note = "Respiration is voluntarily held in this measurement scope."
+
+respiratory_depth.status = "unknown"
+respiratory_depth.reason = "not_yet_sourced"
+respiratory_depth.note = "The endpoint label establishes respiratory phase, not tidal excursion or maximal lung capacity; a visual or numerical depth ruler has not yet been applied."
+
+lung_inflation.status = "reported"
+lung_inflation.value = "end_inspiratory_hold"
+lung_inflation.source = "references/timestamps/11.txt / group label"
+lung_inflation.note = "Peak means the endpoint of this inspiration; it does not assert maximal inspiration or measured lung volume."
+
+contractility.status = "unknown"
+contractility.reason = "not_identifiable"
+contractility.note = "The autonomic and filling effects of the maneuver cannot be separated here."
+
+fatigue.status = "unknown"
+fatigue.reason = "not_recorded"
+
+posture.status = "context_inferred"
+posture.value = "supine"
+posture.source = "references/timestamps/11.txt / adjacent examination groups"
+posture.rationale = "The maneuver is within the same continuous resting examination window as the explicitly supine group."
+
+auscultation_site.status = "reported"
+auscultation_site.value = "between_tricuspid_and_pulmonary"
+auscultation_site.source = "review of accompanying ref11 video"
+
+rhythm.status = "context_inferred"
+rhythm.value = "regular"
+rhythm.source = "references/timestamps/11.txt"
+rhythm.rationale = "The annotated run contains no identified ectopic beats."
+
+[[state]]
+scope = "ref11.groups.\"post-exercise, elevated supine\""
+
+heart_rate.status = "measured"
+heart_rate.value_from = "ref11.groups.\"post-exercise, elevated supine\".hr"
+
+effort_phase.status = "reported"
+effort_phase.value = "recovery"
+effort_phase.source = "references/timestamps/11.txt / group label"
+
+demand.status = "unknown"
+demand.reason = "not_identifiable"
+demand.note = "Recovery HR does not determine current metabolic demand."
+
+respiratory_rate.status = "unknown"
+respiratory_rate.reason = "not_yet_sourced"
+
+respiratory_depth.status = "unknown"
+respiratory_depth.reason = "not_recorded"
+
+contractility.status = "context_inferred"
+contractility.value = "elevated"
+contractility.source = "references/timestamps/11.txt / post-exercise context"
+contractility.rationale = "Immediate post-exercise context supports lingering inotropy without using the S1 features under evaluation."
+
+fatigue.status = "unknown"
+fatigue.reason = "not_recorded"
+
+posture.status = "reported"
+posture.value = "supine"
+posture.source = "references/timestamps/11.txt / group label"
+
+auscultation_site.status = "reported"
+auscultation_site.value = "between_tricuspid_and_pulmonary"
+auscultation_site.source = "review of accompanying ref11 video"
+auscultation_site.note = "The post-exercise placement is effectively unchanged from the resting and breath-hold placement."
+
+rhythm.status = "context_inferred"
+rhythm.value = "regular"
+rhythm.source = "references/timestamps/11.txt"
+rhythm.rationale = "The annotated run contains no identified ectopic beats."
+
+[[state]]
+scope = "ref13.groups.\"recovery start (~150)\""
+
+heart_rate.status = "measured"
+heart_rate.value_from = "ref13.groups.\"recovery start (~150)\".hr"
+
+effort_phase.status = "reported"
+effort_phase.value = "recovery"
+effort_phase.source = "references/timestamps/12.txt / group label"
+
+demand.status = "unknown"
+demand.reason = "not_identifiable"
+demand.note = "Recovery HR and ventilation do not determine workload relative to the subject's capacity."
+
+respiratory_rate.status = "measured"
+respiratory_rate.value_from = "ref13.breath_scopes.\"recovery start (~150)\".resp_rate_bpm"
+
+respiratory_depth.status = "unknown"
+respiratory_depth.reason = "not_identifiable"
+respiratory_depth.note = "Saturated expiration beats invalidate the audible swing as an independent depth ruler."
+
+contractility.status = "context_inferred"
+contractility.value = "elevated"
+contractility.source = "references/timestamps/12.txt / recovery-start context"
+contractility.rationale = "Immediate post-exercise recovery supports lingering inotropy without using systole or S1 morphology."
+
+fatigue.status = "unknown"
+fatigue.reason = "not_recorded"
+
+posture.status = "reported"
+posture.value = "supine"
+posture.source = "REFERENCE_ANALYSIS.md / ref13 recovery clip (asset ref12)"
+
+auscultation_site.status = "estimated"
+auscultation_site.value = "mitral_offset_toward_tricuspid"
+auscultation_site.source = "review of accompanying ref12 video"
+auscultation_site.note = "This annotated group ends before the 00:13.6 reposition; after reposition the placement is more exactly mitral."
+
+rhythm.status = "context_inferred"
+rhythm.value = "regular"
+rhythm.source = "references/timestamps/12.txt"
+rhythm.rationale = "The annotated run contains no identified ectopic beats."
+
+[[state]]
+scope = "ref13.groups.\"exercise clean segment (~168)\""
+
+heart_rate.status = "measured"
+heart_rate.value_from = "ref13.groups.\"exercise clean segment (~168)\".hr"
+
+effort_phase.status = "reported"
+effort_phase.value = "rising_exercise"
+effort_phase.source = "REFERENCE_ANALYSIS.md / ref13 context"
+
+demand.status = "unknown"
+demand.reason = "not_identifiable"
+demand.note = "Bodyweight squats and HR do not locate workload relative to unknown individual capacity."
+
+respiratory_rate.status = "measured"
+respiratory_rate.value_from = "ref13.breath_scopes.\"exercise clean segment (~168)\".resp_rate_bpm"
+
+respiratory_depth.status = "unknown"
+respiratory_depth.reason = "not_identifiable"
+respiratory_depth.note = "No independent tidal-volume measurement exists."
+
+contractility.status = "context_inferred"
+contractility.value = "elevated"
+contractility.source = "REFERENCE_ANALYSIS.md / ref13 active protocol"
+contractility.rationale = "Ongoing exercise supports a qualitative elevation without using loudness, brightness, attack, or systole."
+
+fatigue.status = "unknown"
+fatigue.reason = "not_recorded"
+
+posture.status = "reported"
+posture.value = "dynamic_squats"
+posture.source = "REFERENCE_ANALYSIS.md / ref13 bodyweight-squat protocol"
+posture.note = "The scope spans the changing upright, descent, and ascent positions rather than one static orientation."
+
+auscultation_site.status = "estimated"
+auscultation_site.value = "mitral"
+auscultation_site.source = "review of accompanying ref13 video"
+auscultation_site.note = "The exercise footage appears mitral, but the site is difficult to identify with certainty."
+
+rhythm.status = "context_inferred"
+rhythm.value = "regular"
+rhythm.source = "references/timestamps/13.txt"
+rhythm.rationale = "The annotated run contains no identified ectopic beats."
+
+[[state]]
+scope = "ref14.groups.\"elevated\""
+
+heart_rate.status = "measured"
+heart_rate.value_from = "ref14.groups.\"elevated\".hr"
+
+effort_phase.status = "reported"
+effort_phase.value = "rest_with_acute_arousal"
+effort_phase.source = "REFERENCE_ANALYSIS.md / ref14 context"
+
+demand.status = "unknown"
+demand.reason = "not_identifiable"
+demand.note = "Standing anxiety/excitation is not a measured metabolic workload."
+
+respiratory_rate.status = "unknown"
+respiratory_rate.reason = "not_yet_sourced"
+
+respiratory_depth.status = "unknown"
+respiratory_depth.reason = "not_recorded"
+
+contractility.status = "context_inferred"
+contractility.value = "elevated"
+contractility.source = "REFERENCE_ANALYSIS.md / ref14 anxiety-excitation context"
+contractility.rationale = "Reported acute arousal supports elevated inotropy independently of the clap and attack features under evaluation."
+
+fatigue.status = "unknown"
+fatigue.reason = "not_recorded"
+
+posture.status = "reported"
+posture.value = "standing"
+posture.source = "REFERENCE_ANALYSIS.md / ref14 context"
+
+auscultation_site.status = "reported"
+auscultation_site.value = ["erbs", "pulmonary"]
+auscultation_site.source = "REFERENCE_ANALYSIS.md / ref14 heading"
+
+rhythm.status = "context_inferred"
+rhythm.value = "regular"
+rhythm.source = "references/timestamps/14.txt"
+rhythm.rationale = "The annotated run contains no identified ectopic beats."
+
+[[state]]
+scope = "ref14.groups.\"high, post-hold release (~158)\""
+
+heart_rate.status = "measured"
+heart_rate.value_from = "ref14.groups.\"high, post-hold release (~158)\".hr"
+
+effort_phase.status = "reported"
+effort_phase.value = "post_breath_hold_release"
+effort_phase.source = "references/timestamps/14.txt / group label"
+
+demand.status = "unknown"
+demand.reason = "not_identifiable"
+demand.note = "The Valsalva-like release response and arousal do not define metabolic demand."
+
+respiratory_rate.status = "unknown"
+respiratory_rate.reason = "not_yet_sourced"
+
+respiratory_depth.status = "unknown"
+respiratory_depth.reason = "not_recorded"
+
+contractility.status = "context_inferred"
+contractility.value = "elevated"
+contractility.source = "REFERENCE_ANALYSIS.md / ref14 arousal and post-hold context"
+contractility.rationale = "The acute-arousal protocol supports elevated inotropy independently of the S2 clap used to compare the groups."
+
+fatigue.status = "unknown"
+fatigue.reason = "not_recorded"
+
+posture.status = "reported"
+posture.value = "standing"
+posture.source = "REFERENCE_ANALYSIS.md / ref14 context"
+
+auscultation_site.status = "reported"
+auscultation_site.value = ["erbs", "pulmonary"]
+auscultation_site.source = "REFERENCE_ANALYSIS.md / ref14 heading"
+
+rhythm.status = "context_inferred"
+rhythm.value = "regular"
+rhythm.source = "references/timestamps/14.txt"
+rhythm.rationale = "The annotated run contains no identified ectopic beats."
+
+[[state]]
+scope = "ref15.groups.\"~80bpm\""
+
+heart_rate.status = "measured"
+heart_rate.value_from = "ref15.groups.\"~80bpm\".hr"
+
+effort_phase.status = "context_inferred"
+effort_phase.value = "rest"
+effort_phase.source = "REFERENCE_ANALYSIS.md / ref15 rest-to-activity protocol"
+effort_phase.rationale = "This is the earliest low-rate group before the within-recording activity rise."
+
+demand.status = "context_inferred"
+demand.value = "resting"
+demand.source = "REFERENCE_ANALYSIS.md / ref15 rest-to-activity protocol"
+demand.rationale = "The earliest group is the recording's resting anchor; no numeric capacity coordinate is implied."
+
+respiratory_rate.status = "unknown"
+respiratory_rate.reason = "not_yet_sourced"
+
+respiratory_depth.status = "unknown"
+respiratory_depth.reason = "not_recorded"
+
+contractility.status = "context_inferred"
+contractility.value = "baseline"
+contractility.source = "REFERENCE_ANALYSIS.md / ref15 rest-to-activity protocol"
+contractility.rationale = "The resting anchor supplies only a within-recording qualitative baseline, without using its acoustic feature values."
+
+fatigue.status = "unknown"
+fatigue.reason = "not_recorded"
+
+posture.status = "unknown"
+posture.reason = "not_recorded"
+
+auscultation_site.status = "unknown"
+auscultation_site.reason = "not_recorded"
+
+rhythm.status = "context_inferred"
+rhythm.value = "regular"
+rhythm.source = "references/timestamps/15.txt"
+rhythm.rationale = "The annotated run contains no identified ectopic beats."
+
+[[state]]
+scope = "ref15.groups.\"~95bpm\""
+
+heart_rate.status = "measured"
+heart_rate.value_from = "ref15.groups.\"~95bpm\".hr"
+
+effort_phase.status = "context_inferred"
+effort_phase.value = "rising_exercise"
+effort_phase.source = "REFERENCE_ANALYSIS.md / ref15 rest-to-activity protocol"
+effort_phase.rationale = "This intermediate group follows the resting anchor and precedes the high-rate active run."
+
+demand.status = "unknown"
+demand.reason = "not_identifiable"
+demand.note = "The protocol lacks workload and individual-capacity measurements."
+
+respiratory_rate.status = "unknown"
+respiratory_rate.reason = "not_yet_sourced"
+
+respiratory_depth.status = "unknown"
+respiratory_depth.reason = "not_recorded"
+
+contractility.status = "context_inferred"
+contractility.value = "elevated"
+contractility.source = "REFERENCE_ANALYSIS.md / ref15 activity protocol"
+contractility.rationale = "The activity rise supports a qualitative increase relative to the resting group without using the spectral or envelope response."
+
+fatigue.status = "unknown"
+fatigue.reason = "not_recorded"
+
+posture.status = "unknown"
+posture.reason = "not_recorded"
+
+auscultation_site.status = "unknown"
+auscultation_site.reason = "not_recorded"
+
+rhythm.status = "context_inferred"
+rhythm.value = "regular"
+rhythm.source = "references/timestamps/15.txt"
+rhythm.rationale = "The annotated run contains no identified ectopic beats."
+
+[[state]]
+scope = "ref15.groups.\"~150bpm\""
+
+heart_rate.status = "measured"
+heart_rate.value_from = "ref15.groups.\"~150bpm\".hr"
+
+effort_phase.status = "reported"
+effort_phase.value = "exercise"
+effort_phase.source = "REFERENCE_ANALYSIS.md / ref15 active high-rate run"
+
+demand.status = "unknown"
+demand.reason = "not_identifiable"
+demand.note = "The protocol lacks workload and individual-capacity measurements."
+
+respiratory_rate.status = "unknown"
+respiratory_rate.reason = "not_yet_sourced"
+
+respiratory_depth.status = "unknown"
+respiratory_depth.reason = "not_recorded"
+
+contractility.status = "context_inferred"
+contractility.value = "elevated"
+contractility.source = "REFERENCE_ANALYSIS.md / ref15 activity protocol"
+contractility.rationale = "The active protocol supports a qualitative increase relative to the resting group without using its spectral or envelope response."
+
+fatigue.status = "unknown"
+fatigue.reason = "not_recorded"
+
+posture.status = "unknown"
+posture.reason = "not_recorded"
+
+auscultation_site.status = "unknown"
+auscultation_site.reason = "not_recorded"
+
+rhythm.status = "context_inferred"
+rhythm.value = "regular"
+rhythm.source = "references/timestamps/15.txt"
+rhythm.rationale = "The annotated run contains no identified ectopic beats."
+
+[[state]]
+scope = "ref20.groups.\"peak (~178)\""
+
+heart_rate.status = "measured"
+heart_rate.value_from = "ref20.groups.\"peak (~178)\".hr"
+
+effort_phase.status = "reported"
+effort_phase.value = "exercise"
+effort_phase.source = "REFERENCE_ANALYSIS.md / ref20 context"
+
+demand.status = "unknown"
+demand.reason = "not_identifiable"
+demand.note = "The subject's capacity and gas-exchange thresholds were not measured; the group name does not mean maximum demand."
+
+respiratory_rate.status = "measured"
+respiratory_rate.value_from = "ref20.breath.resp_rate_bpm"
+
+respiratory_depth.status = "unknown"
+respiratory_depth.reason = "not_identifiable"
+respiratory_depth.note = "The strong audible swing is the calibration feature and cannot independently establish tidal depth."
+
+contractility.status = "context_inferred"
+contractility.value = "elevated"
+contractility.source = "REFERENCE_ANALYSIS.md / ref20 active squats"
+contractility.rationale = "Sustained bodyweight squats support elevated inotropy without using the S1 features under evaluation."
+
+fatigue.status = "unknown"
+fatigue.reason = "not_recorded"
+
+posture.status = "reported"
+posture.value = "dynamic_squats"
+posture.source = "REFERENCE_ANALYSIS.md / ref20 bodyweight-squat protocol"
+posture.note = "The scope spans the changing upright, descent, and ascent positions rather than one static orientation."
+
+auscultation_site.status = "reported"
+auscultation_site.value = ["erbs", "tricuspid"]
+auscultation_site.source = "REFERENCE_ANALYSIS.md / ref20 heading"
+
+rhythm.status = "context_inferred"
+rhythm.value = "regular"
+rhythm.source = "references/timestamps/20.txt"
+rhythm.rationale = "The calibration window contains no identified ectopic beats."
+
+[[state]]
+scope = "ref20.breath"
+
+heart_rate.status = "measured"
+heart_rate.value_from = "ref20.groups.\"peak (~178)\".hr"
+
+effort_phase.status = "reported"
+effort_phase.value = "exercise"
+effort_phase.source = "REFERENCE_ANALYSIS.md / ref20 context"
+
+demand.status = "unknown"
+demand.reason = "not_identifiable"
+demand.note = "The engine's demand 0.75 is a comparison fixture, not an observed subject coordinate."
+
+respiratory_rate.status = "measured"
+respiratory_rate.value_from = "ref20.breath.resp_rate_bpm"
+
+respiratory_depth.status = "unknown"
+respiratory_depth.reason = "not_identifiable"
+respiratory_depth.note = "The loudness swing is the calibrated observable and cannot also supply its tidal-depth coordinate."
+
+contractility.status = "context_inferred"
+contractility.value = "elevated"
+contractility.source = "REFERENCE_ANALYSIS.md / ref20 active squats"
+contractility.rationale = "Sustained bodyweight squats support elevated inotropy without using breath swing or S1 timbre."
+
+fatigue.status = "unknown"
+fatigue.reason = "not_recorded"
+
+posture.status = "reported"
+posture.value = "dynamic_squats"
+posture.source = "REFERENCE_ANALYSIS.md / ref20 bodyweight-squat protocol"
+posture.note = "The scope spans the changing upright, descent, and ascent positions rather than one static orientation."
+
+auscultation_site.status = "reported"
+auscultation_site.value = ["erbs", "tricuspid"]
+auscultation_site.source = "REFERENCE_ANALYSIS.md / ref20 heading"
+
+rhythm.status = "context_inferred"
+rhythm.value = "regular"
+rhythm.source = "references/timestamps/20.txt"
+rhythm.rationale = "The calibration window contains no identified ectopic beats."
+
+[[state]]
+scope = "ref21.groups.\"recovery start (~159)\""
+
+heart_rate.status = "measured"
+heart_rate.value_from = "ref21.groups.\"recovery start (~159)\".hr"
+
+effort_phase.status = "reported"
+effort_phase.value = "recovery"
+effort_phase.source = "references/timestamps/21.txt / group label"
+
+demand.status = "unknown"
+demand.reason = "not_identifiable"
+demand.note = "Recovery HR does not determine current metabolic demand."
+
+respiratory_rate.status = "unknown"
+respiratory_rate.reason = "not_yet_sourced"
+
+respiratory_depth.status = "unknown"
+respiratory_depth.reason = "not_recorded"
+
+contractility.status = "context_inferred"
+contractility.value = "elevated"
+contractility.source = "references/timestamps/21.txt / recovery-start context"
+contractility.rationale = "Immediate recovery supports lingering inotropy without using systole or S1 morphology."
+
+fatigue.status = "unknown"
+fatigue.reason = "not_recorded"
+
+posture.status = "unknown"
+posture.reason = "not_recorded"
+
+auscultation_site.status = "reported"
+auscultation_site.value = "tricuspid"
+auscultation_site.source = "review of accompanying ref21 video"
+
+rhythm.status = "context_inferred"
+rhythm.value = "regular"
+rhythm.source = "references/timestamps/21.txt"
+rhythm.rationale = "The annotated run contains no identified ectopic beats."

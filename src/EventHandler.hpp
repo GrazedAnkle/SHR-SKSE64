@@ -15,12 +15,16 @@
  */
 #pragma once
 
+#include <RE/Skyrim.h>
+
 namespace SHR
 {
     class EventHandler final
         : public RE::BSTEventSink<RE::TESSleepStartEvent>
         , public RE::BSTEventSink<RE::TESSleepStopEvent>
         , public RE::BSTEventSink<RE::TESFastTravelEndEvent>
+        , public RE::BSTEventSink<RE::TESCombatEvent>
+        , public RE::BSTEventSink<RE::TESHitEvent>
     {
     public:
         static void Register();
@@ -38,6 +42,16 @@ namespace SHR
         RE::BSEventNotifyControl ProcessEvent(
             const RE::TESFastTravelEndEvent *event,
             RE::BSTEventSource<RE::TESFastTravelEndEvent> *source
+        ) override;
+
+        RE::BSEventNotifyControl ProcessEvent(
+            const RE::TESCombatEvent *event,
+            RE::BSTEventSource<RE::TESCombatEvent> *source
+        ) override;
+
+        RE::BSEventNotifyControl ProcessEvent(
+            const RE::TESHitEvent *event,
+            RE::BSTEventSource<RE::TESHitEvent> *source
         ) override;
 
     private:

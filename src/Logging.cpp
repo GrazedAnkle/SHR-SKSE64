@@ -56,10 +56,8 @@ void SHR::Logging::Init()
         sinks.end()
     );
 
-    const auto &debug = Config::Get().Debug;
-    logger->set_level(debug.Log);
-    logger->flush_on(debug.Flush);
     logger->set_pattern("[%Y-%m-%dT%T.%e][%n][%t][%L]" SOURCE_LOCATION_IF_DEBUG " %v");
 
     spdlog::set_default_logger(std::move(logger));
+    Configure(Debug{ });
 }

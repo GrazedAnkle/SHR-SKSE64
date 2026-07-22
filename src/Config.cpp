@@ -15,11 +15,22 @@
  */
 #include "Config.hpp"
 
+#include "NotificationPolicy.hpp"
+
 #include <toml.hpp>
+
+#include <filesystem>
+#include <fstream>
 
 namespace
 {
     SHR::Config s_Config;
+
+    std::string LevelName(spdlog::level::level_enum level)
+    {
+        const auto view = spdlog::level::to_string_view(level);
+        return std::string(view.data(), view.size());
+    }
 }
 
 namespace toml
@@ -29,12 +40,9 @@ namespace toml
     {
         static SHR::Debug from_toml(const toml::value &value)
         {
-            const auto log   = toml::find<std::string>(value, SHR::Debug::LogKey);
-            const auto flush = toml::find<std::string>(value, SHR::Debug::FlushKey);
-
             return {
-                .Log   = spdlog::level::from_str(log),
-                .Flush = spdlog::level::from_str(flush),
+                .Log   = spdlog::level::from_str(toml::find<std::string>(value, SHR::Debug::LogKey)),
+                .Flush = spdlog::level::from_str(toml::find<std::string>(value, SHR::Debug::FlushKey)),
             };
         }
     };
@@ -42,73 +50,67 @@ namespace toml
     template<>
     struct into<SHR::Debug>
     {
-        static toml::value into_toml(const SHR::Debug &debug)
+        template<typename TC>
+        static basic_value<TC> into_toml(const SHR::Debug &debug)
         {
-            std::string log = fmt::to_string(spdlog::level::to_string_view(debug.Log));
-            std::string flush = fmt::to_string(spdlog::level::to_string_view(debug.Flush));
-
-            return toml::value{
-                { SHR::Debug::LogKey, std::move(log)     },
-                { SHR::Debug::FlushKey, std::move(flush) },
-            };
+            basic_value<TC> value(typename basic_value<TC>::table_type{ });
+            value[SHR::Debug::LogKey]   = LevelName(debug.Log);
+            value[SHR::Debug::FlushKey] = LevelName(debug.Flush);
+            return value;
         }
     };
 
     template<>
-    struct from<SHR::Limit>
+    struct from<SHR::HeartRate>
     {
-        static SHR::Limit from_toml(const toml::value &value)
+        static SHR::HeartRate from_toml(const toml::value &value)
         {
             return {
-                .Resting   = toml::find<float>(value, SHR::Limit::RestingKey),
-                .Idle      = toml::find<float>(value, SHR::Limit::IdleKey),
-                .Walking   = toml::find<float>(value, SHR::Limit::WalkingKey),
-                .Running   = toml::find<float>(value, SHR::Limit::RunningKey),
-                .Sprinting = toml::find<float>(value, SHR::Limit::SprintingKey),
-                .Combat    = toml::find<float>(value, SHR::Limit::CombatKey),
+                .Resting = toml::find<float>(value, SHR::HeartRate::RestingKey),
+                .Max     = toml::find<float>(value, SHR::HeartRate::MaxKey),
             };
         }
     };
 
     template<>
-    struct into<SHR::Limit>
+    struct into<SHR::HeartRate>
     {
-        static toml::value into_toml(const SHR::Limit &limit)
+        template<typename TC>
+        static basic_value<TC> into_toml(const SHR::HeartRate &heartRate)
         {
-            return toml::value{
-                { SHR::Limit::RestingKey,   limit.Resting   },
-                { SHR::Limit::IdleKey,      limit.Idle      },
-                { SHR::Limit::WalkingKey,   limit.Walking   },
-                { SHR::Limit::RunningKey,   limit.Running   },
-                { SHR::Limit::SprintingKey, limit.Sprinting },
-                { SHR::Limit::CombatKey,    limit.Combat    },
-            };
+            basic_value<TC> resting(static_cast<double>(heartRate.Resting));
+            resting.comments().push_back(" Initial resting heart rate; also initializes fitness.");
+
+            basic_value<TC> value(typename basic_value<TC>::table_type{ });
+            value[SHR::HeartRate::RestingKey] = resting;
+            value[SHR::HeartRate::MaxKey]     = static_cast<double>(heartRate.Max);
+            return value;
         }
     };
 
     template<>
-    struct from<SHR::Multiplier>
+    struct from<SHR::Arrhythmia>
     {
-        static SHR::Multiplier from_toml(const toml::value &value)
+        static SHR::Arrhythmia from_toml(const toml::value &value)
         {
             return {
-                .Mod         = toml::find<float>(value, SHR::Multiplier::ModKey),
-                .IncDecRatio = toml::find<float>(value, SHR::Multiplier::IncDecRatioKey),
-                .SkipChance  = toml::find<float>(value, SHR::Multiplier::SkipChanceKey),
+                .Susceptibility = toml::find<float>(value, SHR::Arrhythmia::SusceptibilityKey),
             };
         }
     };
 
     template<>
-    struct into<SHR::Multiplier>
+    struct into<SHR::Arrhythmia>
     {
-        static toml::value into_toml(const SHR::Multiplier &multiplier)
+        template<typename TC>
+        static basic_value<TC> into_toml(const SHR::Arrhythmia &arrhythmia)
         {
-            return toml::value{
-                { SHR::Multiplier::ModKey,         multiplier.Mod         },
-                { SHR::Multiplier::IncDecRatioKey, multiplier.IncDecRatio },
-                { SHR::Multiplier::SkipChanceKey,  multiplier.SkipChance  },
-            };
+            basic_value<TC> susceptibility(static_cast<double>(arrhythmia.Susceptibility));
+            susceptibility.comments().push_back(" Multiplier on PVC frequency and run-extension.");
+
+            basic_value<TC> value(typename basic_value<TC>::table_type{ });
+            value[SHR::Arrhythmia::SusceptibilityKey] = susceptibility;
+            return value;
         }
     };
 
@@ -126,11 +128,42 @@ namespace toml
     template<>
     struct into<SHR::Input>
     {
-        static toml::value into_toml(const SHR::Input &input)
+        template<typename TC>
+        static basic_value<TC> into_toml(const SHR::Input &input)
         {
-            return toml::value{
-                { SHR::Input::ListenKey, input.Listen },
+            basic_value<TC> listen(static_cast<std::int64_t>(input.Listen));
+            listen.comments().push_back(" Key to toggle notifications and heartbeat audio. 0x23 (35) = H.");
+
+            basic_value<TC> value(typename basic_value<TC>::table_type{ });
+            value[SHR::Input::ListenKey] = listen;
+            return value;
+        }
+    };
+
+    template<>
+    struct from<SHR::Audio>
+    {
+        static SHR::Audio from_toml(const toml::value &value)
+        {
+            return {
+                .Volume = toml::find_or<float>(value, SHR::Audio::VolumeKey, SHR::Audio{}.Volume),
             };
+        }
+    };
+
+    template<>
+    struct into<SHR::Audio>
+    {
+        template<typename TC>
+        static basic_value<TC> into_toml(const SHR::Audio &audio)
+        {
+            basic_value<TC> volume(static_cast<double>(audio.Volume));
+            volume.comments().push_back(" Heartbeat output level. The default is already close to the highest level");
+            volume.comments().push_back(" without clipping or distortion.");
+
+            basic_value<TC> value(typename basic_value<TC>::table_type{ });
+            value[SHR::Audio::VolumeKey] = volume;
+            return value;
         }
     };
 
@@ -139,28 +172,12 @@ namespace toml
     {
         static SHR::Notification from_toml(const toml::value &value)
         {
-            bool enabled = toml::find<bool>(value, SHR::Notification::EnabledKey);
-            std::vector<std::string> pulse = toml::find<std::vector<std::string>>(value, SHR::Notification::PulseKey);
-
-            constexpr std::size_t expectedPulseNotificationCount = 6;
-            if (enabled && pulse.size() != expectedPulseNotificationCount)
-            {
-                // Disable notifications to avoid reading an invalid address.
-                enabled = false;
-                SKSE::log::error(
-                    FMT_STRING("Expected {:d} pulse notifications; got {:d}"),
-                    expectedPulseNotificationCount,
-                    pulse.size()
-                );
-            }
-
             return {
-                .Enabled      = enabled,
-                .Pulse        = std::move(pulse),
-                .Dying        = toml::find<std::string>(value, SHR::Notification::DyingKey),
-                .Fibrillating = toml::find<std::string>(value, SHR::Notification::FibrillatingKey),
-                .Dead         = toml::find<std::string>(value, SHR::Notification::DeadKey),
-                .Skipped      = toml::find<std::string>(value, SHR::Notification::SkippedKey),
+                .Enabled    = toml::find<bool>(value, SHR::Notification::EnabledKey),
+                .Pulse      = toml::find<std::vector<std::string>>(value, SHR::Notification::PulseKey),
+                .Dying      = toml::find<std::string>(value, SHR::Notification::DyingKey),
+                .Dead       = toml::find<std::string>(value, SHR::Notification::DeadKey),
+                .Arrhythmia = toml::find<std::string>(value, SHR::Notification::ArrhythmiaKey),
             };
         }
     };
@@ -168,16 +185,19 @@ namespace toml
     template<>
     struct into<SHR::Notification>
     {
-        static toml::value into_toml(const SHR::Notification &binding)
+        template<typename TC>
+        static basic_value<TC> into_toml(const SHR::Notification &notification)
         {
-            return toml::value{
-                { SHR::Notification::EnabledKey,      binding.Enabled      },
-                { SHR::Notification::PulseKey,        binding.Pulse        },
-                { SHR::Notification::DyingKey,        binding.Dying        },
-                { SHR::Notification::FibrillatingKey, binding.Fibrillating },
-                { SHR::Notification::DeadKey,         binding.Dead         },
-                { SHR::Notification::SkippedKey,      binding.Skipped      },
-            };
+            basic_value<TC> pulse(notification.Pulse);
+            pulse.comments().push_back(" Strings printed in order of increasing HR. All six must be filled to enable.");
+
+            basic_value<TC> value(typename basic_value<TC>::table_type{ });
+            value[SHR::Notification::EnabledKey]    = notification.Enabled;
+            value[SHR::Notification::PulseKey]      = pulse;
+            value[SHR::Notification::DyingKey]      = notification.Dying;
+            value[SHR::Notification::DeadKey]       = notification.Dead;
+            value[SHR::Notification::ArrhythmiaKey] = notification.Arrhythmia;
+            return value;
         }
     };
 
@@ -188,9 +208,13 @@ namespace toml
         {
             return {
                 .Debug        = toml::find<SHR::Debug>(value, SHR::Config::DebugKey),
-                .Limit        = toml::find<SHR::Limit>(value, SHR::Config::LimitKey),
-                .Multiplier   = toml::find<SHR::Multiplier>(value, SHR::Config::MultiplierKey),
+                .HeartRate    = toml::find<SHR::HeartRate>(value, SHR::Config::HeartRateKey),
+                .Arrhythmia   = toml::find<SHR::Arrhythmia>(value, SHR::Config::ArrhythmiaKey),
                 .Input        = toml::find<SHR::Input>(value, SHR::Config::InputKey),
+                // [audio] is optional: pre-existing configs without it get the defaults.
+                .Audio        = value.contains(SHR::Config::AudioKey)
+                                    ? toml::find<SHR::Audio>(value, SHR::Config::AudioKey)
+                                    : SHR::Audio{ },
                 .Notification = toml::find<SHR::Notification>(value, SHR::Config::NotificationKey),
             };
         }
@@ -199,15 +223,18 @@ namespace toml
     template<>
     struct into<SHR::Config>
     {
-        static toml::value into_toml(const SHR::Config &config)
+        template<typename TC>
+        static basic_value<TC> into_toml(const SHR::Config &config)
         {
-            return toml::value{
-                { SHR::Config::DebugKey,        config.Debug        },
-                { SHR::Config::LimitKey,        config.Limit        },
-                { SHR::Config::MultiplierKey,   config.Multiplier   },
-                { SHR::Config::InputKey,        config.Input        },
-                { SHR::Config::NotificationKey, config.Notification },
-            };
+            basic_value<TC> value(typename basic_value<TC>::table_type{ });
+            value.comments().push_back(" SHR configuration. Delete this file to regenerate defaults.");
+            value[SHR::Config::DebugKey]        = basic_value<TC>(config.Debug);
+            value[SHR::Config::HeartRateKey]    = basic_value<TC>(config.HeartRate);
+            value[SHR::Config::ArrhythmiaKey]   = basic_value<TC>(config.Arrhythmia);
+            value[SHR::Config::InputKey]        = basic_value<TC>(config.Input);
+            value[SHR::Config::AudioKey]        = basic_value<TC>(config.Audio);
+            value[SHR::Config::NotificationKey] = basic_value<TC>(config.Notification);
+            return value;
         }
     };
 }
@@ -217,10 +244,48 @@ const SHR::Config &SHR::Config::Get()
     return s_Config;
 }
 
-void SHR::Config::Init()
+void SHR::Config::Set(Config config)
 {
-    const std::string_view pluginName = SKSE::PluginDeclaration::GetSingleton()->GetName();
-    const std::string configPath = fmt::format(R"(Data\SKSE\Plugins\{}.toml)", pluginName);
-    const auto data = toml::parse(configPath);
-    s_Config = toml::from<Config>::from_toml(data);
+    s_Config = std::move(config);
+}
+
+void SHR::Config::Init(std::string_view configPath)
+{
+    const std::filesystem::path path(configPath);
+    if (!std::filesystem::exists(path))
+    {
+        spdlog::info("Config: '{}' not found - generating defaults.", path.string());
+        std::error_code errorCode;
+        std::filesystem::create_directories(path.parent_path(), errorCode);
+        std::ofstream out(path);
+        out << toml::format(toml::ordered_value(Config{ }));
+    }
+
+    const auto data = toml::parse(path);
+    auto config = toml::from<Config>::from_toml(data);
+
+    const std::size_t pulseCount = config.Notification.Pulse.size();
+
+    if (config.Notification.Enabled)
+    {
+        if (pulseCount < NotificationPolicy::RequiredPulseCount)
+        {
+            spdlog::error(
+                "Config: pulse notification array requires at least {} entries (got {}) - notifications disabled.",
+                NotificationPolicy::RequiredPulseCount,
+                pulseCount
+            );
+            config.Notification.Enabled = false;
+        }
+        else if (pulseCount > NotificationPolicy::RequiredPulseCount)
+        {
+            spdlog::warn(
+                "Config: pulse notification array has {} entries - only the first {} will be used.",
+                pulseCount,
+                NotificationPolicy::RequiredPulseCount
+            );
+        }
+    }
+
+    s_Config = std::move(config);
 }

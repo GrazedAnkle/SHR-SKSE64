@@ -18,7 +18,6 @@
 #include "InputHandler.hpp"
 #include "Logging.hpp"
 #include "SkyrimHeartRate.hpp"
-#include "Sound.hpp"
 
 namespace
 {
@@ -29,13 +28,20 @@ namespace
             switch (message->type)
             {
             case SKSE::MessagingInterface::kDataLoaded:
-                SHR::Sound::Init();
-                SHR::InstallHooks();
-                SHR::Config::Init();
-                SHR::HeartRateManager::Init();
-                SHR::EventHandler::Register();
-                SHR::InputHandler::Register();
-                break;
+                {
+                    const std::string configPath = fmt::format(
+                        R"(Data\SKSE\Plugins\{}.toml)",
+                        SKSE::PluginDeclaration::GetSingleton()->GetName()
+                    );
+                    SHR::InstallHooks();
+                    // Keep all configuration diagnostics on the bootstrap logger.
+                    SHR::Config::Init(configPath);
+                    SHR::Logging::Configure(SHR::Config::Get().Debug);
+                    SHR::HeartRateManager::Init();
+                    SHR::EventHandler::Register();
+                    SHR::InputHandler::Register();
+                    break;
+                }
             default:
                 break;
             }
@@ -61,7 +67,8 @@ SKSEPluginLoad(const SKSE::LoadInterface *skse)
 
     const auto *plugin = SKSE::PluginDeclaration::GetSingleton();
     const REL::Version version = plugin->GetVersion();
-    SKSE::log::info(FMT_STRING("{:s} v{:s}"), plugin->GetName(), version.string("."));
+    const std::string versionString = version.string(".");
+    SKSE::log::info(FMT_STRING("{:s} v{:s}"), plugin->GetName(), versionString);
 
     SKSE::Init(skse);
     InitializeMessaging();

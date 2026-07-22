@@ -13,9 +13,13 @@
  * You should have received a copy of the GNU General Public License along with
  * SHR. If not, see <https://www.gnu.org/licenses/>.
  */
-#pragma once
+#include "Logging.hpp"
 
-namespace Float
+#include "Config.hpp"
+
+void SHR::Logging::Configure(const Debug &debug)
 {
-    constexpr float Sentinel = -1.0F;
+    const auto logger = spdlog::default_logger();
+    logger->set_level(debug.Log);
+    logger->flush_on(debug.Flush);
 }

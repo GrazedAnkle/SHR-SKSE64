@@ -22,7 +22,12 @@
       "description": "Build the SKSE plugin.",
       "dependencies": [
         "toml11",
-        "commonlibsse-ng"
+        "spdlog",
+        "directxtk",
+        "fmt",
+        "pocketfft",
+        "rapidcsv",
+        "xbyak"
       ]
     },
     "tests": {
@@ -40,7 +45,6 @@
     }
   },
   "default-features": [
-    "scripts-dev",
     "plugin",
     "tests"
   ]

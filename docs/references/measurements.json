@@ -1,0 +1,1926 @@
+{
+  "ref8": {
+    "source": "docs/references/original/8.wav",
+    "annotations": "docs/references/timestamps/8.txt",
+    "groups": {
+      "segment 1 (~165)": {
+        "n_beats": 29,
+        "hr": 166.436,
+        "qs2_pred_ms": 180.395,
+        "systole_ms": 159.0,
+        "s1_dur_ms": 107.0,
+        "s2_dur_ms": 63.0,
+        "s1_attack_ms": 33.812,
+        "s1_decay_ms": 33.188,
+        "s2_attack_ms": 20.083,
+        "s2_decay_ms": 29.896,
+        "s1_f0_hz": 71.941,
+        "s2_f0_hz": 57.671,
+        "s1_centroid_hz": 86.243,
+        "s2_centroid_hz": 82.343,
+        "s2s1_centroid_ratio": 0.931,
+        "s1_rolloff85_hz": 87.891,
+        "s1_spread_hz": 63.408,
+        "s1_crest": 3.196,
+        "s2s1_loud": 0.105,
+        "s2s1_loud_db": -19.608,
+        "s2s1_peak_db": -21.949,
+        "dia_s1_db": -32.295,
+        "s1_e0_20ms": 0.006,
+        "s1_e20_40ms": 0.101,
+        "s1_e40_80ms": 0.857,
+        "systole_residual_ms": -21.395,
+        "s1_contrast": 2.576,
+        "s1_hf_dens_rise": 0.0002947,
+        "s1_hf_dens_body": 9.863e-05,
+        "s1_hf_skew": -0.035,
+        "s1_lobes": 1.0,
+        "s1_lobe_runnerup": 0.0,
+        "s1_contrast_min": 0.671,
+        "s1_contrast_max": 11.164,
+        "s1_contrast_n": 29,
+        "s1_bands": {
+          "20_40": 0.013,
+          "40_80": 0.674,
+          "80_150": 0.31,
+          "150_300": 0.002,
+          "300_1200": 3.929e-05
+        },
+        "s2_bands": {
+          "20_40": 0.113,
+          "40_80": 0.68,
+          "80_150": 0.186,
+          "150_300": 0.006,
+          "300_1200": 4.174e-05
+        },
+        "s1_peak_cv": 0.25,
+        "s1_centroid_cv": 0.112,
+        "s1_peak_cv_se": 0.044,
+        "state": {
+          "kind": "reference_state",
+          "scope": "ref8.groups.\"segment 1 (~165)\"",
+          "heart_rate": {
+            "status": "measured",
+            "value": 166.436,
+            "source": "ref8.groups.\"segment 1 (~165)\".hr"
+          },
+          "effort_phase": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "The recording is spliced and the group cannot be placed uniquely within peak versus recovery."
+          },
+          "demand": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "High HR in a post-exercise/excited recording does not determine metabolic demand."
+          },
+          "respiratory_rate": {
+            "status": "unknown",
+            "reason": "not_yet_sourced"
+          },
+          "respiratory_depth": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "The audible muffle cannot independently establish the transmission state it is used to evaluate."
+          },
+          "contractility": {
+            "status": "context_inferred",
+            "value": "elevated",
+            "source": "REFERENCE_ANALYSIS.md / ref8 context",
+            "rationale": "Post-exercise and excited context supports a qualitative elevation without using S1 attack, level, or brightness."
+          },
+          "fatigue": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "posture": {
+            "status": "reported",
+            "value": "seated",
+            "source": "REFERENCE_ANALYSIS.md / ref8 heading"
+          },
+          "auscultation_site": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "rhythm": {
+            "status": "context_inferred",
+            "value": "regular",
+            "source": "references/timestamps/8.txt",
+            "rationale": "The annotated run contains no identified ectopic beats; this does not claim an ECG-confirmed sinus origin."
+          }
+        }
+      },
+      "peak (~180)": {
+        "n_beats": 8,
+        "hr": 180.723,
+        "qs2_pred_ms": 155.964,
+        "systole_ms": 159.5,
+        "s1_dur_ms": 128.0,
+        "s2_dur_ms": 83.0,
+        "s1_attack_ms": 33.906,
+        "s1_decay_ms": 29.25,
+        "s2_attack_ms": 17.26,
+        "s2_decay_ms": 35.26,
+        "s1_f0_hz": 74.981,
+        "s2_f0_hz": 56.587,
+        "s1_centroid_hz": 85.217,
+        "s2_centroid_hz": 81.767,
+        "s2s1_centroid_ratio": 0.992,
+        "s1_rolloff85_hz": 87.891,
+        "s1_spread_hz": 60.946,
+        "s1_crest": 3.546,
+        "s2s1_loud": 0.1,
+        "s2s1_loud_db": -20.006,
+        "s2s1_peak_db": -20.93,
+        "dia_s1_db": -36.265,
+        "s1_e0_20ms": 0.0006166,
+        "s1_e20_40ms": 0.048,
+        "s1_e40_80ms": 0.851,
+        "systole_residual_ms": 3.536,
+        "s1_contrast": 2.629,
+        "s1_hf_dens_rise": 0.0002837,
+        "s1_hf_dens_body": 7.978e-05,
+        "s1_hf_skew": -0.02,
+        "s1_lobes": 1.0,
+        "s1_lobe_runnerup": 0.0,
+        "s1_contrast_min": 1.773,
+        "s1_contrast_max": 18.164,
+        "s1_contrast_n": 8,
+        "s1_bands": {
+          "20_40": 0.011,
+          "40_80": 0.659,
+          "80_150": 0.329,
+          "150_300": 0.002,
+          "300_1200": 3.872e-05
+        },
+        "s2_bands": {
+          "20_40": 0.101,
+          "40_80": 0.641,
+          "80_150": 0.167,
+          "150_300": 0.005,
+          "300_1200": 4.816e-05
+        },
+        "s1_peak_cv": 0.256,
+        "s1_centroid_cv": 0.065,
+        "s1_peak_cv_se": 0.065,
+        "state": {
+          "kind": "reference_state",
+          "scope": "ref8.groups.\"peak (~180)\"",
+          "heart_rate": {
+            "status": "measured",
+            "value": 180.723,
+            "source": "ref8.groups.\"peak (~180)\".hr"
+          },
+          "effort_phase": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "Peak names a local recording group, not a measured maximum-demand state; the recording is spliced."
+          },
+          "demand": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "High HR in a post-exercise/excited recording does not determine metabolic demand."
+          },
+          "respiratory_rate": {
+            "status": "unknown",
+            "reason": "not_yet_sourced"
+          },
+          "respiratory_depth": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "The audible muffle cannot independently establish the transmission state it is used to evaluate."
+          },
+          "contractility": {
+            "status": "context_inferred",
+            "value": "elevated",
+            "source": "REFERENCE_ANALYSIS.md / ref8 context",
+            "rationale": "Post-exercise and excited context supports a qualitative elevation without using S1 attack, level, or brightness."
+          },
+          "fatigue": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "posture": {
+            "status": "reported",
+            "value": "seated",
+            "source": "REFERENCE_ANALYSIS.md / ref8 heading"
+          },
+          "auscultation_site": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "rhythm": {
+            "status": "context_inferred",
+            "value": "regular",
+            "source": "references/timestamps/8.txt",
+            "rationale": "The annotated run contains no identified ectopic beats; this does not claim an ECG-confirmed sinus origin."
+          }
+        }
+      },
+      "clean, long segment (~175)": {
+        "n_beats": 26,
+        "hr": 176.991,
+        "qs2_pred_ms": 162.345,
+        "systole_ms": 157.5,
+        "s1_dur_ms": 121.0,
+        "s2_dur_ms": 84.0,
+        "s1_attack_ms": 31.99,
+        "s1_decay_ms": 29.583,
+        "s2_attack_ms": 21.698,
+        "s2_decay_ms": 41.938,
+        "s1_f0_hz": 67.341,
+        "s2_f0_hz": 61.207,
+        "s1_centroid_hz": 83.606,
+        "s2_centroid_hz": 79.593,
+        "s2s1_centroid_ratio": 0.938,
+        "s1_rolloff85_hz": 91.553,
+        "s1_spread_hz": 51.013,
+        "s1_crest": 3.562,
+        "s2s1_loud": 0.103,
+        "s2s1_loud_db": -19.718,
+        "s2s1_peak_db": -22.197,
+        "dia_s1_db": -36.115,
+        "s1_e0_20ms": 0.001,
+        "s1_e20_40ms": 0.074,
+        "s1_e40_80ms": 0.898,
+        "systole_residual_ms": -4.845,
+        "s1_contrast": 2.683,
+        "s1_hf_dens_rise": 0.0002495,
+        "s1_hf_dens_body": 8.019e-05,
+        "s1_hf_skew": -0.039,
+        "s1_lobes": 1.0,
+        "s1_lobe_runnerup": 0.0,
+        "s1_contrast_min": 0.901,
+        "s1_contrast_max": 19.495,
+        "s1_contrast_n": 26,
+        "s1_bands": {
+          "20_40": 0.011,
+          "40_80": 0.612,
+          "80_150": 0.369,
+          "150_300": 0.002,
+          "300_1200": 7.95e-06
+        },
+        "s2_bands": {
+          "20_40": 0.091,
+          "40_80": 0.691,
+          "80_150": 0.149,
+          "150_300": 0.004,
+          "300_1200": 4.647e-05
+        },
+        "s1_peak_cv": 0.234,
+        "s1_centroid_cv": 0.067,
+        "s1_peak_cv_se": 0.033,
+        "state": {
+          "kind": "reference_state",
+          "scope": "ref8.groups.\"clean, long segment (~175)\"",
+          "heart_rate": {
+            "status": "measured",
+            "value": 176.991,
+            "source": "ref8.groups.\"clean, long segment (~175)\".hr"
+          },
+          "effort_phase": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "The recording is spliced and the group cannot be placed uniquely within peak versus recovery."
+          },
+          "demand": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "High HR in a post-exercise/excited recording does not determine metabolic demand."
+          },
+          "respiratory_rate": {
+            "status": "unknown",
+            "reason": "not_yet_sourced"
+          },
+          "respiratory_depth": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "The audible muffle cannot independently establish the transmission state it is used to evaluate."
+          },
+          "contractility": {
+            "status": "context_inferred",
+            "value": "elevated",
+            "source": "REFERENCE_ANALYSIS.md / ref8 context",
+            "rationale": "Post-exercise and excited context supports a qualitative elevation without using S1 attack, level, or brightness."
+          },
+          "fatigue": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "posture": {
+            "status": "reported",
+            "value": "seated",
+            "source": "REFERENCE_ANALYSIS.md / ref8 heading"
+          },
+          "auscultation_site": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "rhythm": {
+            "status": "context_inferred",
+            "value": "regular",
+            "source": "references/timestamps/8.txt",
+            "rationale": "The annotated run contains no identified ectopic beats; this does not claim an ECG-confirmed sinus origin."
+          }
+        }
+      }
+    }
+  },
+  "ref11": {
+    "source": "docs/references/original/11.wav",
+    "annotations": "docs/references/timestamps/11.txt",
+    "groups": {
+      "resting, elevated supine": {
+        "n_beats": 16,
+        "hr": 68.337,
+        "qs2_pred_ms": 348.144,
+        "systole_ms": 346.5,
+        "s1_dur_ms": 153.5,
+        "s2_dur_ms": 127.0,
+        "s1_attack_ms": 37.583,
+        "s1_decay_ms": 64.406,
+        "s2_attack_ms": 17.823,
+        "s2_decay_ms": 41.521,
+        "s1_f0_hz": 52.738,
+        "s2_f0_hz": 44.146,
+        "s1_centroid_hz": 70.478,
+        "s2_centroid_hz": 108.258,
+        "s2s1_centroid_ratio": 1.502,
+        "s1_rolloff85_hz": 61.523,
+        "s1_spread_hz": 57.257,
+        "s1_crest": 2.764,
+        "s2s1_loud": 0.412,
+        "s2s1_loud_db": -7.701,
+        "s2s1_peak_db": -5.341,
+        "dia_s1_db": -21.584,
+        "s1_e0_20ms": 0.004,
+        "s1_e20_40ms": 0.115,
+        "s1_e40_80ms": 0.561,
+        "systole_residual_ms": -1.644,
+        "s1_contrast": 6.292,
+        "s1_hf_dens_rise": 0.001,
+        "s1_hf_dens_body": 0.0002098,
+        "s1_hf_skew": -0.178,
+        "s1_lobes": 2.0,
+        "s1_lobe_runnerup": 0.759,
+        "s1_contrast_min": 1.795,
+        "s1_contrast_max": 35.327,
+        "s1_contrast_n": 16,
+        "s1_bands": {
+          "20_40": 0.161,
+          "40_80": 0.811,
+          "80_150": 0.021,
+          "150_300": 0.002,
+          "300_1200": 3.221e-05
+        },
+        "s2_bands": {
+          "20_40": 0.209,
+          "40_80": 0.449,
+          "80_150": 0.185,
+          "150_300": 0.076,
+          "300_1200": 0.0004942
+        },
+        "s1_peak_cv": 0.065,
+        "s1_centroid_cv": 0.088,
+        "s1_peak_cv_se": 0.011,
+        "state": {
+          "kind": "reference_state",
+          "scope": "ref11.groups.\"resting, elevated supine\"",
+          "heart_rate": {
+            "status": "measured",
+            "value": 68.337,
+            "source": "ref11.groups.\"resting, elevated supine\".hr"
+          },
+          "effort_phase": {
+            "status": "reported",
+            "value": "rest",
+            "source": "references/timestamps/11.txt / group label"
+          },
+          "demand": {
+            "status": "context_inferred",
+            "value": "resting",
+            "source": "references/timestamps/11.txt / group label",
+            "rationale": "The protocol identifies rest; elevated HR does not turn that into measured metabolic demand."
+          },
+          "respiratory_rate": {
+            "status": "unknown",
+            "reason": "not_yet_sourced"
+          },
+          "respiratory_depth": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "contractility": {
+            "status": "context_inferred",
+            "value": "baseline",
+            "source": "references/timestamps/11.txt / resting protocol",
+            "rationale": "The resting protocol supplies a within-session qualitative baseline without assigning a numerical inotropy coordinate or using acoustic morphology."
+          },
+          "fatigue": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "posture": {
+            "status": "reported",
+            "value": "supine",
+            "source": "references/timestamps/11.txt / group label"
+          },
+          "auscultation_site": {
+            "status": "reported",
+            "value": "between_tricuspid_and_pulmonary",
+            "source": "review of accompanying ref11 video"
+          },
+          "rhythm": {
+            "status": "context_inferred",
+            "value": "regular",
+            "source": "references/timestamps/11.txt",
+            "rationale": "The annotated run contains no identified ectopic beats."
+          }
+        }
+      },
+      "deeper inspiration (~79)": {
+        "n_beats": 9,
+        "hr": 79.313,
+        "qs2_pred_ms": 329.375,
+        "systole_ms": 358.0,
+        "s1_dur_ms": 170.0,
+        "s2_dur_ms": 95.0,
+        "s1_attack_ms": 66.646,
+        "s1_decay_ms": 70.167,
+        "s2_attack_ms": 16.146,
+        "s2_decay_ms": 48.354,
+        "s1_f0_hz": 42.651,
+        "s2_f0_hz": 44.299,
+        "s1_centroid_hz": 68.777,
+        "s2_centroid_hz": 98.56,
+        "s2s1_centroid_ratio": 1.458,
+        "s1_rolloff85_hz": 57.129,
+        "s1_spread_hz": 68.226,
+        "s1_crest": 2.711,
+        "s2s1_loud": 0.562,
+        "s2s1_loud_db": -5.004,
+        "s2s1_peak_db": -5.741,
+        "dia_s1_db": -15.264,
+        "s1_e0_20ms": 0.008,
+        "s1_e20_40ms": 0.048,
+        "s1_e40_80ms": 0.448,
+        "systole_residual_ms": 28.625,
+        "s1_contrast": 2.308,
+        "s1_hf_dens_rise": 0.0006669,
+        "s1_hf_dens_body": 0.0001794,
+        "s1_hf_skew": -0.17,
+        "s1_lobes": 3.0,
+        "s1_lobe_runnerup": 0.623,
+        "s1_contrast_min": 0.377,
+        "s1_contrast_max": 6.996,
+        "s1_contrast_n": 9,
+        "s1_bands": {
+          "20_40": 0.299,
+          "40_80": 0.681,
+          "80_150": 0.014,
+          "150_300": 0.003,
+          "300_1200": 5.681e-05
+        },
+        "s2_bands": {
+          "20_40": 0.295,
+          "40_80": 0.513,
+          "80_150": 0.108,
+          "150_300": 0.061,
+          "300_1200": 0.001
+        },
+        "s1_peak_cv": 0.145,
+        "s1_centroid_cv": 0.151,
+        "s1_peak_cv_se": 0.033,
+        "state": {
+          "kind": "reference_state",
+          "scope": "ref11.groups.\"deeper inspiration (~79)\"",
+          "heart_rate": {
+            "status": "measured",
+            "value": 79.313,
+            "source": "ref11.groups.\"deeper inspiration (~79)\".hr"
+          },
+          "effort_phase": {
+            "status": "reported",
+            "value": "rest",
+            "source": "REFERENCE_ANALYSIS.md / ref11 deep-inspiration context"
+          },
+          "demand": {
+            "status": "context_inferred",
+            "value": "resting",
+            "source": "REFERENCE_ANALYSIS.md / ref11 deep-inspiration context",
+            "rationale": "The maneuver occurs in the resting examination before exercise."
+          },
+          "respiratory_rate": {
+            "status": "unknown",
+            "reason": "not_yet_sourced"
+          },
+          "respiratory_depth": {
+            "status": "reported",
+            "value": "deeper_inspiration",
+            "source": "references/timestamps/11.txt / group label"
+          },
+          "contractility": {
+            "status": "unknown",
+            "reason": "not_identifiable"
+          },
+          "fatigue": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "posture": {
+            "status": "context_inferred",
+            "value": "supine",
+            "source": "references/timestamps/11.txt / adjacent examination groups",
+            "rationale": "The maneuver is within the same continuous resting examination window as the explicitly supine group."
+          },
+          "auscultation_site": {
+            "status": "reported",
+            "value": "between_tricuspid_and_pulmonary",
+            "source": "review of accompanying ref11 video"
+          },
+          "rhythm": {
+            "status": "context_inferred",
+            "value": "regular",
+            "source": "references/timestamps/11.txt",
+            "rationale": "The annotated run contains no identified ectopic beats."
+          }
+        }
+      },
+      "breath hold peak inspiration (~71)": {
+        "n_beats": 9,
+        "hr": 68.415,
+        "qs2_pred_ms": 348.01,
+        "systole_ms": 343.0,
+        "s1_dur_ms": 150.0,
+        "s2_dur_ms": 85.0,
+        "s1_attack_ms": 54.917,
+        "s1_decay_ms": 73.312,
+        "s2_attack_ms": 15.417,
+        "s2_decay_ms": 57.583,
+        "s1_f0_hz": 40.066,
+        "s2_f0_hz": 43.37,
+        "s1_centroid_hz": 61.288,
+        "s2_centroid_hz": 91.255,
+        "s2s1_centroid_ratio": 1.437,
+        "s1_rolloff85_hz": 51.27,
+        "s1_spread_hz": 64.054,
+        "s1_crest": 2.786,
+        "s2s1_loud": 0.524,
+        "s2s1_loud_db": -5.621,
+        "s2s1_peak_db": -7.005,
+        "dia_s1_db": -18.664,
+        "s1_e0_20ms": 0.011,
+        "s1_e20_40ms": 0.09,
+        "s1_e40_80ms": 0.567,
+        "systole_residual_ms": -5.01,
+        "s1_contrast": 14.875,
+        "s1_hf_dens_rise": 0.0009465,
+        "s1_hf_dens_body": 5.599e-05,
+        "s1_hf_skew": -0.226,
+        "s1_lobes": 2.0,
+        "s1_lobe_runnerup": 0.632,
+        "s1_contrast_min": 4.866,
+        "s1_contrast_max": 46.308,
+        "s1_contrast_n": 9,
+        "s1_bands": {
+          "20_40": 0.415,
+          "40_80": 0.562,
+          "80_150": 0.008,
+          "150_300": 0.002,
+          "300_1200": 2.224e-05
+        },
+        "s2_bands": {
+          "20_40": 0.333,
+          "40_80": 0.562,
+          "80_150": 0.057,
+          "150_300": 0.025,
+          "300_1200": 0.0004417
+        },
+        "s1_peak_cv": 0.074,
+        "s1_centroid_cv": 0.074,
+        "s1_peak_cv_se": 0.008,
+        "state": {
+          "kind": "reference_state",
+          "scope": "ref11.groups.\"breath hold peak inspiration (~71)\"",
+          "heart_rate": {
+            "status": "measured",
+            "value": 68.415,
+            "source": "ref11.groups.\"breath hold peak inspiration (~71)\".hr"
+          },
+          "effort_phase": {
+            "status": "reported",
+            "value": "breath_hold",
+            "source": "references/timestamps/11.txt / group label"
+          },
+          "demand": {
+            "status": "context_inferred",
+            "value": "resting",
+            "source": "REFERENCE_ANALYSIS.md / ref11 breath-hold context",
+            "rationale": "The maneuver occurs in the resting examination before exercise."
+          },
+          "respiratory_rate": {
+            "status": "unknown",
+            "reason": "not_applicable",
+            "note": "Respiration is voluntarily held in this measurement scope."
+          },
+          "respiratory_depth": {
+            "status": "unknown",
+            "reason": "not_yet_sourced",
+            "note": "The endpoint label establishes respiratory phase, not tidal excursion or maximal lung capacity; a visual or numerical depth ruler has not yet been applied."
+          },
+          "contractility": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "The autonomic and filling effects of the maneuver cannot be separated here."
+          },
+          "fatigue": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "posture": {
+            "status": "context_inferred",
+            "value": "supine",
+            "source": "references/timestamps/11.txt / adjacent examination groups",
+            "rationale": "The maneuver is within the same continuous resting examination window as the explicitly supine group."
+          },
+          "auscultation_site": {
+            "status": "reported",
+            "value": "between_tricuspid_and_pulmonary",
+            "source": "review of accompanying ref11 video"
+          },
+          "rhythm": {
+            "status": "context_inferred",
+            "value": "regular",
+            "source": "references/timestamps/11.txt",
+            "rationale": "The annotated run contains no identified ectopic beats."
+          },
+          "lung_inflation": {
+            "status": "reported",
+            "value": "end_inspiratory_hold",
+            "source": "references/timestamps/11.txt / group label",
+            "note": "Peak means the endpoint of this inspiration; it does not assert maximal inspiration or measured lung volume."
+          }
+        }
+      },
+      "post-exercise, elevated supine": {
+        "n_beats": 8,
+        "hr": 141.176,
+        "qs2_pred_ms": 223.588,
+        "systole_ms": 222.0,
+        "s1_dur_ms": 113.5,
+        "s2_dur_ms": 89.5,
+        "s1_attack_ms": 10.583,
+        "s1_decay_ms": 40.385,
+        "s2_attack_ms": 13.365,
+        "s2_decay_ms": 28.188,
+        "s1_f0_hz": 47.756,
+        "s2_f0_hz": 49.28,
+        "s1_centroid_hz": 90.324,
+        "s2_centroid_hz": 127.808,
+        "s2s1_centroid_ratio": 1.365,
+        "s1_rolloff85_hz": 98.145,
+        "s1_spread_hz": 73.389,
+        "s1_crest": 3.262,
+        "s2s1_loud": 0.205,
+        "s2s1_loud_db": -13.783,
+        "s2s1_peak_db": -15.515,
+        "dia_s1_db": -21.349,
+        "s1_e0_20ms": 0.034,
+        "s1_e20_40ms": 0.48,
+        "s1_e40_80ms": 0.451,
+        "systole_residual_ms": -1.588,
+        "s1_contrast": 0.998,
+        "s1_hf_dens_rise": 0.005,
+        "s1_hf_dens_body": 0.004,
+        "s1_hf_skew": -0.087,
+        "s1_lobes": 2.0,
+        "s1_lobe_runnerup": 0.841,
+        "s1_contrast_min": 0.537,
+        "s1_contrast_max": 73.011,
+        "s1_contrast_n": 8,
+        "s1_bands": {
+          "20_40": 0.142,
+          "40_80": 0.699,
+          "80_150": 0.156,
+          "150_300": 0.024,
+          "300_1200": 0.0002251
+        },
+        "s2_bands": {
+          "20_40": 0.092,
+          "40_80": 0.534,
+          "80_150": 0.14,
+          "150_300": 0.108,
+          "300_1200": 0.005
+        },
+        "s1_peak_cv": 0.156,
+        "s1_centroid_cv": 0.039,
+        "s1_peak_cv_se": 0.046,
+        "state": {
+          "kind": "reference_state",
+          "scope": "ref11.groups.\"post-exercise, elevated supine\"",
+          "heart_rate": {
+            "status": "measured",
+            "value": 141.176,
+            "source": "ref11.groups.\"post-exercise, elevated supine\".hr"
+          },
+          "effort_phase": {
+            "status": "reported",
+            "value": "recovery",
+            "source": "references/timestamps/11.txt / group label"
+          },
+          "demand": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "Recovery HR does not determine current metabolic demand."
+          },
+          "respiratory_rate": {
+            "status": "unknown",
+            "reason": "not_yet_sourced"
+          },
+          "respiratory_depth": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "contractility": {
+            "status": "context_inferred",
+            "value": "elevated",
+            "source": "references/timestamps/11.txt / post-exercise context",
+            "rationale": "Immediate post-exercise context supports lingering inotropy without using the S1 features under evaluation."
+          },
+          "fatigue": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "posture": {
+            "status": "reported",
+            "value": "supine",
+            "source": "references/timestamps/11.txt / group label"
+          },
+          "auscultation_site": {
+            "status": "reported",
+            "value": "between_tricuspid_and_pulmonary",
+            "source": "review of accompanying ref11 video",
+            "note": "The post-exercise placement is effectively unchanged from the resting and breath-hold placement."
+          },
+          "rhythm": {
+            "status": "context_inferred",
+            "value": "regular",
+            "source": "references/timestamps/11.txt",
+            "rationale": "The annotated run contains no identified ectopic beats."
+          }
+        }
+      }
+    }
+  },
+  "ref13": {
+    "source": "docs/references/original/13.wav",
+    "annotations": "docs/references/timestamps/13.txt",
+    "groups": {
+      "exercise clean segment (~168)": {
+        "n_beats": 29,
+        "hr": 169.014,
+        "qs2_pred_ms": 175.986,
+        "systole_ms": 198.0,
+        "s1_dur_ms": 139.0,
+        "s2_dur_ms": 73.0,
+        "s1_attack_ms": 26.583,
+        "s1_decay_ms": 12.896,
+        "s2_attack_ms": 13.812,
+        "s2_decay_ms": 23.479,
+        "s1_f0_hz": 64.902,
+        "s2_f0_hz": 57.871,
+        "s1_centroid_hz": 165.464,
+        "s2_centroid_hz": 146.402,
+        "s2s1_centroid_ratio": 0.922,
+        "s1_rolloff85_hz": 178.711,
+        "s1_spread_hz": 124.44,
+        "s1_crest": 4.872,
+        "s2s1_loud": 0.278,
+        "s2s1_loud_db": -11.119,
+        "s2s1_peak_db": -13.179,
+        "dia_s1_db": -21.88,
+        "s1_e0_20ms": 0.008,
+        "s1_e20_40ms": 0.139,
+        "s1_e40_80ms": 0.811,
+        "systole_residual_ms": 22.014,
+        "s1_contrast": 1.141,
+        "s1_hf_dens_rise": 0.012,
+        "s1_hf_dens_body": 0.01,
+        "s1_hf_skew": 0.004,
+        "s1_lobes": 2.0,
+        "s1_lobe_runnerup": 0.456,
+        "s1_contrast_min": 0.015,
+        "s1_contrast_max": 31.77,
+        "s1_contrast_n": 29,
+        "s1_bands": {
+          "20_40": 0.056,
+          "40_80": 0.21,
+          "80_150": 0.316,
+          "150_300": 0.252,
+          "300_1200": 0.043
+        },
+        "s2_bands": {
+          "20_40": 0.067,
+          "40_80": 0.57,
+          "80_150": 0.23,
+          "150_300": 0.054,
+          "300_1200": 0.03
+        },
+        "s1_peak_cv": 0.188,
+        "s1_centroid_cv": 0.112,
+        "s1_peak_cv_se": 0.023,
+        "state": {
+          "kind": "reference_state",
+          "scope": "ref13.groups.\"exercise clean segment (~168)\"",
+          "heart_rate": {
+            "status": "measured",
+            "value": 169.014,
+            "source": "ref13.groups.\"exercise clean segment (~168)\".hr"
+          },
+          "effort_phase": {
+            "status": "reported",
+            "value": "rising_exercise",
+            "source": "REFERENCE_ANALYSIS.md / ref13 context"
+          },
+          "demand": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "Bodyweight squats and HR do not locate workload relative to unknown individual capacity."
+          },
+          "respiratory_rate": {
+            "status": "measured",
+            "value": 28.147,
+            "source": "ref13.breath_scopes.\"exercise clean segment (~168)\".resp_rate_bpm"
+          },
+          "respiratory_depth": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "No independent tidal-volume measurement exists."
+          },
+          "contractility": {
+            "status": "context_inferred",
+            "value": "elevated",
+            "source": "REFERENCE_ANALYSIS.md / ref13 active protocol",
+            "rationale": "Ongoing exercise supports a qualitative elevation without using loudness, brightness, attack, or systole."
+          },
+          "fatigue": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "posture": {
+            "status": "reported",
+            "value": "dynamic_squats",
+            "source": "REFERENCE_ANALYSIS.md / ref13 bodyweight-squat protocol",
+            "note": "The scope spans the changing upright, descent, and ascent positions rather than one static orientation."
+          },
+          "auscultation_site": {
+            "status": "estimated",
+            "value": "mitral",
+            "source": "review of accompanying ref13 video",
+            "note": "The exercise footage appears mitral, but the site is difficult to identify with certainty."
+          },
+          "rhythm": {
+            "status": "context_inferred",
+            "value": "regular",
+            "source": "references/timestamps/13.txt",
+            "rationale": "The annotated run contains no identified ectopic beats."
+          }
+        }
+      },
+      "recovery start (~150)": {
+        "n_beats": 33,
+        "hr": 153.257,
+        "qs2_pred_ms": 202.931,
+        "systole_ms": 212.0,
+        "s1_dur_ms": 106.0,
+        "s2_dur_ms": 51.0,
+        "s1_attack_ms": 31.104,
+        "s1_decay_ms": 12.104,
+        "s2_attack_ms": 19.646,
+        "s2_decay_ms": 20.083,
+        "s1_f0_hz": 48.249,
+        "s2_f0_hz": 48.897,
+        "s1_centroid_hz": 127.552,
+        "s2_centroid_hz": 117.377,
+        "s2s1_centroid_ratio": 0.89,
+        "s1_rolloff85_hz": 161.133,
+        "s1_spread_hz": 120.979,
+        "s1_crest": 3.466,
+        "s2s1_loud": 0.112,
+        "s2s1_loud_db": -18.985,
+        "s2s1_peak_db": -20.362,
+        "dia_s1_db": -26.079,
+        "s1_e0_20ms": 0.01,
+        "s1_e20_40ms": 0.218,
+        "s1_e40_80ms": 0.77,
+        "systole_residual_ms": 9.069,
+        "s1_contrast": 6.223,
+        "s1_hf_dens_rise": 0.032,
+        "s1_hf_dens_body": 0.006,
+        "s1_hf_skew": -0.019,
+        "s1_lobes": 1.0,
+        "s1_lobe_runnerup": 0.0,
+        "s1_contrast_min": 1.145,
+        "s1_contrast_max": 19.164,
+        "s1_contrast_n": 33,
+        "s1_bands": {
+          "20_40": 0.146,
+          "40_80": 0.196,
+          "80_150": 0.349,
+          "150_300": 0.271,
+          "300_1200": 0.002
+        },
+        "s2_bands": {
+          "20_40": 0.192,
+          "40_80": 0.382,
+          "80_150": 0.231,
+          "150_300": 0.121,
+          "300_1200": 0.003
+        },
+        "s1_peak_cv": 0.069,
+        "s1_centroid_cv": 0.19,
+        "s1_peak_cv_se": 0.018,
+        "provenance": {
+          "derived_clip": "ref12",
+          "source": "docs/references/original/12.wav",
+          "annotations": "docs/references/timestamps/12.txt",
+          "parent_start_s": 242.912,
+          "alignment_tolerance_ms": 1.0
+        },
+        "state": {
+          "kind": "reference_state",
+          "scope": "ref13.groups.\"recovery start (~150)\"",
+          "heart_rate": {
+            "status": "measured",
+            "value": 153.257,
+            "source": "ref13.groups.\"recovery start (~150)\".hr"
+          },
+          "effort_phase": {
+            "status": "reported",
+            "value": "recovery",
+            "source": "references/timestamps/12.txt / group label"
+          },
+          "demand": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "Recovery HR and ventilation do not determine workload relative to the subject's capacity."
+          },
+          "respiratory_rate": {
+            "status": "measured",
+            "value": 19.78,
+            "source": "ref13.breath_scopes.\"recovery start (~150)\".resp_rate_bpm"
+          },
+          "respiratory_depth": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "Saturated expiration beats invalidate the audible swing as an independent depth ruler."
+          },
+          "contractility": {
+            "status": "context_inferred",
+            "value": "elevated",
+            "source": "references/timestamps/12.txt / recovery-start context",
+            "rationale": "Immediate post-exercise recovery supports lingering inotropy without using systole or S1 morphology."
+          },
+          "fatigue": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "posture": {
+            "status": "reported",
+            "value": "supine",
+            "source": "REFERENCE_ANALYSIS.md / ref13 recovery clip (asset ref12)"
+          },
+          "auscultation_site": {
+            "status": "estimated",
+            "value": "mitral_offset_toward_tricuspid",
+            "source": "review of accompanying ref12 video",
+            "note": "This annotated group ends before the 00:13.6 reposition; after reposition the placement is more exactly mitral."
+          },
+          "rhythm": {
+            "status": "context_inferred",
+            "value": "regular",
+            "source": "references/timestamps/12.txt",
+            "rationale": "The annotated run contains no identified ectopic beats."
+          }
+        }
+      }
+    },
+    "derived_clips": {
+      "ref12": {
+        "source": "docs/references/original/12.wav",
+        "annotations": "docs/references/timestamps/12.txt",
+        "parent_start_s": 242.912,
+        "alignment_tolerance_ms": 1.0
+      }
+    },
+    "breath_scopes": {
+      "exercise clean segment (~168)": {
+        "method": "landmarks",
+        "n_beats": 23,
+        "n_cycles": 4,
+        "aw_swing_db": -1.971,
+        "centroid_ratio": 0.993,
+        "resp_rate_bpm": 28.147,
+        "inspiration_fraction": 0.577,
+        "jackknife_se_db": 0.393,
+        "coverage_deviation": 0.079,
+        "covered": false
+      },
+      "recovery start (~150)": {
+        "method": "landmarks",
+        "n_beats": 26,
+        "n_cycles": 4,
+        "aw_swing_db": -0.895,
+        "centroid_ratio": 0.888,
+        "resp_rate_bpm": 19.78,
+        "inspiration_fraction": 0.503,
+        "jackknife_se_db": 2.178,
+        "coverage_deviation": 0.014,
+        "covered": true
+      }
+    }
+  },
+  "ref14": {
+    "source": "docs/references/original/14.wav",
+    "annotations": "docs/references/timestamps/14.txt",
+    "groups": {
+      "elevated": {
+        "n_beats": 8,
+        "hr": 134.831,
+        "qs2_pred_ms": 234.438,
+        "systole_ms": 217.0,
+        "s1_dur_ms": 176.5,
+        "s2_dur_ms": 93.5,
+        "s1_attack_ms": 45.531,
+        "s1_decay_ms": 39.365,
+        "s2_attack_ms": 18.75,
+        "s2_decay_ms": 19.146,
+        "s1_f0_hz": 62.777,
+        "s2_f0_hz": 54.084,
+        "s1_centroid_hz": 114.064,
+        "s2_centroid_hz": 85.528,
+        "s2s1_centroid_ratio": 0.767,
+        "s1_rolloff85_hz": 69.58,
+        "s1_spread_hz": 146.912,
+        "s1_crest": 2.749,
+        "s2s1_loud": 0.503,
+        "s2s1_loud_db": -5.976,
+        "s2s1_peak_db": -3.373,
+        "dia_s1_db": -23.262,
+        "s1_e0_20ms": 0.002,
+        "s1_e20_40ms": 0.014,
+        "s1_e40_80ms": 0.57,
+        "systole_residual_ms": -17.438,
+        "s1_contrast": 0.794,
+        "s1_hf_dens_rise": 0.004,
+        "s1_hf_dens_body": 0.005,
+        "s1_hf_skew": -0.002,
+        "s1_lobes": 2.5,
+        "s1_lobe_runnerup": 0.772,
+        "s1_contrast_min": 0.407,
+        "s1_contrast_max": 2.124,
+        "s1_contrast_n": 8,
+        "s1_bands": {
+          "20_40": 0.07,
+          "40_80": 0.865,
+          "80_150": 0.02,
+          "150_300": 0.023,
+          "300_1200": 0.001
+        },
+        "s2_bands": {
+          "20_40": 0.199,
+          "40_80": 0.731,
+          "80_150": 0.04,
+          "150_300": 0.007,
+          "300_1200": 0.0003445
+        },
+        "s1_peak_cv": 0.014,
+        "s1_centroid_cv": 0.047,
+        "s1_peak_cv_se": 0.008,
+        "state": {
+          "kind": "reference_state",
+          "scope": "ref14.groups.\"elevated\"",
+          "heart_rate": {
+            "status": "measured",
+            "value": 134.831,
+            "source": "ref14.groups.\"elevated\".hr"
+          },
+          "effort_phase": {
+            "status": "reported",
+            "value": "rest_with_acute_arousal",
+            "source": "REFERENCE_ANALYSIS.md / ref14 context"
+          },
+          "demand": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "Standing anxiety/excitation is not a measured metabolic workload."
+          },
+          "respiratory_rate": {
+            "status": "unknown",
+            "reason": "not_yet_sourced"
+          },
+          "respiratory_depth": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "contractility": {
+            "status": "context_inferred",
+            "value": "elevated",
+            "source": "REFERENCE_ANALYSIS.md / ref14 anxiety-excitation context",
+            "rationale": "Reported acute arousal supports elevated inotropy independently of the clap and attack features under evaluation."
+          },
+          "fatigue": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "posture": {
+            "status": "reported",
+            "value": "standing",
+            "source": "REFERENCE_ANALYSIS.md / ref14 context"
+          },
+          "auscultation_site": {
+            "status": "reported",
+            "value": [
+              "erbs",
+              "pulmonary"
+            ],
+            "source": "REFERENCE_ANALYSIS.md / ref14 heading"
+          },
+          "rhythm": {
+            "status": "context_inferred",
+            "value": "regular",
+            "source": "references/timestamps/14.txt",
+            "rationale": "The annotated run contains no identified ectopic beats."
+          }
+        }
+      },
+      "high, post-hold release (~158)": {
+        "n_beats": 6,
+        "hr": 154.242,
+        "qs2_pred_ms": 201.247,
+        "systole_ms": 172.5,
+        "s1_dur_ms": 128.5,
+        "s2_dur_ms": 79.5,
+        "s1_attack_ms": 32.708,
+        "s1_decay_ms": 65.198,
+        "s2_attack_ms": 13.792,
+        "s2_decay_ms": 44.458,
+        "s1_f0_hz": 63.114,
+        "s2_f0_hz": 50.826,
+        "s1_centroid_hz": 129.595,
+        "s2_centroid_hz": 87.511,
+        "s2s1_centroid_ratio": 0.655,
+        "s1_rolloff85_hz": 71.777,
+        "s1_spread_hz": 157.643,
+        "s1_crest": 1.878,
+        "s2s1_loud": 0.431,
+        "s2s1_loud_db": -7.317,
+        "s2s1_peak_db": -4.282,
+        "dia_s1_db": -18.593,
+        "s1_e0_20ms": 0.097,
+        "s1_e20_40ms": 0.273,
+        "s1_e40_80ms": 0.568,
+        "systole_residual_ms": -28.747,
+        "s1_contrast": 1.018,
+        "s1_hf_dens_rise": 0.01,
+        "s1_hf_dens_body": 0.01,
+        "s1_hf_skew": -0.031,
+        "s1_lobes": 3.0,
+        "s1_lobe_runnerup": 0.855,
+        "s1_contrast_min": 0.696,
+        "s1_contrast_max": 2.22,
+        "s1_contrast_n": 6,
+        "s1_bands": {
+          "20_40": 0.051,
+          "40_80": 0.864,
+          "80_150": 0.033,
+          "150_300": 0.036,
+          "300_1200": 0.002
+        },
+        "s2_bands": {
+          "20_40": 0.185,
+          "40_80": 0.751,
+          "80_150": 0.016,
+          "150_300": 0.011,
+          "300_1200": 0.0006646
+        },
+        "s1_peak_cv": 0.019,
+        "s1_centroid_cv": 0.106,
+        "s1_peak_cv_se": 0.009,
+        "state": {
+          "kind": "reference_state",
+          "scope": "ref14.groups.\"high, post-hold release (~158)\"",
+          "heart_rate": {
+            "status": "measured",
+            "value": 154.242,
+            "source": "ref14.groups.\"high, post-hold release (~158)\".hr"
+          },
+          "effort_phase": {
+            "status": "reported",
+            "value": "post_breath_hold_release",
+            "source": "references/timestamps/14.txt / group label"
+          },
+          "demand": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "The Valsalva-like release response and arousal do not define metabolic demand."
+          },
+          "respiratory_rate": {
+            "status": "unknown",
+            "reason": "not_yet_sourced"
+          },
+          "respiratory_depth": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "contractility": {
+            "status": "context_inferred",
+            "value": "elevated",
+            "source": "REFERENCE_ANALYSIS.md / ref14 arousal and post-hold context",
+            "rationale": "The acute-arousal protocol supports elevated inotropy independently of the S2 clap used to compare the groups."
+          },
+          "fatigue": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "posture": {
+            "status": "reported",
+            "value": "standing",
+            "source": "REFERENCE_ANALYSIS.md / ref14 context"
+          },
+          "auscultation_site": {
+            "status": "reported",
+            "value": [
+              "erbs",
+              "pulmonary"
+            ],
+            "source": "REFERENCE_ANALYSIS.md / ref14 heading"
+          },
+          "rhythm": {
+            "status": "context_inferred",
+            "value": "regular",
+            "source": "references/timestamps/14.txt",
+            "rationale": "The annotated run contains no identified ectopic beats."
+          }
+        }
+      }
+    }
+  },
+  "ref15": {
+    "source": "docs/references/original/15.wav",
+    "annotations": "docs/references/timestamps/15.txt",
+    "groups": {
+      "~80bpm": {
+        "n_beats": 5,
+        "hr": 81.967,
+        "qs2_pred_ms": 324.836,
+        "systole_ms": 316.0,
+        "s1_dur_ms": 141.0,
+        "s2_dur_ms": 95.0,
+        "s1_attack_ms": 46.958,
+        "s1_decay_ms": 42.188,
+        "s2_attack_ms": 23.875,
+        "s2_decay_ms": 15.604,
+        "s1_f0_hz": 62.035,
+        "s2_f0_hz": 44.423,
+        "s1_centroid_hz": 65.161,
+        "s2_centroid_hz": 71.345,
+        "s2s1_centroid_ratio": 1.143,
+        "s1_rolloff85_hz": 70.312,
+        "s1_spread_hz": 54.489,
+        "s1_crest": 2.754,
+        "s2s1_loud": 0.585,
+        "s2s1_loud_db": -4.651,
+        "s2s1_peak_db": -2.765,
+        "dia_s1_db": -17.2,
+        "s1_e0_20ms": 0.008,
+        "s1_e20_40ms": 0.163,
+        "s1_e40_80ms": 0.751,
+        "systole_residual_ms": -8.836,
+        "s1_contrast": 12.193,
+        "s1_hf_dens_rise": 6.716e-05,
+        "s1_hf_dens_body": 7.399e-06,
+        "s1_hf_skew": -0.109,
+        "s1_lobes": 2.0,
+        "s1_lobe_runnerup": 0.618,
+        "s1_contrast_min": 7.554,
+        "s1_contrast_max": 32.812,
+        "s1_contrast_n": 5,
+        "s1_bands": {
+          "20_40": 0.104,
+          "40_80": 0.852,
+          "80_150": 0.031,
+          "150_300": 0.000117,
+          "300_1200": 3.197e-06
+        },
+        "s2_bands": {
+          "20_40": 0.174,
+          "40_80": 0.572,
+          "80_150": 0.22,
+          "150_300": 0.0003047,
+          "300_1200": 8.322e-06
+        },
+        "s1_peak_cv": 0.089,
+        "s1_centroid_cv": 0.067,
+        "s1_peak_cv_se": 0.04,
+        "state": {
+          "kind": "reference_state",
+          "scope": "ref15.groups.\"~80bpm\"",
+          "heart_rate": {
+            "status": "measured",
+            "value": 81.967,
+            "source": "ref15.groups.\"~80bpm\".hr"
+          },
+          "effort_phase": {
+            "status": "context_inferred",
+            "value": "rest",
+            "source": "REFERENCE_ANALYSIS.md / ref15 rest-to-activity protocol",
+            "rationale": "This is the earliest low-rate group before the within-recording activity rise."
+          },
+          "demand": {
+            "status": "context_inferred",
+            "value": "resting",
+            "source": "REFERENCE_ANALYSIS.md / ref15 rest-to-activity protocol",
+            "rationale": "The earliest group is the recording's resting anchor; no numeric capacity coordinate is implied."
+          },
+          "respiratory_rate": {
+            "status": "unknown",
+            "reason": "not_yet_sourced"
+          },
+          "respiratory_depth": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "contractility": {
+            "status": "context_inferred",
+            "value": "baseline",
+            "source": "REFERENCE_ANALYSIS.md / ref15 rest-to-activity protocol",
+            "rationale": "The resting anchor supplies only a within-recording qualitative baseline, without using its acoustic feature values."
+          },
+          "fatigue": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "posture": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "auscultation_site": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "rhythm": {
+            "status": "context_inferred",
+            "value": "regular",
+            "source": "references/timestamps/15.txt",
+            "rationale": "The annotated run contains no identified ectopic beats."
+          }
+        }
+      },
+      "~95bpm": {
+        "n_beats": 17,
+        "hr": 106.762,
+        "qs2_pred_ms": 282.438,
+        "systole_ms": 294.0,
+        "s1_dur_ms": 131.0,
+        "s2_dur_ms": 92.0,
+        "s1_attack_ms": 35.583,
+        "s1_decay_ms": 41.771,
+        "s2_attack_ms": 15.688,
+        "s2_decay_ms": 37.792,
+        "s1_f0_hz": 63.441,
+        "s2_f0_hz": 76.847,
+        "s1_centroid_hz": 69.525,
+        "s2_centroid_hz": 76.178,
+        "s2s1_centroid_ratio": 1.133,
+        "s1_rolloff85_hz": 71.777,
+        "s1_spread_hz": 57.903,
+        "s1_crest": 2.657,
+        "s2s1_loud": 0.667,
+        "s2s1_loud_db": -3.523,
+        "s2s1_peak_db": -0.542,
+        "dia_s1_db": -18.423,
+        "s1_e0_20ms": 0.016,
+        "s1_e20_40ms": 0.166,
+        "s1_e40_80ms": 0.688,
+        "systole_residual_ms": 11.562,
+        "s1_contrast": 7.15,
+        "s1_hf_dens_rise": 8.61e-05,
+        "s1_hf_dens_body": 1.175e-05,
+        "s1_hf_skew": -0.069,
+        "s1_lobes": 2.0,
+        "s1_lobe_runnerup": 0.606,
+        "s1_contrast_min": 1.804,
+        "s1_contrast_max": 19.571,
+        "s1_contrast_n": 17,
+        "s1_bands": {
+          "20_40": 0.058,
+          "40_80": 0.911,
+          "80_150": 0.045,
+          "150_300": 0.0001218,
+          "300_1200": 3.751e-06
+        },
+        "s2_bands": {
+          "20_40": 0.116,
+          "40_80": 0.523,
+          "80_150": 0.325,
+          "150_300": 0.0005362,
+          "300_1200": 7.705e-06
+        },
+        "s1_peak_cv": 0.215,
+        "s1_centroid_cv": 0.07,
+        "s1_peak_cv_se": 0.033,
+        "state": {
+          "kind": "reference_state",
+          "scope": "ref15.groups.\"~95bpm\"",
+          "heart_rate": {
+            "status": "measured",
+            "value": 106.762,
+            "source": "ref15.groups.\"~95bpm\".hr"
+          },
+          "effort_phase": {
+            "status": "context_inferred",
+            "value": "rising_exercise",
+            "source": "REFERENCE_ANALYSIS.md / ref15 rest-to-activity protocol",
+            "rationale": "This intermediate group follows the resting anchor and precedes the high-rate active run."
+          },
+          "demand": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "The protocol lacks workload and individual-capacity measurements."
+          },
+          "respiratory_rate": {
+            "status": "unknown",
+            "reason": "not_yet_sourced"
+          },
+          "respiratory_depth": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "contractility": {
+            "status": "context_inferred",
+            "value": "elevated",
+            "source": "REFERENCE_ANALYSIS.md / ref15 activity protocol",
+            "rationale": "The activity rise supports a qualitative increase relative to the resting group without using the spectral or envelope response."
+          },
+          "fatigue": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "posture": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "auscultation_site": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "rhythm": {
+            "status": "context_inferred",
+            "value": "regular",
+            "source": "references/timestamps/15.txt",
+            "rationale": "The annotated run contains no identified ectopic beats."
+          }
+        }
+      },
+      "~150bpm": {
+        "n_beats": 8,
+        "hr": 151.899,
+        "qs2_pred_ms": 205.253,
+        "systole_ms": 213.5,
+        "s1_dur_ms": 116.5,
+        "s2_dur_ms": 75.5,
+        "s1_attack_ms": 39.156,
+        "s1_decay_ms": 36.833,
+        "s2_attack_ms": 21.323,
+        "s2_decay_ms": 44.167,
+        "s1_f0_hz": 60.185,
+        "s2_f0_hz": 45.41,
+        "s1_centroid_hz": 79.703,
+        "s2_centroid_hz": 72.645,
+        "s2s1_centroid_ratio": 0.938,
+        "s1_rolloff85_hz": 100.342,
+        "s1_spread_hz": 66.828,
+        "s1_crest": 2.857,
+        "s2s1_loud": 0.456,
+        "s2s1_loud_db": -6.815,
+        "s2s1_peak_db": -6.366,
+        "dia_s1_db": -17.292,
+        "s1_e0_20ms": 0.081,
+        "s1_e20_40ms": 0.263,
+        "s1_e40_80ms": 0.617,
+        "systole_residual_ms": 8.247,
+        "s1_contrast": 18.175,
+        "s1_hf_dens_rise": 0.000838,
+        "s1_hf_dens_body": 4.83e-05,
+        "s1_hf_skew": -0.086,
+        "s1_lobes": 3.0,
+        "s1_lobe_runnerup": 0.808,
+        "s1_contrast_min": 0.755,
+        "s1_contrast_max": 80.386,
+        "s1_contrast_n": 8,
+        "s1_bands": {
+          "20_40": 0.059,
+          "40_80": 0.648,
+          "80_150": 0.276,
+          "150_300": 0.001,
+          "300_1200": 1.222e-05
+        },
+        "s2_bands": {
+          "20_40": 0.181,
+          "40_80": 0.569,
+          "80_150": 0.277,
+          "150_300": 0.0005041,
+          "300_1200": 9.353e-06
+        },
+        "s1_peak_cv": 0.172,
+        "s1_centroid_cv": 0.055,
+        "s1_peak_cv_se": 0.06,
+        "state": {
+          "kind": "reference_state",
+          "scope": "ref15.groups.\"~150bpm\"",
+          "heart_rate": {
+            "status": "measured",
+            "value": 151.899,
+            "source": "ref15.groups.\"~150bpm\".hr"
+          },
+          "effort_phase": {
+            "status": "reported",
+            "value": "exercise",
+            "source": "REFERENCE_ANALYSIS.md / ref15 active high-rate run"
+          },
+          "demand": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "The protocol lacks workload and individual-capacity measurements."
+          },
+          "respiratory_rate": {
+            "status": "unknown",
+            "reason": "not_yet_sourced"
+          },
+          "respiratory_depth": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "contractility": {
+            "status": "context_inferred",
+            "value": "elevated",
+            "source": "REFERENCE_ANALYSIS.md / ref15 activity protocol",
+            "rationale": "The active protocol supports a qualitative increase relative to the resting group without using its spectral or envelope response."
+          },
+          "fatigue": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "posture": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "auscultation_site": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "rhythm": {
+            "status": "context_inferred",
+            "value": "regular",
+            "source": "references/timestamps/15.txt",
+            "rationale": "The annotated run contains no identified ectopic beats."
+          }
+        }
+      }
+    }
+  },
+  "ref20": {
+    "source": "docs/references/original/20.wav",
+    "annotations": "docs/references/timestamps/20.txt",
+    "groups": {
+      "peak (~178)": {
+        "n_beats": 49,
+        "hr": 176.471,
+        "qs2_pred_ms": 163.235,
+        "systole_ms": 170.0,
+        "s1_dur_ms": 114.0,
+        "s2_dur_ms": 52.0,
+        "s1_attack_ms": 33.208,
+        "s1_decay_ms": 27.125,
+        "s2_attack_ms": 19.875,
+        "s2_decay_ms": 11.938,
+        "s1_f0_hz": 46.451,
+        "s2_f0_hz": 46.114,
+        "s1_centroid_hz": 80.576,
+        "s2_centroid_hz": 86.934,
+        "s2s1_centroid_ratio": 1.102,
+        "s1_rolloff85_hz": 86.426,
+        "s1_spread_hz": 68.788,
+        "s1_crest": 3.225,
+        "s2s1_loud": 0.221,
+        "s2s1_loud_db": -13.131,
+        "s2s1_peak_db": -14.754,
+        "dia_s1_db": -17.408,
+        "s1_e0_20ms": 0.032,
+        "s1_e20_40ms": 0.21,
+        "s1_e40_80ms": 0.621,
+        "systole_residual_ms": 6.765,
+        "s1_contrast": 1.391,
+        "s1_hf_dens_rise": 0.001,
+        "s1_hf_dens_body": 0.0007606,
+        "s1_hf_skew": -0.006,
+        "s1_lobes": 2.0,
+        "s1_lobe_runnerup": 0.472,
+        "s1_contrast_min": 0.158,
+        "s1_contrast_max": 74.85,
+        "s1_contrast_n": 49,
+        "s1_bands": {
+          "20_40": 0.212,
+          "40_80": 0.507,
+          "80_150": 0.203,
+          "150_300": 0.013,
+          "300_1200": 0.0001253
+        },
+        "s2_bands": {
+          "20_40": 0.225,
+          "40_80": 0.369,
+          "80_150": 0.163,
+          "150_300": 0.019,
+          "300_1200": 0.0002541
+        },
+        "s1_peak_cv": 0.304,
+        "s1_centroid_cv": 0.15,
+        "s1_peak_cv_se": 0.031,
+        "state": {
+          "kind": "reference_state",
+          "scope": "ref20.groups.\"peak (~178)\"",
+          "heart_rate": {
+            "status": "measured",
+            "value": 176.471,
+            "source": "ref20.groups.\"peak (~178)\".hr"
+          },
+          "effort_phase": {
+            "status": "reported",
+            "value": "exercise",
+            "source": "REFERENCE_ANALYSIS.md / ref20 context"
+          },
+          "demand": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "The subject's capacity and gas-exchange thresholds were not measured; the group name does not mean maximum demand."
+          },
+          "respiratory_rate": {
+            "status": "measured",
+            "value": 20.609,
+            "source": "ref20.breath.resp_rate_bpm"
+          },
+          "respiratory_depth": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "The strong audible swing is the calibration feature and cannot independently establish tidal depth."
+          },
+          "contractility": {
+            "status": "context_inferred",
+            "value": "elevated",
+            "source": "REFERENCE_ANALYSIS.md / ref20 active squats",
+            "rationale": "Sustained bodyweight squats support elevated inotropy without using the S1 features under evaluation."
+          },
+          "fatigue": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "posture": {
+            "status": "reported",
+            "value": "dynamic_squats",
+            "source": "REFERENCE_ANALYSIS.md / ref20 bodyweight-squat protocol",
+            "note": "The scope spans the changing upright, descent, and ascent positions rather than one static orientation."
+          },
+          "auscultation_site": {
+            "status": "reported",
+            "value": [
+              "erbs",
+              "tricuspid"
+            ],
+            "source": "REFERENCE_ANALYSIS.md / ref20 heading"
+          },
+          "rhythm": {
+            "status": "context_inferred",
+            "value": "regular",
+            "source": "references/timestamps/20.txt",
+            "rationale": "The calibration window contains no identified ectopic beats."
+          }
+        }
+      }
+    },
+    "breath": {
+      "method": "landmarks",
+      "n_beats": 47,
+      "n_cycles": 6,
+      "aw_swing_db": -8.109,
+      "centroid_ratio": 0.744,
+      "resp_rate_bpm": 20.609,
+      "inspiration_fraction": 0.491,
+      "jackknife_se_db": 1.32,
+      "coverage_deviation": 0.031,
+      "covered": false,
+      "state": {
+        "kind": "reference_state",
+        "scope": "ref20.breath",
+        "heart_rate": {
+          "status": "measured",
+          "value": 176.471,
+          "source": "ref20.groups.\"peak (~178)\".hr"
+        },
+        "effort_phase": {
+          "status": "reported",
+          "value": "exercise",
+          "source": "REFERENCE_ANALYSIS.md / ref20 context"
+        },
+        "demand": {
+          "status": "unknown",
+          "reason": "not_identifiable",
+          "note": "The engine's demand 0.75 is a comparison fixture, not an observed subject coordinate."
+        },
+        "respiratory_rate": {
+          "status": "measured",
+          "value": 20.609,
+          "source": "ref20.breath.resp_rate_bpm"
+        },
+        "respiratory_depth": {
+          "status": "unknown",
+          "reason": "not_identifiable",
+          "note": "The loudness swing is the calibrated observable and cannot also supply its tidal-depth coordinate."
+        },
+        "contractility": {
+          "status": "context_inferred",
+          "value": "elevated",
+          "source": "REFERENCE_ANALYSIS.md / ref20 active squats",
+          "rationale": "Sustained bodyweight squats support elevated inotropy without using breath swing or S1 timbre."
+        },
+        "fatigue": {
+          "status": "unknown",
+          "reason": "not_recorded"
+        },
+        "posture": {
+          "status": "reported",
+          "value": "dynamic_squats",
+          "source": "REFERENCE_ANALYSIS.md / ref20 bodyweight-squat protocol",
+          "note": "The scope spans the changing upright, descent, and ascent positions rather than one static orientation."
+        },
+        "auscultation_site": {
+          "status": "reported",
+          "value": [
+            "erbs",
+            "tricuspid"
+          ],
+          "source": "REFERENCE_ANALYSIS.md / ref20 heading"
+        },
+        "rhythm": {
+          "status": "context_inferred",
+          "value": "regular",
+          "source": "references/timestamps/20.txt",
+          "rationale": "The calibration window contains no identified ectopic beats."
+        }
+      }
+    }
+  },
+  "ref21": {
+    "source": "docs/references/original/21.wav",
+    "annotations": "docs/references/timestamps/21.txt",
+    "groups": {
+      "recovery start (~159)": {
+        "n_beats": 32,
+        "hr": 157.895,
+        "qs2_pred_ms": 195.0,
+        "systole_ms": 194.0,
+        "s1_dur_ms": 112.0,
+        "s2_dur_ms": 54.5,
+        "s1_attack_ms": 20.573,
+        "s1_decay_ms": 34.854,
+        "s2_attack_ms": 19.312,
+        "s2_decay_ms": 17.781,
+        "s1_f0_hz": 57.732,
+        "s2_f0_hz": 59.99,
+        "s1_centroid_hz": 126.5,
+        "s2_centroid_hz": 158.729,
+        "s2s1_centroid_ratio": 1.256,
+        "s1_rolloff85_hz": 147.949,
+        "s1_spread_hz": 92.437,
+        "s1_crest": 3.794,
+        "s2s1_loud": 0.157,
+        "s2s1_loud_db": -16.09,
+        "s2s1_peak_db": -17.663,
+        "dia_s1_db": -26.475,
+        "s1_e0_20ms": 0.003,
+        "s1_e20_40ms": 0.086,
+        "s1_e40_80ms": 0.882,
+        "systole_residual_ms": -1.0,
+        "s1_contrast": 1.117,
+        "s1_hf_dens_rise": 0.01,
+        "s1_hf_dens_body": 0.005,
+        "s1_hf_skew": -0.04,
+        "s1_lobes": 2.0,
+        "s1_lobe_runnerup": 0.492,
+        "s1_contrast_min": 0.556,
+        "s1_contrast_max": 14.895,
+        "s1_contrast_n": 32,
+        "s1_bands": {
+          "20_40": 0.034,
+          "40_80": 0.419,
+          "80_150": 0.429,
+          "150_300": 0.125,
+          "300_1200": 0.002
+        },
+        "s2_bands": {
+          "20_40": 0.052,
+          "40_80": 0.52,
+          "80_150": 0.253,
+          "150_300": 0.137,
+          "300_1200": 0.039
+        },
+        "s1_peak_cv": 0.158,
+        "s1_centroid_cv": 0.037,
+        "s1_peak_cv_se": 0.015,
+        "state": {
+          "kind": "reference_state",
+          "scope": "ref21.groups.\"recovery start (~159)\"",
+          "heart_rate": {
+            "status": "measured",
+            "value": 157.895,
+            "source": "ref21.groups.\"recovery start (~159)\".hr"
+          },
+          "effort_phase": {
+            "status": "reported",
+            "value": "recovery",
+            "source": "references/timestamps/21.txt / group label"
+          },
+          "demand": {
+            "status": "unknown",
+            "reason": "not_identifiable",
+            "note": "Recovery HR does not determine current metabolic demand."
+          },
+          "respiratory_rate": {
+            "status": "unknown",
+            "reason": "not_yet_sourced"
+          },
+          "respiratory_depth": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "contractility": {
+            "status": "context_inferred",
+            "value": "elevated",
+            "source": "references/timestamps/21.txt / recovery-start context",
+            "rationale": "Immediate recovery supports lingering inotropy without using systole or S1 morphology."
+          },
+          "fatigue": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "posture": {
+            "status": "unknown",
+            "reason": "not_recorded"
+          },
+          "auscultation_site": {
+            "status": "reported",
+            "value": "tricuspid",
+            "source": "review of accompanying ref21 video"
+          },
+          "rhythm": {
+            "status": "context_inferred",
+            "value": "regular",
+            "source": "references/timestamps/21.txt",
+            "rationale": "The annotated run contains no identified ectopic beats."
+          }
+        }
+      }
+    }
+  },
+  "systole_law": {
+    "fit_intercept_ms": 458.135,
+    "fit_slope_ms_per_bpm": 1.66,
+    "fit_intercept_se_ms": 14.321,
+    "fit_slope_se_ms_per_bpm": 0.097,
+    "residual_std_ms": 12.264,
+    "mean_hr": 143.52,
+    "pred_at_mean_hr_ms": 219.923,
+    "pred_se_at_mean_hr_ms": 3.402,
+    "n_groups": 13,
+    "hr_min": 68.337,
+    "hr_max": 180.723,
+    "state": {
+      "kind": "mixed_reference_states",
+      "members": [
+        "ref8.groups.\"segment 1 (~165)\".state",
+        "ref8.groups.\"peak (~180)\".state",
+        "ref8.groups.\"clean, long segment (~175)\".state",
+        "ref11.groups.\"resting, elevated supine\".state",
+        "ref11.groups.\"post-exercise, elevated supine\".state",
+        "ref13.groups.\"exercise clean segment (~168)\".state",
+        "ref13.groups.\"recovery start (~150)\".state",
+        "ref14.groups.\"elevated\".state",
+        "ref15.groups.\"~80bpm\".state",
+        "ref15.groups.\"~95bpm\".state",
+        "ref15.groups.\"~150bpm\".state",
+        "ref20.groups.\"peak (~178)\".state",
+        "ref21.groups.\"recovery start (~159)\".state"
+      ]
+    }
+  }
+}

@@ -530,3 +530,12 @@ FodyWeavers.xsd
 /build/
 
 /compile_commands.json
+
+/.local/
+
+/docs/references/**/*.wav
+/docs/references/**/*.mp4
+
+/.venv/
+/docs/references/candidates
+/docs/references/audacity

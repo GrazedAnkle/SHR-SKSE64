@@ -4,9 +4,9 @@ cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 ## Define project
 ########################################################################################################################
 project(SHR
-    VERSION     0.4.0.0
+    VERSION     0.5.0.0
     LANGUAGES   CXX
-    DESCRIPTION "A mod that simulates changes in heart rate and their effects on the player."
+    DESCRIPTION "Physiological heart-rate simulation with synthesized heartbeat audio."
 )
 
 string(TIMESTAMP PROJECT_CONFIGURE_YEAR "%Y" UTC)
@@ -37,22 +37,48 @@ configure_file(
 
 set(PUBLIC_HEADER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}")
 
-set(headers)
+set(headers
+    src/Config.hpp
+    src/Constants.hpp
+    src/EventHandler.hpp
+    src/HeartbeatVoice.hpp
+    src/HeartRate.hpp
+    src/InputHandler.hpp
+    src/Logging.hpp
+    src/NotificationPolicy.hpp
+    src/pch.hpp
+    src/Random.hpp
+    src/RhythmEngine.hpp
+    src/Simulation.hpp
+    src/SkyrimHeartRate.hpp
+)
 
 set(sources
     src/Main.cpp
     src/Config.cpp
+    src/HeartbeatVoice.cpp
     src/InputHandler.cpp
     src/Logging.cpp
+    src/LoggingConfiguration.cpp
+    src/NotificationPolicy.cpp
+    src/Simulation.cpp
     src/SkyrimHeartRate.cpp
     src/EventHandler.cpp
-    src/Sound.cpp
-    src/Strings.cpp
+    src/RhythmEngine.cpp
 
     ${CMAKE_CURRENT_BINARY_DIR}/version.rc
 )
 
-set(tests)
+set(tests
+    src/Config.cpp
+    src/LoggingConfiguration.cpp
+    src/NotificationPolicy.cpp
+    src/Simulation.cpp
+    tests/ConfigTests.cpp
+    tests/LoggingTests.cpp
+    tests/NotificationPolicyTests.cpp
+    tests/SimulationTests.cpp
+)
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}
     FILES
@@ -77,8 +103,18 @@ include(GNUInstallDirs)
 ########################################################################################################################
 ## Find dependencies
 ########################################################################################################################
-find_package(CommonLibSSE        REQUIRED)
-find_package(toml11       CONFIG REQUIRED)
+set(SHR_BUILD_TESTS ${BUILD_TESTS})
+set(BUILD_TESTS OFF)  # Prevent CommonLibSSE from building its own test suite
+set(ENABLE_SKYRIM_VR OFF CACHE BOOL "" FORCE)  # TODO(2026-06-06): Add VR support?
+add_subdirectory("extern/commonlibsse-ng" "CommonLibSSE" EXCLUDE_FROM_ALL)
+include("extern/commonlibsse-ng/cmake/CommonLibSSE.cmake")
+set(BUILD_TESTS ${SHR_BUILD_TESTS})  # Restore after CommonLibSSE subdirectory
+find_package(spdlog CONFIG REQUIRED)
+find_package(toml11 CONFIG REQUIRED)
+
+# pocketfft is scipy's FFT backend. is header-only and ships no CMake config package. It backs scipy's FFT, so the plugin's
+# analytic envelope (HeartbeatVoice::AnalyticEnv) and the offline mirror's compute the same transform.
+find_path(POCKETFFT_INCLUDE_DIRS "pocketfft_hdronly.h" REQUIRED)
 
 if(BUILD_TESTS)
     find_package(Catch2 CONFIG REQUIRED)
@@ -124,6 +160,7 @@ target_include_directories(${PROJECT_NAME}
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
         $<INSTALL_INTERFACE:src>
+        ${POCKETFFT_INCLUDE_DIRS}
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -247,26 +284,25 @@ endforeach()
 ########################################################################################################################
 ## Configure unit tests
 ########################################################################################################################
-if(BUILD_TESTS AND NOT " ${tests}" STREQUAL " ")
+if(BUILD_TESTS)
     include(CTest)
     include(Catch)
 
     add_executable(${PROJECT_NAME}Tests
-        ${headers}
         ${tests}
+    )
+
+    target_include_directories(${PROJECT_NAME}Tests
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
     )
 
     target_link_libraries(${PROJECT_NAME}Tests
         PRIVATE
-            ${PROJECT_NAME}
             Catch2::Catch2WithMain
-    )
-
-    target_precompile_headers(${PROJECT_NAME}Tests
-        PRIVATE
-            src/pch.hpp
+            spdlog::spdlog
+            toml11::toml11
     )
 
     catch_discover_tests(${PROJECT_NAME}Tests)
-    add_test(NAME ${PROJECT_NAME}Tests COMMAND ${PROJECT_NAME}Tests)
 endif()

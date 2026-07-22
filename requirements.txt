@@ -1,0 +1,6 @@
+# Python dependencies for reference analysis and annotation tools (tools/).
+numpy>=1.24
+scipy>=1.10        # signal.fftconvolve for fast whole-file filtering in auto_annotate.py
+soundfile>=0.12    # WAV I/O (shrlib.load)
+matplotlib>=3.7    # used only for the breath modulation-adjudication view (auto_annotate --breath --view)
+                   # imported lazily

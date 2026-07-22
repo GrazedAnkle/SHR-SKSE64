@@ -16,8 +16,8 @@
 #include "InputHandler.hpp"
 
 #include "Config.hpp"
+#include "NotificationPolicy.hpp"
 #include "SkyrimHeartRate.hpp"
-#include "Strings.hpp"
 
 namespace
 {
@@ -30,9 +30,9 @@ void SHR::InputHandler::Register()
     deviceManager->AddEventSink(&GetInstance());
 }
 
-const std::atomic_int &SHR::InputHandler::IsListening()
+bool SHR::InputHandler::IsListening() noexcept
 {
-    return s_IsListening;
+    return s_IsListening.load() != 0;
 }
 
 RE::BSEventNotifyControl SHR::InputHandler::ProcessEvent(
@@ -60,14 +60,14 @@ RE::BSEventNotifyControl SHR::InputHandler::ProcessEvent(
             {
                 s_IsListening.fetch_xor(1);
 
-                if (Config::Get().Notification.Enabled)
+                const auto notification = NotificationPolicy::SelectStatus(
+                    Config::Get().Notification,
+                    RE::PlayerCharacter::GetSingleton()->IsDead(),
+                    HeartRateManager::GetHeartRate()
+                );
+                if (notification)
                 {
-                    RE::DebugNotification(
-                        SHR::Strings::GetText(
-                            RE::PlayerCharacter::GetSingleton(),
-                            SHR::HeartRateManager::GetHeartRate()
-                        )
-                    );
+                    RE::SendHUDMessage::ShowHUDMessage(notification->data());
                 }
             }
         }

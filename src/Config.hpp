@@ -15,6 +15,13 @@
  */
 #pragma once
 
+#include <spdlog/spdlog.h>
+
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <vector>
+
 namespace SHR
 {
     struct Debug
@@ -26,73 +33,71 @@ namespace SHR
         spdlog::level::level_enum Flush = spdlog::level::level_enum::trace;
     };
 
-    struct Limit
+    struct HeartRate
     {
-        static constexpr const char RestingKey[]   = "resting";
-        static constexpr const char IdleKey[]      = "idle";
-        static constexpr const char WalkingKey[]   = "walking";
-        static constexpr const char RunningKey[]   = "running";
-        static constexpr const char SprintingKey[] = "sprinting";
-        static constexpr const char CombatKey[]    = "combat";
+        static constexpr const char RestingKey[] = "resting";
+        static constexpr const char MaxKey[]     = "max";
 
-        float Resting   =  55.0F;
-        float Idle      =  80.0F;
-        float Walking   = 110.0F;
-        float Running   = 160.0F;
-        float Sprinting = 190.0F;
-        float Combat    = 200.0F;
+        // Initial resting heart rate; also initializes fitness.
+        float Resting =  55.0F;
+        float Max     = 200.0F;
     };
 
-    struct Multiplier
+    struct Arrhythmia
     {
-        static constexpr const char ModKey[]         = "general";
-        static constexpr const char IncDecRatioKey[] = "increase_decrease_ratio";
-        static constexpr const char SkipChanceKey[]  = "skip_chance";
+        static constexpr const char SusceptibilityKey[] = "susceptibility";
 
-        float Mod         = 1.0F;
-        float IncDecRatio = 3.0F;
-        float SkipChance  = 1.0F;
+        // Scalar multiplier on PVC frequency and run-extension.
+        float Susceptibility = 1.0F;
     };
 
     struct Input
     {
         static constexpr const char ListenKey[] = "listen";
 
-        std::uint32_t Listen = 0x23; // H key.
+        std::uint32_t Listen = 0x23;  // H key.
+    };
+
+    struct Audio
+    {
+        static constexpr const char VolumeKey[] = "volume";
+
+        float Volume = 1.0F;
     };
 
     struct Notification
     {
-        static constexpr const char EnabledKey[]      = "enabled";
-        static constexpr const char PulseKey[]        = "pulse";
-        static constexpr const char DyingKey[]        = "dying";
-        static constexpr const char FibrillatingKey[] = "fibrillating";
-        static constexpr const char DeadKey[]         = "dead";
-        static constexpr const char SkippedKey[]      = "skipped";
+        static constexpr const char EnabledKey[]    = "enabled";
+        static constexpr const char PulseKey[]      = "pulse";
+        static constexpr const char DyingKey[]      = "dying";
+        static constexpr const char DeadKey[]       = "dead";
+        static constexpr const char ArrhythmiaKey[] = "arrhythmia";
 
-        bool Enabled = false;
+        bool                     Enabled = false;
         std::vector<std::string> Pulse;
-        std::string Dying;
-        std::string Fibrillating;
-        std::string Dead;
-        std::string Skipped;
+        std::string              Dying;
+        std::string              Dead;
+        std::string              Arrhythmia;
     };
 
     struct Config
     {
         static constexpr const char DebugKey[]        = "debug";
-        static constexpr const char LimitKey[]        = "limit";
-        static constexpr const char MultiplierKey[]   = "multiplier";
+        static constexpr const char HeartRateKey[]    = "heart_rate";
+        static constexpr const char ArrhythmiaKey[]   = "arrhythmia";
         static constexpr const char InputKey[]        = "input";
+        static constexpr const char AudioKey[]        = "audio";
         static constexpr const char NotificationKey[] = "notification";
 
         Debug        Debug;
-        Limit        Limit;
-        Multiplier   Multiplier;
+        HeartRate    HeartRate;
+        Arrhythmia   Arrhythmia;
         Input        Input;
+        Audio        Audio;
         Notification Notification;
 
-        static void Init();
+        static void Init(std::string_view configPath);
+        static void Set(Config config);
 
         static const Config &Get();
     };

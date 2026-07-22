@@ -1,0 +1,81 @@
+# ref20 - stethoscope, bodyweight squats, Erb's/tricuspid. In-exercise: strong breath swing
+# (S2 hard to discern) and contact noise. Hand-verified from the auto-annotator candidate;
+# onsets/ends are +/-10ms by ear+eye. Parenthetical notes are informational (parse harmlessly).
+
+# Respiratory landmarks (BR=<trough>-<peak>): end-expiration (lung empty, beats LOUDEST) ->
+# end-inspiration (lung full, muffled). Beat-independent, so they float here rather than inside a group.
+# Hand-placed 2026-07-11 on the beat envelope, cross-checked against the SPECTRAL axis (independent of
+# the level axis they were placed on): the two agree to 1-62ms on the interior cycles.
+#
+# The 32.351 cycle is genuinely LONG (3.7s vs a 2.5-2.7s norm) - real breath-to-breath variability, not a
+# missed trough. Its peak is placed at 34.532 rather than the ~34.07 the raw envelope suggests: that
+# apparent lobe at ~33.5-34.6 is NOT beat amplitude, it is the INTER-BEAT NOISE swelling to 2.7x baseline
+# (with one squat impact at 34.01 inside it). The beats themselves fall monotonically to their minimum at
+# 34.662 with no un-muffling anywhere in the span, so there is no second breath there. Level and centroid
+# both put the turnaround at 34.3-34.7.
+BR=00:29.595-00:30.929
+BR=00:32.351-00:34.532
+BR=00:36.033-00:37.305
+BR=00:38.700-00:39.794
+BR=00:41.199-00:42.562
+BR=00:44.152-00:45.273
+
+# Excluded spans (EX=): corrupt AUDIO only. A blacklist, unlike the groups below (a semantic whitelist).
+# Sustained muffle with low LF - a breath hold, not contact loss. Excluded from
+# BREATH analysis regardless of cause: a held breath has no respiratory cycle, so
+# the phase reconstruction is undefined across it.
+EX=00:47.700-00:50.500 (scope: breath)
+# LF contact/movement noise: LF rms doubles 0.047 -> 0.101, beat/LF ratio falls to
+# 1.7-2.0, and beat tracking fails. Unusable.
+EX=00:57.800-01:04.600 (scope: all)
+
+peak (~178)
+S1=00:29.239-00:29.373 S2=00:29.434-00:29.477
+S1=00:29.595-00:29.747 S2=00:29.767-00:29.820 (LF contact noise during S1 attack)
+S1=00:29.954-00:30.043 S2=00:30.121-00:30.155
+S1=00:30.263-00:30.386 S2=00:30.439-00:30.486
+S1=00:30.601-00:30.726 S2=00:30.789-00:30.832
+S1=00:30.920-00:31.063 S2=00:31.118-00:31.177
+S1=00:31.294-00:31.399 S2=00:31.454-00:31.488
+S1=00:31.637-00:31.717 S2=00:31.780-00:31.830
+S1=00:31.970-00:32.072 S2=00:32.123-00:32.166
+S1=00:32.294-00:32.405 S2=00:32.442-00:32.503
+S1=00:32.609-00:32.759 S2=00:32.834-00:32.890
+S1=00:32.963-00:33.104 S2=00:33.154-00:33.210
+S1=00:33.301-00:33.424 S2=00:33.477-00:33.526
+S1=00:33.643-00:33.771 S2=00:33.804-00:33.842 (rumble noise during S2)
+S1=00:33.960-00:34.089 S2=00:34.139-00:34.194
+S1=00:34.300-00:34.424 S2=00:34.494-00:34.544
+S1=00:34.662-00:34.765 S2=00:34.834-00:34.885
+S1=00:35.000-00:35.098 S2=00:35.150-00:35.201
+S1=00:35.327-00:35.440 S2=00:35.475-00:35.512
+S1=00:35.669-00:35.753 S2=00:35.810-00:35.873 (contact noise/collision just before S2)
+S1=00:36.009-00:36.097 S2=00:36.163-00:36.216
+S1=00:36.347-00:36.445 S2=00:36.517-00:36.592
+S1=00:36.681-00:36.797 S2=00:36.841-00:36.917
+S1=00:36.993-00:37.123 S2=00:37.178-00:37.224
+S1=00:37.351-00:37.470 S2=00:37.529-00:37.579
+S1=00:37.686-00:37.824 S2=00:37.866-00:37.912
+S1=00:38.036-00:38.157 S2=00:38.200-00:38.252
+S1=00:38.370-00:38.493 S2=00:38.543-00:38.585
+S1=00:38.726-00:38.820 S2=00:38.880-00:38.933
+S1=00:39.061-00:39.170 S2=00:39.230-00:39.288
+S1=00:39.409-00:39.511 S2=00:39.567-00:39.613
+S1=00:39.739-00:39.853 S2=00:39.909-00:39.953
+S1=00:40.087-00:40.181 S2=00:40.250-00:40.302
+S1=00:40.433-00:40.534 S2=00:40.580-00:40.637
+S1=00:40.767-00:40.866 S2=00:40.911-00:40.974
+S1=00:41.117-00:41.214 S2=00:41.268-00:41.342
+S1=00:41.457-00:41.547 S2=00:41.599-00:41.645
+S1=00:41.796-00:41.913 S2=00:41.949-00:42.039
+S1=00:42.141-00:42.227 S2=00:42.316-00:42.349
+S1=00:42.432-00:42.582 S2=00:42.650-00:42.704
+S1=00:42.811-00:42.923 S2=00:42.980-00:43.039
+S1=00:43.152-00:43.271 S2=00:43.324-00:43.377
+S1=00:43.498-00:43.581 S2=00:43.653-00:43.687
+S1=00:43.839-00:43.926 S2=00:43.981-00:44.042
+S1=00:44.157-00:44.255 S2=00:44.336-00:44.397
+S1=00:44.502-00:44.631 S2=00:44.708-00:44.768 (low-snr-s2, breath-bracket, TODO: check if start of transition)
+S1=00:44.856-00:44.985 S2=00:45.057-00:45.108 (low-snr-s2, breath-bracket)
+S1=00:45.193-00:45.320 S2=00:45.368-00:45.439 (breath-bracket)
+S1=00:45.518-00:45.645 S2=00:45.710-00:45.786 (breath-bracket)
