@@ -17,6 +17,9 @@ Examples:
   # compare the engine against ref8's peak group (engine beats sliced by the systole law):
   python tools/ref_analyze.py docs/references/original/8.wav docs/references/timestamps/8.txt \
       --group peak --engine build/fresh/engine_177_c1.wav --hr 177 -c 1.0
+  # audit truncation/padding sensitivity relative to each hand-annotated S1 duration:
+  python tools/ref_analyze.py docs/references/original/14.wav docs/references/timestamps/14.txt \
+      --hf-skew-window-sweep
   # regenerate the committed measurements file from every annotation under docs/references/timestamps/:
   python tools/ref_analyze.py --all
   # markdown rows for REFERENCE_ANALYSIS, or a drift check vs the committed JSON:
@@ -96,6 +99,7 @@ _BEAT_METRICS = {
 }
 
 _BAND_LABELS = ["20_40", "40_80", "80_150", "150_300", "300_1200"]
+_HF_SKEW_AUDIT_FRACTIONS = (0.60, 0.70, 0.80, 0.90, 1.00, 1.10, 1.25)
 
 
 def measure_group(signal: np.ndarray, beats: list) -> dict:
@@ -160,6 +164,44 @@ def measure_group(signal: np.ndarray, beats: list) -> dict:
         n = len(drops)
         out["s1_peak_cv_se"] = float(np.sqrt((n - 1) / n * ((drops - drops.mean()) ** 2).sum()))
     return out
+
+
+def _hf_skew_window_sweep(signal: np.ndarray, hf_signal: np.ndarray, beats: list,
+                          fractions: tuple[float, ...] = _HF_SKEW_AUDIT_FRACTIONS) -> dict[float, float]:
+    """Return group-median HF skew across fractions of each beat's annotated S1 duration.
+
+    This is an audit helper, not a family of alternative rulers. Fraction 1.0 is the complete-S1
+    measurement. Shorter fractions demonstrate truncation sensitivity; longer fractions demonstrate
+    padding/context sensitivity and are capped before S2.
+    """
+    out = {}
+    for fraction in fractions:
+        values = []
+        for s1a, s1b, s2a, _ in beats:
+            i0 = int(round(s1a * SR))
+            annotated_frames = int(round((s1b - s1a) * SR))
+            before_s2_frames = int(round((s2a - s1a) * SR))
+            frames = min(int(round(fraction * annotated_frames)), before_s2_frames)
+            if frames <= 0:
+                continue
+            values.append(shrlib.hf_temporal_skew(
+                signal[i0:i0 + frames], hf_signal[i0:i0 + frames]))
+        out[fraction] = float(np.nanmedian(values)) if values else np.nan
+    return out
+
+
+def print_hf_skew_window_sweep(signal: np.ndarray, groups: dict[str, list]) -> None:
+    """Print the reproducible complete-S1 window audit for annotated groups."""
+    hf_signal = shrlib.hf_band(signal, SR)
+    fractions = _HF_SKEW_AUDIT_FRACTIONS
+    print("HF lead/lag window audit")
+    print("  fractions are W / annotated S1 duration; 1.00 is the valid complete-S1 ruler")
+    print("  values below/above 1.00 expose truncation/padding sensitivity only")
+    print("  fraction " + " ".join(f"{fraction:>7.2f}" for fraction in fractions))
+    for label, beats in groups.items():
+        measured = _hf_skew_window_sweep(signal, hf_signal, beats, fractions)
+        print(f"  {label} (n={len(beats)})")
+        print("           " + " ".join(f"{measured[fraction]:+7.3f}" for fraction in fractions))
 
 
 def engine_beats(signal: np.ndarray, hr: float, n: int = 6, skip: int = 2) -> list:
@@ -449,7 +491,7 @@ _TABLE_ROWS = [
     ("  QS2 pred ms", "qs2_pred_ms", "{:7.1f}"),
     ("S1 crest (pk/rms)", "s1_crest", "{:7.2f}"),
     ("-- SNAP [C] --", None, None),
-    ("S1 HF temporal skew [C]", "s1_hf_skew", "{:+7.4f}"),
+    ("S1 HF lead/lag [C, full-S1]", "s1_hf_skew", "{:+7.4f}"),
     ("S1 lobes (median)", "s1_lobes", "{:7.1f}"),
     ("  runner-up/peak height", "s1_lobe_runnerup", "{:7.2f}"),
     ("-- rise/body contrast [same-lobe-structure only] --", None, None),
@@ -582,6 +624,8 @@ def main() -> int:
     ap.add_argument("--json", type=Path, default=DEFAULT_JSON, help=f"measurements file (default {DEFAULT_JSON.name})")
     ap.add_argument("--md-table", action="store_true", help="print the REFERENCE_ANALYSIS markdown rows")
     ap.add_argument("--check", action="store_true", help="diff a fresh recompute against the committed JSON")
+    ap.add_argument("--hf-skew-window-sweep", action="store_true",
+                    help="audit HF lead/lag over fractions of each annotated S1 duration")
     a = ap.parse_args()
 
     if a.check:
@@ -612,6 +656,11 @@ def main() -> int:
     groups = shrlib.parse_annotations(a.annot)
     if a.group:
         groups = {a.group: groups[a.group]}
+    if a.hf_skew_window_sweep:
+        if a.engine:
+            ap.error("--hf-skew-window-sweep does not accept --engine")
+        print_hf_skew_window_sweep(signal, groups)
+        return 0
     columns = [(f"{ref_id(a.annot)} {label}", measure_group(signal, beats)) for label, beats in groups.items()]
 
     if a.engine:

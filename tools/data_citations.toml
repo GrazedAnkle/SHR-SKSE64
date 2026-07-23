@@ -105,7 +105,7 @@ reason = "Structural: 0.10 sits mid-gap between the source's 2.35% null and its 
 
 [[uncited]]
 constant = "AttackCompressMax"
-reason = "Set by ear against ref8's typical peak beats (k ~ 1.5-2.0) and corroborated by per-beat median hf_temporal_skew. A CEILING at peak vigor, not a per-beat value - it cannot be read off a reference leaf."
+reason = "Set by ear against ref8's typical peak beats (k ~ 1.5-2.0). HF temporal lead/lag may flag a late-HF wash in same-path stage sweeps, but it is not sharpness corroboration or a reference setpoint. A CEILING at peak vigor, not a per-beat value - it cannot be read off a reference leaf."
 
 [[uncited]]
 constant = "BreathDepthRestFraction"

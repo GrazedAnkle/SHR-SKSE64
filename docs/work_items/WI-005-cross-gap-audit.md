@@ -24,7 +24,6 @@ breath-muffle or pitch changes belong to [WI-008](WI-008-spectral-breath-muffle.
 ## Dependencies
 
 - Confound rules in [MEASUREMENT_METHODS.md](../MEASUREMENT_METHODS.md#recording-chain-confounds).
-- Duration-matched skew work in [WI-004](WI-004-hf-temporal-skew.md) for the same drive pairs.
 
 ## Next action and decision points
 

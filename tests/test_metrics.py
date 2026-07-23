@@ -36,6 +36,29 @@ def synthetic_lobe(f0_hz=80.0, rise_ms=40.0, level=1.0, null=False, lobes=1,
     return level * signal
 
 
+def synthetic_hf_geometry(duration_ms=140.0, window_fraction=1.0):
+    """Two-lobe energy geometry whose sign flips when the second lobe is truncated.
+
+    This tests the temporal-centroid ruler directly rather than pretending the fixture is a heart
+    recording. Broadband energy has an early light lobe and a late heavy lobe; HF energy lies between
+    them. Over complete support HF leads the broadband centroid. A short window removes the late
+    broadband lobe and makes the same HF energy appear to trail.
+    """
+    support = max(2, int(round(duration_ms * 1e-3 * SR)))
+    width = max(2, int(round(support * window_fraction)))
+    unit_time = np.arange(support) / support
+
+    def gaussian(center, sigma):
+        return np.exp(-0.5 * ((unit_time - center) / sigma) ** 2)
+
+    broadband_energy = gaussian(0.18, 0.045) + 3.0 * gaussian(0.80, 0.055)
+    hf_energy = gaussian(0.30, 0.040)
+    lobe, hf = np.sqrt(broadband_energy), np.sqrt(hf_energy)
+    if width < support:
+        return lobe[:width], hf[:width]
+    return np.pad(lobe, (0, width - support)), np.pad(hf, (0, width - support))
+
+
 class MetricAuditTests(unittest.TestCase):
     def test_metadata_covers_the_metric_battery(self):
         expected = {
@@ -48,6 +71,11 @@ class MetricAuditTests(unittest.TestCase):
         for metadata in shrlib.METRIC_METADATA.values():
             self.assertIn(metadata["anchor"], {"none", "peak", "threshold", "annotation"})
             self.assertIn(metadata["valid"], {"within-signal", "cross-signal"})
+        skew = shrlib.METRIC_METADATA["hf_temporal_skew"]
+        self.assertEqual(skew["role"], "hf-lead-lag-diagnostic")
+        self.assertEqual(skew["window"], "complete-s1-support")
+        self.assertEqual(skew["aggregation"], "group-median-for-references")
+        self.assertEqual(set(skew["invalid"]), {"truncated-s1", "material-nonlinear-distortion"})
 
     def test_rise_10_90_is_invariant_to_f0_and_level(self):
         reference = shrlib.rise_10_90_ms(synthetic_lobe(), SR)
@@ -155,6 +183,66 @@ class MetricAuditTests(unittest.TestCase):
         expected = -0.30
         self.assertAlmostEqual(shrlib.hf_temporal_skew(lobe, hf), expected, places=12)
         self.assertAlmostEqual(shrlib.hf_temporal_skew(7.0 * lobe, 0.2 * hf), expected, places=12)
+
+    def test_hf_temporal_skew_tracks_duration_only_with_matched_full_support(self):
+        """Time-scaled S1s agree when the window is the same fraction of actual S1 duration."""
+        durations_ms = (80.0, 100.0, 130.0, 160.0, 200.0)
+        for window_fraction in (1.0, 1.10, 1.25):
+            measured = [
+                shrlib.hf_temporal_skew(*synthetic_hf_geometry(duration, window_fraction))
+                for duration in durations_ms
+            ]
+            self.assertLess(max(measured) - min(measured), 2e-4)
+
+        full = shrlib.hf_temporal_skew(*synthetic_hf_geometry(140.0, 1.0))
+        padded = shrlib.hf_temporal_skew(*synthetic_hf_geometry(140.0, 1.25))
+        # Trailing zero padding cannot move either physical centroid, but the ruler divides their
+        # distance by the declared window. Even benign padding therefore requires a matched W/D_S1.
+        self.assertAlmostEqual(padded, full / 1.25, delta=2e-4)
+
+    def test_hf_temporal_skew_rejects_a_truncated_two_lobe_s1(self):
+        """A duration-matched window is not optional: truncation can reverse the interpretation."""
+        for duration_ms in (80.0, 100.0, 130.0, 160.0, 200.0):
+            full = shrlib.hf_temporal_skew(*synthetic_hf_geometry(duration_ms, 1.0))
+            truncated = shrlib.hf_temporal_skew(*synthetic_hf_geometry(duration_ms, 0.60))
+            self.assertLess(full, -0.30)
+            self.assertGreater(truncated, 0.15)
+
+    def test_hf_temporal_skew_is_invalidated_by_capture_saturation(self):
+        """Nonlinear capture manufactures HF where the waveform hits its ceiling.
+
+        The underlying two-lobe source and its HF lead are unchanged. Hard saturation alone moves the
+        measured result from a strong lead to a lag, across carrier start phases. This is an executable
+        invalid-domain result, not a proposed generic crest-factor gate.
+        """
+        duration = int(0.140 * SR)
+        padding = int(0.100 * SR)  # keep the whole-signal bandpass away from file edges
+        t = np.arange(duration) / SR
+        unit_time = np.arange(duration) / duration
+
+        def gaussian(center, sigma):
+            return np.exp(-0.5 * ((unit_time - center) / sigma) ** 2)
+
+        for phase in (0.0, 0.3, 0.7, 1.4, 2.2):
+            low = (
+                0.45 * gaussian(0.22, 0.08) + gaussian(0.68, 0.13)
+            ) * np.sin(2.0 * np.pi * 60.0 * t + phase)
+            early_hf = 0.12 * gaussian(0.24, 0.05) * np.sin(
+                2.0 * np.pi * 320.0 * t + 0.7 + phase)
+            source = low + early_hf
+            source /= np.max(np.abs(source))
+            clean = np.pad(source, (padding, padding))
+            saturated = np.clip(2.8 * clean, -0.42, 0.42)
+
+            clean_hf = shrlib.hf_band(clean, SR)[padding:padding + duration]
+            saturated_hf = shrlib.hf_band(saturated, SR)[padding:padding + duration]
+            clean_skew = shrlib.hf_temporal_skew(source, clean_hf)
+            saturated_skew = shrlib.hf_temporal_skew(
+                saturated[padding:padding + duration], saturated_hf)
+
+            self.assertLess(clean_skew, -0.30)
+            self.assertGreater(saturated_skew, 0.0)
+            self.assertGreater(saturated_skew - clean_skew, 0.35)
 
 
 if __name__ == "__main__":

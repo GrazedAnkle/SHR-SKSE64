@@ -233,7 +233,14 @@ METRIC_METADATA = {
     "energy_conc": {"anchor": "none", "valid": "within-signal"},
     "hf_band": {"anchor": "none", "valid": "within-signal"},
     "lobe_count": {"anchor": "peak", "valid": "within-signal"},
-    "hf_temporal_skew": {"anchor": "none", "valid": "cross-signal"},
+    "hf_temporal_skew": {
+        "anchor": "none",
+        "valid": "cross-signal",
+        "role": "hf-lead-lag-diagnostic",
+        "window": "complete-s1-support",
+        "aggregation": "group-median-for-references",
+        "invalid": ("truncated-s1", "material-nonlinear-distortion"),
+    },
     "rise_body_contrast": {"anchor": "peak", "valid": "within-signal"},
     "a_weight": {"anchor": "none", "valid": "cross-signal"},
 }
@@ -461,7 +468,8 @@ def lobe_count(s: np.ndarray, sr: int, frac: float = 0.45, min_gap_ms: float = 1
     """Return lobe count, tallest index, and runner-up/tallest ratio.
 
     Gate peak-anchored metrics with this: when the runner-up approaches the tallest, `argmax` can flip
-    lobes between beats. Prefer `hf_temporal_skew` across unlike structures.
+    lobes between beats. `hf_temporal_skew` can describe HF lead/lag across unlike structures only over
+    complete S1 support and in the absence of material nonlinear distortion.
     """
     e, p = _lobe_peak_indices(s, sr, frac, min_gap_ms)
     if len(p) == 0:
@@ -472,18 +480,34 @@ def lobe_count(s: np.ndarray, sr: int, frac: float = 0.45, min_gap_ms: float = 1
     return len(p), idx, float(h[1] / h[0]) if len(h) > 1 else 0.0
 
 
-def hf_temporal_skew(lobe: np.ndarray, hf_slice: np.ndarray) -> float:
-    """Return normalized HF-minus-broadband temporal centroid. Negative means snap.
-
-    Temporal centroid(HF energy) - temporal centroid(broadband energy), divided by window length.
-    Anchor-free and valid across lobe structures only when the window contains the full S1. Use as an
-    out-of-family wash detector, not a perceptual ordering or setpoint; WI-004 maps the duration domain.
-    """
-    t = np.arange(len(lobe)) / max(1, len(lobe))
-    wb, hb = lobe ** 2, hf_slice ** 2
-    if wb.sum() <= 0 or hb.sum() <= 0:
+def _energy_temporal_centroid(s: np.ndarray) -> float:
+    """Return the energy-weighted temporal centroid in samples, or NaN for zero energy."""
+    weights = s ** 2
+    total = weights.sum()
+    if total <= 0:
         return np.nan
-    return float((t * hb).sum() / hb.sum() - (t * wb).sum() / wb.sum())
+    return float((np.arange(len(s)) * weights).sum() / total)
+
+
+def hf_temporal_skew(lobe: np.ndarray, hf_slice: np.ndarray) -> float:
+    """Return normalized HF-minus-broadband temporal centroid.
+
+    Negative means HF energy leads the S1's total energy; positive means it trails. The calculation has
+    no inferred peak or threshold anchor, but the caller-supplied window is part of the ruler: it must
+    contain the complete S1, and comparisons must use the same window fraction of actual S1 duration.
+    Material clipping or saturation manufactures time-localized HF and invalidates physiological
+    interpretation. Use this as a lead/lag diagnostic and late-HF-wash detector, not as a perceptual
+    sharpness ordering, drive proxy, or tuning setpoint.
+    """
+    if len(lobe) != len(hf_slice):
+        raise ValueError("lobe and hf_slice must describe the same window")
+    if len(lobe) == 0:
+        return np.nan
+    broadband_centroid = _energy_temporal_centroid(lobe)
+    hf_centroid = _energy_temporal_centroid(hf_slice)
+    if np.isnan(broadband_centroid) or np.isnan(hf_centroid):
+        return np.nan
+    return float((hf_centroid - broadband_centroid) / len(lobe))
 
 
 def rise_body_contrast(lobe: np.ndarray, hf_signal: np.ndarray, sr: int, t0: float,
@@ -498,8 +522,9 @@ def rise_body_contrast(lobe: np.ndarray, hf_signal: np.ndarray, sr: int, t0: flo
 
     `t0` locates the lobe inside the already-filtered whole signal. Returns NaN if the rise is out of
     bounds or S2 would contaminate the body. Direction indicator only: report group median and spread,
-    confirm by ear, and compare only like lobe structures (`lobe_count`). Use `hf_temporal_skew` across
-    unlike structures.
+    confirm by ear, and compare only like lobe structures (`lobe_count`). For unlike structures,
+    `hf_temporal_skew` is limited to complete, materially undistorted S1 windows and describes HF
+    lead/lag rather than perceptual sharpness.
     """
     nan3 = (np.nan, np.nan, np.nan)
     pk = int(np.argmax(env_analytic(lobe, sr)))

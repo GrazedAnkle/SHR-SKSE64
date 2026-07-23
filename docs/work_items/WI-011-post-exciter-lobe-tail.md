@@ -27,6 +27,13 @@ lobes as M1 and T1: this is one monaural, single-site recording without ECG or s
 channels, and a roughly 50-60 Hz ringing/interference pattern can produce similar spacing. Multiplicative
 suppression at that time would also remove any overlapping M1/tissue ring, not selectively remove T1.
 
+A fixed-HR offline stage isolation shows why HF temporal skew cannot arbitrate this design: onset
+compression moves HF earlier relative to the whole S1, while the lobe tamer alone moves it later; their
+current combination moves the lead/lag result modestly toward zero with drive. Disabling the output
+limiter and contractility gain does not change that direction. Skew is therefore useful here only for
+showing which stage introduced a late-HF wash over the complete rendered S1, never as a physiological or
+perceptual target.
+
 ## Scope and non-goals
 
 Re-evaluate `LobeTameDecayMs`, `LobeTameEnvMs`, `TailResonatorHz`, `TailRingLevel`, `TailSpliceMs`, and
@@ -49,6 +56,8 @@ residual, 80-200 Hz balance, and tail energy surviving the high-HR timing cap. T
 whether the lobe correction and subtle tail enrichment independently outweigh their costs.
 Include three ear-test families: the current source/tamer, tamer-off, and a deliberately neutralized
 baseline with a separately added late component.
+Report full-S1 HF lead/lag stage deltas beside those families as a diagnostic, with no reference setpoint;
+the ear decision and the envelope/spectral/headroom gates remain authoritative.
 
 ## Observed separate work
 

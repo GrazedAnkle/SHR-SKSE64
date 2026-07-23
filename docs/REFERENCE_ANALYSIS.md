@@ -225,7 +225,10 @@ robust to a uniform onset bias, while the intercept is not. Both coefficients ar
 - Notes: the broadband S2 *centroid* stays ~53 Hz and the S2/S1 centroid ratio ~0.81-0.88 (the loud
   ~50 Hz fundamental dominates), which is why centroid hides the snap - the ear hears it because it is
   ~30 dB more sensitive at 300-500 Hz than 50 Hz. The clap center is higher here (pulmonary, ~260 Hz)
-  than at tricuspid (~120-200 Hz) = site-dependent.
+  than at tricuspid (~120-200 Hz) = site-dependent. Do not use ref14's S1 `hf_temporal_skew` as a
+  drive comparison: the post-hold waveform is more severely flat-topped than the already saturated
+  baseline, and the changing broadband distortion column manufactures HF inside the S1 dome. This is
+  the metric's nonlinear-capture invalid domain, not a physiological HF-timing result.
 
 ### ref15 - rest -> activity -> peak, regular respiration
 - Purpose: within-recording tonal change rest vs active, HR-rise speed, hysteresis
@@ -409,9 +412,16 @@ are not comparable.
   lobe between beats: ref15's `~150bpm` group spans rise/body contrast **0.75** (peak on lobe 1) to
   **80.39** (peak on lobe 3). Consequences: `s1_attack_ms` and `s1_contrast` are only comparable between
   signals of the same lobe structure (ref8 vs the engine), and `s1_lobes` / `s1_lobe_runnerup` are now
-  emitted alongside them so the instability is visible. For cross-reference work use the anchor-free
-  `s1_hf_skew`; its remaining duration-domain audit is
-  [WI-004](work_items/WI-004-hf-temporal-skew.md).
+  emitted alongside them so the instability is visible.
+
+  `s1_hf_skew` avoids the peak anchor but not the window or recording-chain constraints. It is valid
+  only over the complete actual S1, at a matched window/S1-duration fraction, and without material
+  nonlinear distortion. Synthetic two-lobe signals show that truncation can reverse its sign, while
+  synthetic saturation can turn a known HF lead into a lag. On the complete hand-annotated S1s, the
+  clean ref11 and ref15 pairs keep HF leading at both states but the lead shrinks with drive - matching
+  the visibly less-slanted high-drive spectrogram, not establishing an inverse sharpness law. Ref14 is
+  excluded because its saturation changes between states. Use skew as a same-path HF lead/lag diagnostic
+  and late-HF-wash detector, never a perceptual ordering, drive proxy, cross-recording rank, or setpoint.
 - **Respiratory sinus arrhythmia:** ref6 (strong), ref9 (+/-10%), ref11
 - **PVCs:** ref9 (7+, full morphology), ref7 (3)
 - **Breath muffle observations:** ref11 deep-breath (indicative centroid -34%; the concurrent F0 -14%

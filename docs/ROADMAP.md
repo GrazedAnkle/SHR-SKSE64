@@ -16,9 +16,8 @@ evidence links, and decision points.
 
 | ID | Outcome | Status | Blocker or dependency | Next action |
 |---|---|---|---|---|
-| [WI-004](work_items/WI-004-hf-temporal-skew.md) | Tested duration-matched validity domain for `hf_temporal_skew` | `[NEXT]` | None | Sweep synthetic duration/window pairs, then recheck drive pairs |
-| [WI-005](work_items/WI-005-cross-gap-audit.md) | Every distant-window reference claim classified and remeasured | `[NEXT]` | WI-004 for skew claims | Rebuild ref11 comparisons on one window rule |
-| [WI-006](work_items/WI-006-s1-envelope-sharpness.md) | Verdict on the residual S1 rise-time gap | `[NEXT]` | WI-004 before skew corroboration | Stage jitter-live, level-matched envelope variants |
+| [WI-005](work_items/WI-005-cross-gap-audit.md) | Every distant-window reference claim classified and remeasured | `[NEXT]` | None | Rebuild ref11 comparisons on one window rule |
+| [WI-006](work_items/WI-006-s1-envelope-sharpness.md) | Verdict on the residual S1 rise-time gap | `[NEXT]` | Coordinate with WI-011 | Stage jitter-live, level-matched envelope variants |
 | [WI-011](work_items/WI-011-post-exciter-lobe-tail.md) | Lobe/tail stages re-earned on the current chain | `[NEXT]` | Coordinate with WI-006 | Plot and audition lobe/tail/ramp variants including "off" |
 | [WI-008](work_items/WI-008-spectral-breath-muffle.md) | Reproducible muffle evidence separated from suspect pitch motion | `[NEXT]` | WI-005; better reference may be needed | Validate F0 rulers on synthetic muffled signals |
 | [WI-015](work_items/WI-015-calibration-provenance.md) | No unaudited tuned-constant provenance placeholders | `[NEXT]` | State/tuning items for some constants | Audit `[[uncited]]` entries feature by feature |

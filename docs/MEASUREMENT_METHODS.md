@@ -59,7 +59,7 @@ choice, but it must not establish a general claim about hearts.
 | S1/S2 onset-to-onset timing | Hand `s1a`/`s2a` landmarks; group median | Mark the earliest credible acoustic onset of each whole sound complex. For S2 this is normally A2-like; a later P2/clap never replaces `s2a`. Keep state transitions out of steady-state fits. `auto_annotate.py` gates each onset directly by median absolute error and separately gates systole drift. |
 | Rise time across signals | `shrlib.rise_10_90_ms` | Analytic envelope; running maximum makes it immune to pre-peak nulls. Start from an S1 annotation so earlier energy cannot start the clock. |
 | Local build used by the S1 compressor | `shrlib.onset_peak_idx` / `HeartbeatVoice::CompressOnsetBuild` | Last 10%-of-peak crossing on the analytic envelope. Valid for this source's final ascent, not for comparing unlike lobe structures. C++ and NumPy definitions must remain identical. |
-| HF timing across unlike S1 lobes | `shrlib.hf_temporal_skew` | Anchor-free temporal-centroid difference. The window must contain the full S1. Use it to detect an out-of-family HF wash, not as a perceptual "snap" ordering or setpoint; its duration-matched validity domain remains [WI-004](work_items/WI-004-hf-temporal-skew.md). |
+| HF timing across unlike S1 lobes | `shrlib.hf_temporal_skew` | HF-energy temporal centroid minus broadband-energy temporal centroid, normalized by window duration. Negative means HF leads; positive means it trails. The window must be the complete actual S1, and comparisons must match the window/S1-duration fraction. Material clipping or saturation invalidates it by manufacturing time-localized HF. Use the group median as a same-path lead/lag diagnostic and late-HF-wash detector, not as a perceptual sharpness ordering, drive proxy, cross-recording rank, or setpoint. |
 | Rise/body HF balance in like lobes | `shrlib.rise_body_contrast` plus `shrlib.lobe_count` | Fixed peak-anchored windows, whole-file zero-phase bandpass. Direction indicator only. Compare ref8 with the single-lobe engine or one signal across a sweep; do not compare multi-lobe references. |
 | S2 valve clap | A-weighted, peak-anchored HF share from `tools/measure_clap.py` | Fixed short window around the S2 envelope peak; tail-immune. Broadband S2 centroid is dominated by the fundamental and can hide the clap. |
 | General spectral balance | Magnitude centroid and fixed band fractions | Match window, anchor, weighting, level, and capture path. Prefer the 80-200 Hz band for this source when the low fundamental makes centroid move opposite perceived brightness. Absolute cross-recording values are descriptive only. |
@@ -84,8 +84,9 @@ and [Curtiss et al. on normal A2-P2 splitting](https://doi.org/10.1161/01.CIR.51
 `tools/plot_metric_anchors.py` renders the standard review view for a surprising temporal measurement.
 Its upper panel is a contextual spectrogram; its lower panel shows the raw waveform, the exact analytic
 and lobe-detector envelopes, running maximum, annotation boundaries, threshold crossings, envelope peak,
-detected lobe peaks, and peak-anchored rise/body windows. Both panels share one x-axis geometry so every
-temporal landmark aligns vertically.
+detected lobe peaks, and peak-anchored rise/body windows. Both panels also show the broadband and HF
+energy temporal centroids used by `hf_temporal_skew`. They share one x-axis geometry so every temporal
+landmark aligns vertically.
 
 The fixed review defaults are a 0-1000 Hz spectrogram, 32 ms Hann window, 4 ms hop, and -60..0 dB range
 relative to the view peak. The frequency ceiling and display parameters remain explicit command-line
@@ -107,6 +108,9 @@ the executable rulers saw.
 
 - State every time anchor and window width beside an absolute time or window-sensitive result.
 - Compare equal windows unless the estimator has a proven normalization for unequal ones.
+- For `hf_temporal_skew`, "equal" means an equal fraction of the complete actual S1 duration, not equal
+  milliseconds or a generic fraction of systole. Even trailing zero padding changes the normalized
+  magnitude; truncating a later S1 lobe can reverse the sign.
 - Filter a complete recording or run once, then slice measurement windows from it. Per-window FFT
   filtering creates circular convolution; per-window causal filtering adds edge transients at the very
   onset being measured.

@@ -2,8 +2,9 @@
 """Render a reproducible temporal-anchor review view for one annotated sound lobe.
 
 Audacity remains the playback and annotation editor. This view shows the exact envelopes and temporal
-anchors used by shrlib beside a fixed-parameter spectrogram. The spectrogram is contextual: its window
-smears time and must not be used to overrule waveform/envelope onset anchors.
+anchors used by shrlib beside a fixed-parameter spectrogram. It also shows the broadband and HF energy
+temporal centroids used by `hf_temporal_skew`. The spectrogram is contextual: its window smears time and
+must not be used to overrule waveform/envelope onset anchors.
 
 Example (the committed source S1 annotation):
   python tools/plot_metric_anchors.py \
@@ -100,7 +101,11 @@ def plot_anchor_view(wav: str | Path, start: float, end: float, out: str | Path 
     display_end = min(len(signal) / sr, end + context_ms * 1e-3)
     i0, i1 = int(round(start * sr)), int(round(end * sr))
     lobe = signal[i0:i1]
+    hf_lobe = shrlib.hf_band(signal, sr)[i0:i1]
     anchors = metric_anchors(lobe, sr)
+    broadband_centroid = shrlib._energy_temporal_centroid(lobe)
+    hf_centroid = shrlib._energy_temporal_centroid(hf_lobe)
+    hf_skew = shrlib.hf_temporal_skew(lobe, hf_lobe)
 
     freq, stft_time, spec_db, actual_stft_ms, actual_hop_ms = _spectrogram(
         signal, sr, display_start, display_end, stft_ms, hop_ms, fmax_hz)
@@ -150,6 +155,17 @@ def plot_anchor_view(wav: str | Path, start: float, end: float, out: str | Path 
         ax_spec.axvline(x, color="white", lw=1.2, ls="--", alpha=0.9)
         ax_wave.axvline(x, color="black", lw=1.2, ls="--", alpha=0.8, label=label)
 
+    centroid_styles = (
+        (broadband_centroid, "broadband energy centroid", "tab:brown"),
+        (hf_centroid, "HF energy centroid", "tab:pink"),
+    )
+    for sample, label, color in centroid_styles:
+        if np.isnan(sample):
+            continue
+        x = at(int(round(sample)))
+        ax_spec.axvline(x, color=color, lw=1.2, ls="--", alpha=0.9)
+        ax_wave.axvline(x, color=color, lw=1.3, ls="--", alpha=0.9, label=label)
+
     anchor_styles = (
         (int(anchors["last_10"]), "last 10% crossing", "tab:orange", "-."),
         (int(anchors["rise_10"]), "running-max 10%", "tab:green", "-"),
@@ -185,7 +201,8 @@ def plot_anchor_view(wav: str | Path, start: float, end: float, out: str | Path 
     fig.suptitle(
         f"{heading}  [{start:.6f}, {end:.6f}] s\n"
         f"rise10–90 {rise_ms:.2f} ms   last10→peak {attack_ms:.2f} ms   "
-        f"lobes {n_lobes} (tallest #{tallest}, runner {runner:.2f})   |   "
+        f"lobes {n_lobes} (tallest #{tallest}, runner {runner:.2f})   "
+        f"HF lead/lag {hf_skew:+.4f}   |   "
         f"spectrogram: Hann {actual_stft_ms:.1f} ms, hop {actual_hop_ms:.1f} ms, "
         f"0–{fmax_hz:g} Hz, {db_floor:g}..0 dB",
         fontsize=11)

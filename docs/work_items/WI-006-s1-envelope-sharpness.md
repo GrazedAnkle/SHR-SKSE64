@@ -17,14 +17,14 @@ fast, so raising the onset-compression ceiling to chase them is not justified.
 ## Scope and non-goals
 
 This item owns the remaining S1 sharpness decision. It does not resurrect the exciter, target ref8's
-absolute HF as physiology, or use `attack_ms` across signals. Lobe/tail cleanup is
+absolute HF as physiology, use `attack_ms` across signals, or treat HF temporal lead/lag as sharpness
+corroboration. Lobe/tail cleanup is
 [WI-011](WI-011-post-exciter-lobe-tail.md); blunt S2 is [WI-007](WI-007-blunt-s2-attack.md).
 
 ## Dependencies
 
 - Current envelope model in [SYNTHESIS_MODEL.md](../SYNTHESIS_MODEL.md#second-order-couplings).
 - Preferred rise ruler in [MEASUREMENT_METHODS.md](../MEASUREMENT_METHODS.md#preferred-rulers).
-- [WI-004](WI-004-hf-temporal-skew.md) before using skew as corroboration.
 
 ## Next action and decision points
 
