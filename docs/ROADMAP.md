@@ -65,8 +65,7 @@ evidence links, and decision points.
 - [WI-016: site-change detection](work_items/WI-016-site-change-detection.md) remains deferred until one
   S2-louder base/pulmonary straddle supplies ground truth.
 - Re-annotating lost prose-only reference windows, catalog cleanup, extreme-value testing, derived-value
-  citation support, prose-consistency invariants, and a golden C++/NumPy render parity test are maintenance
-  candidates.
+  citation support, and prose-consistency invariants are maintenance candidates.
 - [WI-022: audio resource ownership](work_items/WI-022-audio-resource-ownership.md) makes source-voice and
   submitted-buffer lifetime explicit, including failed submission and shutdown.
 - [WI-023: co-save record validation](work_items/WI-023-cosave-record-validation.md) defines malformed and
@@ -76,8 +75,16 @@ evidence links, and decision points.
 - [WI-025: typed float renderer](work_items/WI-025-typed-float-renderer.md) owns the float intermediate,
   typed sample view, pure renderer, and golden C++/NumPy parity gate; it is not a prerequisite for the
   current sound milestone.
+- [WI-027: unified offline execution](work_items/WI-027-unified-offline-execution.md) makes that core the
+  only implementation of simulation, rhythm, acoustic mapping, and rendering, with Python retained as the
+  scenario, analysis, UI, and reporting layer.
 - [WI-026: runtime thread contract](work_items/WI-026-runtime-thread-contract.md) determines whether event
   callbacks can forward directly or require a single-writer mailbox.
+
+The single-implementation maintenance path is WI-024 -> WI-025 -> WI-027. Its end state makes deterministic
+offline scenarios the primary system/acceptance gate for core behavior. In-game checks remain useful for
+SKSE input mapping, XAudio ownership and scheduling, thread delivery, and game-mix integration rather than
+as the routine way to prove physiology, rhythm, or DSP changes.
 
 ## Untriaged ideas
 

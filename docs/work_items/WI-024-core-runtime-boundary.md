@@ -37,7 +37,8 @@ naming rewrite or introduce abstract interfaces where a concrete value/function 
 
 The float DSP representation is [WI-025](WI-025-typed-float-renderer.md), audio resource lifetime is
 [WI-022](WI-022-audio-resource-ownership.md), and runtime thread delivery is
-[WI-026](WI-026-runtime-thread-contract.md).
+[WI-026](WI-026-runtime-thread-contract.md). The compiled offline consumer and retirement of the Python
+behavioral mirrors belong to [WI-027](WI-027-unified-offline-execution.md).
 
 ## Dependencies
 

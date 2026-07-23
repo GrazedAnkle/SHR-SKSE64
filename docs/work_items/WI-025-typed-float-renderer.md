@@ -24,7 +24,9 @@ the refactor should make those stage boundaries executable without changing thei
 
 Introduce a small interleaved float `AudioBuffer`/view, separate source loading and conditioning from pure
 per-beat rendering, and leave XAudio in a sink adapter. Do not retune filters, envelopes, amplitudes, sample
-landmarks, or limiter behavior. Do not add a general-purpose DSP framework.
+landmarks, or limiter behavior. Do not add a general-purpose DSP framework. The compiled Python access
+path, offline scenario harness, and removal of the Python DSP implementation belong to
+[WI-027](WI-027-unified-offline-execution.md).
 
 ## Dependencies
 
@@ -38,4 +40,5 @@ landmarks, or limiter behavior. Do not add a general-purpose DSP framework.
 Define the smallest buffer/view contract and add PCM16-to-float and float-to-PCM16 identity fixtures.
 Port one source-conditioning stage at a time, comparing each intermediate with
 `tools/engine_offline.py`, then extract `BeatRenderer`. The maintainer performs the final level-matched ear
-gate even when numeric parity passes.
+gate even when numeric parity passes. Treat the C++/NumPy comparison as a migration gate: WI-027 removes
+the second implementation after its callers move to the core renderer.
