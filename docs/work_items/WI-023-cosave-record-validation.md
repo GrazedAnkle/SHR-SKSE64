@@ -13,19 +13,21 @@ record set and the current set.
 
 `OnLoad` retrieves `recordVersion` and `recordSize` but dispatches only on record type, and each
 `ReadRecordData` result is ignored. Missing records already have deliberate backward-compatible defaults;
-malformed or future-version records do not yet have an equally explicit policy. The long scalar
-`HeartRateSimulation::Restore` call also makes completeness and migration rules difficult to inspect.
+malformed or future-version records do not yet have an equally explicit policy. `OnLoad` now collects
+legacy records as optional adapter values and translates them into the complete `SimulationState` owned
+by the core boundary, making the existing missing-field defaults and migration rules inspectable without
+embedding legacy sentinels in the core state.
 
 ## Scope and non-goals
 
-Define validation and fallback policy, introduce a cohesive persisted-state value if useful, and retain
-forward skipping of unknown record types. Do not change physiological defaults or remove compatibility
-with currently supported saves.
+Define validation and fallback policy, use the cohesive persisted-state boundary, and retain forward
+skipping of unknown record types. Do not change physiological defaults or remove compatibility with
+currently supported saves.
 
 ## Dependencies
 
-Coordinate a persisted `SimulationState` with [WI-024](WI-024-core-runtime-boundary.md); record validation
-itself need not wait for the broader architecture.
+Use the established [`SimulationState` persistence boundary](../ARCHITECTURE.md#runtime-contract); record
+validation itself does not require a broader architecture change.
 
 ## Next action and decision points
 

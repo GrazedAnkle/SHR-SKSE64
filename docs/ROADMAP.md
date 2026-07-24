@@ -68,21 +68,17 @@ evidence links, and decision points.
   submitted-buffer lifetime explicit, including failed submission and shutdown.
 - [WI-023: co-save record validation](work_items/WI-023-cosave-record-validation.md) defines malformed and
   future-version fallback before changing the persisted-state representation.
-- [WI-024: core/runtime boundary](work_items/WI-024-core-runtime-boundary.md) owns the Skyrim-independent
-  core target, explicit runtime ownership, cohesive state/event values, and inward-only adapter dependencies.
-- [WI-025: typed float renderer](work_items/WI-025-typed-float-renderer.md) owns the float intermediate,
-  typed sample view, pure renderer, and golden C++/NumPy parity gate; it is not a prerequisite for the
-  current sound milestone.
 - [WI-027: unified offline execution](work_items/WI-027-unified-offline-execution.md) makes that core the
   only implementation of simulation, rhythm, acoustic mapping, and rendering, with Python retained as the
   scenario, analysis, UI, and reporting layer.
 - [WI-026: runtime thread contract](work_items/WI-026-runtime-thread-contract.md) determines whether event
   callbacks can forward directly or require a single-writer mailbox.
 
-The single-implementation maintenance path is WI-024 -> WI-025 -> WI-027. Its end state makes deterministic
-offline scenarios the primary system/acceptance gate for core behavior. In-game checks remain useful for
-SKSE input mapping, XAudio ownership and scheduling, thread delivery, and game-mix integration rather than
-as the routine way to prove physiology, rhythm, or DSP changes.
+The single-implementation maintenance path continues through WI-027 on the established
+[core/runtime and float-renderer boundary](ARCHITECTURE.md). Its end state makes deterministic offline
+scenarios the primary system/acceptance gate for core behavior. In-game checks remain useful for SKSE
+input mapping, XAudio ownership and scheduling, thread delivery, and game-mix integration rather than as
+the routine way to prove physiology, rhythm, or DSP changes.
 
 ## Untriaged ideas
 

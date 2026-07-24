@@ -4,10 +4,16 @@ cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 ## Define project
 ########################################################################################################################
 project(SHR
-    VERSION     0.5.1.0
+    VERSION     0.5.2.0
     LANGUAGES   CXX
     DESCRIPTION "Physiological heart-rate simulation with synthesized heartbeat audio."
 )
+
+option(BUILD_PLUGIN "Build the Skyrim plugin." ON)
+option(BUILD_TESTS "Build unit tests." OFF)
+message("Options:")
+message("    Plugin: ${BUILD_PLUGIN}")
+message("    Tests: ${BUILD_TESTS}")
 
 string(TIMESTAMP PROJECT_CONFIGURE_YEAR "%Y" UTC)
 set(PROJECT_AUTHOR        "GrazedAnkle")
@@ -17,40 +23,69 @@ set(PROJECT_COPYRIGHT     "SHR Copyright (C) ${PROJECT_CONFIGURE_YEAR} ${PROJECT
 set(CMAKE_CXX_STANDARD          23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-configure_file(
-    src/version.rc.in
-    ${CMAKE_CURRENT_BINARY_DIR}/version.rc
-    @ONLY
-)
+if(BUILD_PLUGIN)
+    configure_file(
+        src/version.rc.in
+        ${CMAKE_CURRENT_BINARY_DIR}/version.rc
+        @ONLY
+    )
 
-configure_file(
-    src/fomod/info.xml.in
-    ${CMAKE_CURRENT_BINARY_DIR}/Distribution/fomod/info.xml
-    @ONLY
-)
+    configure_file(
+        src/fomod/info.xml.in
+        ${CMAKE_CURRENT_BINARY_DIR}/Distribution/fomod/info.xml
+        @ONLY
+    )
 
-configure_file(
-    src/fomod/ModuleConfig.xml.in
-    ${CMAKE_CURRENT_BINARY_DIR}/Distribution/fomod/ModuleConfig.xml
-    @ONLY
-)
+    configure_file(
+        src/fomod/ModuleConfig.xml.in
+        ${CMAKE_CURRENT_BINARY_DIR}/Distribution/fomod/ModuleConfig.xml
+        @ONLY
+    )
+endif()
 
 set(PUBLIC_HEADER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}")
 
 set(headers
+    src/AcousticMapper.hpp
+    src/AudioBuffer.hpp
+    src/BeatRenderer.hpp
+    src/BeatEvent.hpp
+    src/BeatKind.hpp
     src/Config.hpp
     src/Constants.hpp
     src/EventHandler.hpp
     src/HeartbeatVoice.hpp
+    src/HeartbeatSource.hpp
     src/HeartRate.hpp
     src/InputHandler.hpp
     src/Logging.hpp
     src/NotificationPolicy.hpp
+    src/Pcm16.hpp
     src/pch.hpp
+    src/PhysiologySnapshot.hpp
     src/Random.hpp
     src/RhythmEngine.hpp
+    src/RhythmInput.hpp
+    src/RhythmRandom.hpp
+    src/RenderSpec.hpp
+    src/Runtime.hpp
+    src/RuntimeSettings.hpp
     src/Simulation.hpp
+    src/SimulationSettings.hpp
+    src/SimulationState.hpp
     src/SkyrimHeartRate.hpp
+    src/StepInput.hpp
+    src/StepResult.hpp
+)
+
+set(core_sources
+    src/AcousticMapper.cpp
+    src/BeatRenderer.cpp
+    src/HeartbeatSource.cpp
+    src/Pcm16.cpp
+    src/RhythmEngine.cpp
+    src/Runtime.cpp
+    src/Simulation.cpp
 )
 
 set(sources
@@ -61,10 +96,8 @@ set(sources
     src/Logging.cpp
     src/LoggingConfiguration.cpp
     src/NotificationPolicy.cpp
-    src/Simulation.cpp
     src/SkyrimHeartRate.cpp
     src/EventHandler.cpp
-    src/RhythmEngine.cpp
 
     ${CMAKE_CURRENT_BINARY_DIR}/version.rc
 )
@@ -73,26 +106,30 @@ set(tests
     src/Config.cpp
     src/LoggingConfiguration.cpp
     src/NotificationPolicy.cpp
-    src/Simulation.cpp
+    tests/AcousticMapperTests.cpp
+    tests/AudioBufferTests.cpp
+    tests/BeatRendererTests.cpp
+    tests/BeatRenderFixtures.hpp
     tests/ConfigTests.cpp
+    tests/HeartbeatSourceTests.cpp
     tests/LoggingTests.cpp
     tests/NotificationPolicyTests.cpp
+    tests/Pcm16Tests.cpp
+    tests/TestWav.hpp
+    tests/RhythmEngineTests.cpp
+    tests/RuntimeTests.cpp
+    tests/SimulationCharacterizationTests.cpp
+    tests/SimulationStateTests.cpp
     tests/SimulationTests.cpp
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}
     FILES
         ${headers}
+        ${core_sources}
         ${sources}
         ${tests}
 )
-
-#########################################################################################################################
-### Build options
-#########################################################################################################################
-option(BUILD_TESTS "Build unit tests." OFF)
-message("Options:")
-message("    Tests: ${BUILD_TESTS}")
 
 ########################################################################################################################
 ## Add CMake features
@@ -103,17 +140,22 @@ include(GNUInstallDirs)
 ########################################################################################################################
 ## Find dependencies
 ########################################################################################################################
-set(SHR_BUILD_TESTS ${BUILD_TESTS})
-set(BUILD_TESTS OFF)  # Prevent CommonLibSSE from building its own test suite
-set(ENABLE_SKYRIM_VR OFF CACHE BOOL "" FORCE)  # TODO(2026-06-06): Add VR support?
-add_subdirectory("extern/commonlibsse-ng" "CommonLibSSE" EXCLUDE_FROM_ALL)
-include("extern/commonlibsse-ng/cmake/CommonLibSSE.cmake")
-set(BUILD_TESTS ${SHR_BUILD_TESTS})  # Restore after CommonLibSSE subdirectory
-find_package(spdlog CONFIG REQUIRED)
-find_package(toml11 CONFIG REQUIRED)
+if(BUILD_PLUGIN)
+    set(SHR_BUILD_TESTS ${BUILD_TESTS})
+    set(BUILD_TESTS OFF)  # Prevent CommonLibSSE from building its own test suite
+    set(ENABLE_SKYRIM_VR OFF CACHE BOOL "" FORCE)  # TODO(2026-06-06): Add VR support?
+    add_subdirectory("extern/commonlibsse-ng" "CommonLibSSE" EXCLUDE_FROM_ALL)
+    include("extern/commonlibsse-ng/cmake/CommonLibSSE.cmake")
+    set(BUILD_TESTS ${SHR_BUILD_TESTS})  # Restore after CommonLibSSE subdirectory
+endif()
 
-# pocketfft is scipy's FFT backend. is header-only and ships no CMake config package. It backs scipy's FFT, so the plugin's
-# analytic envelope (HeartbeatVoice::AnalyticEnv) and the offline mirror's compute the same transform.
+if(BUILD_PLUGIN OR BUILD_TESTS)
+    find_package(spdlog CONFIG REQUIRED)
+    find_package(toml11 CONFIG REQUIRED)
+endif()
+
+# pocketfft is scipy's FFT backend. It is header-only and ships no CMake config package. It backs
+# the core analytic envelope and scipy's offline mirror, so both compute the same transform.
 find_path(POCKETFFT_INCLUDE_DIRS "pocketfft_hdronly.h" REQUIRED)
 
 if(BUILD_TESTS)
@@ -149,8 +191,49 @@ else()
 endif()
 
 ########################################################################################################################
+## Configure core library
+########################################################################################################################
+add_library(shr_core STATIC
+    src/AcousticMapper.hpp
+    src/AudioBuffer.hpp
+    src/BeatRenderer.hpp
+    src/BeatEvent.hpp
+    src/BeatKind.hpp
+    src/Constants.hpp
+    src/HeartRate.hpp
+    src/HeartbeatSource.hpp
+    src/PhysiologySnapshot.hpp
+    src/Pcm16.hpp
+    src/Random.hpp
+    src/RhythmEngine.hpp
+    src/RhythmInput.hpp
+    src/RhythmRandom.hpp
+    src/RenderSpec.hpp
+    src/Runtime.hpp
+    src/RuntimeSettings.hpp
+    src/Simulation.hpp
+    src/SimulationSettings.hpp
+    src/SimulationState.hpp
+    src/StepInput.hpp
+    src/StepResult.hpp
+    ${core_sources}
+)
+
+add_library("${PROJECT_NAME}::core" ALIAS shr_core)
+
+target_include_directories(shr_core
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    PRIVATE
+        ${POCKETFFT_INCLUDE_DIRS}
+)
+
+target_compile_features(shr_core PUBLIC cxx_std_23)
+
+########################################################################################################################
 ## Configure target DLL
 ########################################################################################################################
+if(BUILD_PLUGIN)
 add_commonlibsse_plugin(${PROJECT_NAME} SOURCES ${headers} ${sources})
 
 add_library("${PROJECT_NAME}::${PROJECT_NAME}" ALIAS "${PROJECT_NAME}")
@@ -160,7 +243,6 @@ target_include_directories(${PROJECT_NAME}
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
         $<INSTALL_INTERFACE:src>
-        ${POCKETFFT_INCLUDE_DIRS}
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -170,6 +252,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
+        shr_core
         toml11::toml11
 )
 
@@ -280,6 +363,7 @@ foreach(DEPLOY_TARGET $ENV{${PROJECT_NAME}Targets})
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_PDB_FILE:${PROJECT_NAME}> "${DEPLOY_TARGET}/SKSE/Plugins/"
     )
 endforeach()
+endif()
 
 ########################################################################################################################
 ## Configure unit tests
@@ -295,14 +379,54 @@ if(BUILD_TESTS)
     target_include_directories(${PROJECT_NAME}Tests
         PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests
+    )
+
+    target_compile_definitions(${PROJECT_NAME}Tests
+        PRIVATE
+            SHR_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
     )
 
     target_link_libraries(${PROJECT_NAME}Tests
         PRIVATE
             Catch2::Catch2WithMain
+            shr_core
             spdlog::spdlog
             toml11::toml11
     )
 
     catch_discover_tests(${PROJECT_NAME}Tests)
+
+    add_executable(${PROJECT_NAME}SourceConditioningFixture
+        tests/SourceConditioningFixture.cpp
+        tests/TestWav.hpp
+    )
+
+    target_include_directories(${PROJECT_NAME}SourceConditioningFixture
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests
+    )
+
+    target_link_libraries(${PROJECT_NAME}SourceConditioningFixture
+        PRIVATE
+            shr_core
+    )
+
+    add_executable(${PROJECT_NAME}BeatRendererFixture
+        tests/BeatRendererFixture.cpp
+        tests/BeatRenderFixtures.hpp
+        tests/TestWav.hpp
+    )
+
+    target_include_directories(${PROJECT_NAME}BeatRendererFixture
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests
+    )
+
+    target_link_libraries(${PROJECT_NAME}BeatRendererFixture
+        PRIVATE
+            shr_core
+    )
 endif()

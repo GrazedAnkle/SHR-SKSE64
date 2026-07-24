@@ -15,7 +15,6 @@
  */
 #include "Simulation.hpp"
 
-#include "Config.hpp"
 #include "Constants.hpp"
 
 #include <algorithm>
@@ -58,20 +57,7 @@ namespace
 
 void SHR::HeartRateSimulation::Init()
 {
-    const float restingHR = Config::Get().HeartRate.Resting;
-    m_Fitness = C::FitnessBaseMets + (C::BaseRestingHR - restingHR) / C::RestingHRSlope;
-    m_Exertion = C::IdleMets;
-    m_AcuteFatigue = 0.0F;
-    m_LongTermFatigue = 0.0F;
-    m_TargetHeartRate = ComputeTargetHeartRate(C::IdleMets);
-    m_FastHR = C::HRFastFraction * m_TargetHeartRate;
-    m_SlowHR = (1.0F - C::HRFastFraction) * m_TargetHeartRate;
-    m_Adrenaline = 0.0F;
-    m_Contractility = 0.0F;
-    m_RespRate = C::RestingRespRate;
-    m_RespDepth = 0.0F;
-    m_RespPhase = 0.0F;
-    m_MaybeDeathSeconds = std::nullopt;
+    Restore(CreateInitialState());
 }
 
 void SHR::HeartRateSimulation::Step(PlayerState state, float realDelta, float gameHoursDelta)
@@ -114,125 +100,128 @@ void SHR::HeartRateSimulation::NotifyHit()
     m_Adrenaline += C::AdrenalineTakeHit;
 }
 
-void SHR::HeartRateSimulation::Restore(
-    float heartRate,
-    float exertion,
-    float adrenaline,
-    float fitness,
-    float acuteFatigue,
-    float longTermFatigue,
-    float fastHR,
-    float respRate,
-    float contractility,
-    float respDepth
-)
+SHR::PhysiologySnapshot SHR::HeartRateSimulation::GetSnapshot() const
 {
-    m_FastHR = (fastHR > 0.0F) ? fastHR : C::HRFastFraction * heartRate;
-    m_SlowHR = heartRate - m_FastHR;
-    m_Exertion = exertion;
-    m_Adrenaline = adrenaline;
-    m_AcuteFatigue = acuteFatigue;
-    m_LongTermFatigue = longTermFatigue;
-    if (fitness > 0.0F)
-    {
-        m_Fitness = fitness;
-    }
-    else
-    {
-        const float restingHR = Config::Get().HeartRate.Resting;
-        m_Fitness = C::FitnessBaseMets + (C::BaseRestingHR - restingHR) / C::RestingHRSlope;
-    }
-    m_RespRate = (respRate > 0.0F) ? respRate : C::RestingRespRate;
-    m_RespDepth = (respDepth >= 0.0F) ? std::clamp(respDepth, 0.0F, 1.0F) : 0.0F;
-    m_RespPhase = 0.0F;
-    m_TargetHeartRate = ComputeTargetHeartRate(exertion);
-    // Negative is the legacy-save sentinel - seed contractility at equilibrium.
-    m_Contractility = (contractility >= 0.0F) ? contractility : ContractilityTarget();
+    return {
+        .HeartRate           = CurrentHeartRate(),
+        .FastHeartRate       = m_FastHR,
+        .SlowHeartRate       = m_SlowHR,
+        .Exertion            = m_Exertion,
+        .Adrenaline          = m_Adrenaline,
+        .Contractility       = m_Contractility,
+        .ContractilityExcess = ContractilityExcess(),
+        .Fitness             = m_Fitness,
+        .EffectiveFitness    = EffectiveFitness(),
+        .AcuteFatigue        = m_AcuteFatigue,
+        .LongTermFatigue     = m_LongTermFatigue,
+        .RespirationRate     = m_RespRate,
+        .RespirationDepth    = m_RespDepth,
+        .RespirationPhase    = m_RespPhase,
+        .DeathSeconds        = m_MaybeDeathSeconds,
+    };
 }
 
-float SHR::HeartRateSimulation::GetHeartRate() const
+SHR::SimulationState SHR::HeartRateSimulation::GetState() const
 {
-    return m_FastHR + m_SlowHR;
+    return {
+        .FastHeartRate    = m_FastHR,
+        .SlowHeartRate    = m_SlowHR,
+        .Exertion         = m_Exertion,
+        .Adrenaline       = m_Adrenaline,
+        .Contractility    = m_Contractility,
+        .Fitness          = m_Fitness,
+        .AcuteFatigue     = m_AcuteFatigue,
+        .LongTermFatigue  = m_LongTermFatigue,
+        .RespirationRate  = m_RespRate,
+        .RespirationDepth = m_RespDepth,
+        .RespirationPhase = m_RespPhase,
+        .DeathSeconds     = m_MaybeDeathSeconds,
+    };
 }
 
-float SHR::HeartRateSimulation::GetFastHR() const
+SHR::SimulationState SHR::HeartRateSimulation::CreateInitialState() const
 {
-    return m_FastHR;
+    const float fitness = C::FitnessBaseMets +
+        (C::BaseRestingHR - m_Settings.RestingHeartRate) / C::RestingHRSlope;
+    return {
+        .FastHeartRate    = C::HRFastFraction * m_Settings.RestingHeartRate,
+        .SlowHeartRate    = (1.0F - C::HRFastFraction) * m_Settings.RestingHeartRate,
+        .Exertion         = C::IdleMets,
+        .Adrenaline       = 0.0F,
+        .Contractility    = 0.0F,
+        .Fitness          = fitness,
+        .AcuteFatigue     = 0.0F,
+        .LongTermFatigue  = 0.0F,
+        .RespirationRate  = C::RestingRespRate,
+        .RespirationDepth = 0.0F,
+        .RespirationPhase = 0.0F,
+        .DeathSeconds     = std::nullopt,
+    };
 }
 
-float SHR::HeartRateSimulation::GetExertion() const
+float SHR::HeartRateSimulation::ComputeEquilibriumContractility(const SimulationState &state) const
 {
-    return m_Exertion;
+    const float effectiveFitness = std::max(
+        state.Fitness - state.AcuteFatigue - state.LongTermFatigue,
+        C::FitnessAbsoluteMin
+    );
+    const float normalizedExertion = std::clamp(
+        (state.Exertion - C::IdleMets) / (effectiveFitness - C::IdleMets),
+        0.0F,
+        1.0F
+    );
+    const float adrenergic = std::clamp(
+        state.Adrenaline / C::AdrenalineContractilityScale,
+        0.0F,
+        1.0F
+    );
+    return std::min(normalizedExertion + adrenergic, 1.0F);
 }
 
-float SHR::HeartRateSimulation::GetAdrenaline() const
+void SHR::HeartRateSimulation::Restore(const SimulationState &state)
 {
-    return m_Adrenaline;
-}
-
-float SHR::HeartRateSimulation::GetContractility() const
-{
-    return m_Contractility;
-}
-
-float SHR::HeartRateSimulation::GetContractilityExcess() const
-{
-    // Compare against the steady-state contractility implied by current HR.
-    const float effResting = EffectiveRestingHR();
-    const float maxHR      = Config::Get().HeartRate.Max;
-    const float hrImplied  = std::clamp((GetHeartRate() - effResting) / (maxHR - effResting), 0.0F, 1.0F);
-    return std::max(0.0F, m_Contractility - hrImplied);
-}
-
-float SHR::HeartRateSimulation::GetFitness() const
-{
-    return m_Fitness;
-}
-
-float SHR::HeartRateSimulation::GetEffectiveFitness() const
-{
-    return std::max(m_Fitness - m_AcuteFatigue - m_LongTermFatigue, C::FitnessAbsoluteMin);
-}
-
-float SHR::HeartRateSimulation::GetAcuteFatigue() const
-{
-    return m_AcuteFatigue;
-}
-
-float SHR::HeartRateSimulation::GetLongTermFatigue() const
-{
-    return m_LongTermFatigue;
-}
-
-float SHR::HeartRateSimulation::GetRespRate() const
-{
-    return m_RespRate;
-}
-
-float SHR::HeartRateSimulation::GetRespDepth() const
-{
-    return m_RespDepth;
-}
-
-float SHR::HeartRateSimulation::GetRespPhase() const
-{
-    return m_RespPhase;
-}
-
-std::optional<float> SHR::HeartRateSimulation::GetDeathSeconds() const
-{
-    return m_MaybeDeathSeconds;
+    m_FastHR = state.FastHeartRate;
+    m_SlowHR = state.SlowHeartRate;
+    m_Exertion = state.Exertion;
+    m_Adrenaline = state.Adrenaline;
+    m_Contractility = state.Contractility;
+    m_Fitness = state.Fitness;
+    m_AcuteFatigue = state.AcuteFatigue;
+    m_LongTermFatigue = state.LongTermFatigue;
+    m_RespRate = state.RespirationRate;
+    m_RespDepth = state.RespirationDepth;
+    m_RespPhase = state.RespirationPhase;
+    m_MaybeDeathSeconds = state.DeathSeconds;
+    m_TargetHeartRate = ComputeTargetHeartRate(m_Exertion);
 }
 
 float SHR::HeartRateSimulation::EffectiveRestingHR() const
 {
-    return C::BaseRestingHR - (GetEffectiveFitness() - C::FitnessBaseMets) * C::RestingHRSlope;
+    return C::BaseRestingHR - (EffectiveFitness() - C::FitnessBaseMets) * C::RestingHRSlope;
+}
+
+float SHR::HeartRateSimulation::CurrentHeartRate() const
+{
+    return m_FastHR + m_SlowHR;
+}
+
+float SHR::HeartRateSimulation::EffectiveFitness() const
+{
+    return std::max(m_Fitness - m_AcuteFatigue - m_LongTermFatigue, C::FitnessAbsoluteMin);
+}
+
+float SHR::HeartRateSimulation::ContractilityExcess() const
+{
+    const float effResting = EffectiveRestingHR();
+    const float maxHR      = m_Settings.MaximumHeartRate;
+    const float hrImplied  = std::clamp((CurrentHeartRate() - effResting) / (maxHR - effResting), 0.0F, 1.0F);
+    return std::max(0.0F, m_Contractility - hrImplied);
 }
 
 float SHR::HeartRateSimulation::NormalizedExertion(float exertion) const
 {
     // Effective-capacity fraction, floored at zero but intentionally unbounded above.
-    return std::max((exertion - C::IdleMets) / (GetEffectiveFitness() - C::IdleMets), 0.0F);
+    return std::max((exertion - C::IdleMets) / (EffectiveFitness() - C::IdleMets), 0.0F);
 }
 
 void SHR::HeartRateSimulation::UpdateAcuteFatigue(float exertion, float delta)
@@ -275,7 +264,7 @@ float SHR::HeartRateSimulation::ComputeTargetHeartRate(float exertion) const
 {
     const float effectiveResting = EffectiveRestingHR();
     const float fraction = NormalizedExertion(exertion);
-    const float target = effectiveResting + fraction * (Config::Get().HeartRate.Max - effectiveResting);
+    const float target = effectiveResting + fraction * (m_Settings.MaximumHeartRate - effectiveResting);
     return std::min(target, C::HRFormulaCeiling);
 }
 
@@ -295,8 +284,6 @@ void SHR::HeartRateSimulation::UpdateExertion(PlayerState state, float delta)
     }
 
     m_MaybeDeathSeconds = std::nullopt;
-
-    const auto &config = Config::Get();
 
     m_Adrenaline *= AdrenalineDecayFactor(delta, C::AdrenalineHalfLife);
 
@@ -341,7 +328,7 @@ void SHR::HeartRateSimulation::UpdateExertion(PlayerState state, float delta)
 
     // Known v1 routing: adrenaline enters exertion/HR here and contractility again in
     // ContractilityTarget. Contractility v2 addresses the separation. See CONTRACTILITY_SPEC.md.
-    float targetMets = std::min(movementMets + m_Adrenaline, GetEffectiveFitness());
+    float targetMets = std::min(movementMets + m_Adrenaline, EffectiveFitness());
 
     const float difference = targetMets - m_Exertion;
     const float rate = difference > 0.0F ? C::ExertionAccumulationRate : C::ExertionRecoveryRate;
@@ -350,13 +337,13 @@ void SHR::HeartRateSimulation::UpdateExertion(PlayerState state, float delta)
     // A jump may exceed effective fitness, capped at the exertion that produces AbsoluteMaxHR.
     if (m_DidJump.exchange(false))
     {
-        const float effective = GetEffectiveFitness();
+        const float effective = EffectiveFitness();
         const float effectiveResting = EffectiveRestingHR();
         const float exertionCap =
             C::IdleMets +
             (effective - C::IdleMets) *
                 (C::HRFormulaCeiling - effectiveResting) /
-                (config.HeartRate.Max - effectiveResting);
+                (m_Settings.MaximumHeartRate - effectiveResting);
         m_Exertion = std::min(m_Exertion + C::JumpMets, exertionCap);
     }
 
@@ -386,7 +373,7 @@ void SHR::HeartRateSimulation::UpdateExertion(PlayerState state, float delta)
         m_Exertion += std::copysign(std::min(std::abs(difference), rate * duration), difference);
 
         const float walkFraction = std::max(
-            (C::WalkingMets - C::IdleMets) / (GetEffectiveFitness() - C::IdleMets),
+            (C::WalkingMets - C::IdleMets) / (EffectiveFitness() - C::IdleMets),
             0.0F
         );
         const float walkTargetRR  = ComputeTargetRespRate(walkFraction);
@@ -474,7 +461,7 @@ void SHR::HeartRateSimulation::UpdateCurrentHeartRate(float delta)
     };
 
     const float normFitness = std::clamp(
-        (GetEffectiveFitness() - C::FitnessBaseMets) / (C::FitnessMaxMets - C::FitnessBaseMets),
+        (EffectiveFitness() - C::FitnessBaseMets) / (C::FitnessMaxMets - C::FitnessBaseMets),
         0.0F,
         1.0F
     );

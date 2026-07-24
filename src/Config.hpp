@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include "SimulationSettings.hpp"
+
 #include <spdlog/spdlog.h>
 
 #include <cstdint>
@@ -39,8 +41,8 @@ namespace SHR
         static constexpr const char MaxKey[]     = "max";
 
         // Initial resting heart rate; also initializes fitness.
-        float Resting =  55.0F;
-        float Max     = 200.0F;
+        float Resting = SimulationSettings{ }.RestingHeartRate;
+        float Max     = SimulationSettings{ }.MaximumHeartRate;
     };
 
     struct Arrhythmia

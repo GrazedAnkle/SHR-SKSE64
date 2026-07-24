@@ -21,20 +21,11 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#include <utility>
 
 namespace
 {
     namespace C = SHR::Constants;
-
-    // Clamp coupling to a linear [0, 1] ramp between the failed- and full-perfusion thresholds.
-    float PVCS2Fraction(float coupling)
-    {
-        return std::clamp(
-            (coupling - C::PVCS2FailCoupling) / (C::PVCS2FullCoupling - C::PVCS2FailCoupling),
-            0.0F,
-            1.0F
-        );
-    }
 
     float BaseIBI(float heartRate, float respPhase, float exertionFraction)
     {
@@ -44,6 +35,23 @@ namespace
         const float jitter = rsaAmplitude * std::sin(2.0F * std::numbers::pi_v<float> * respPhase);
         return std::max(0.1F, nominalIBI * (1.0F - jitter));
     }
+}
+
+SHR::RhythmEngine::RhythmEngine()
+    : RhythmEngine({
+        .Uniform = [](float min, float max) {
+            return Random(min, max);
+        },
+        .StandardNormal = []() {
+            return RandomNormal();
+        },
+    })
+{
+}
+
+SHR::RhythmEngine::RhythmEngine(RhythmRandom random)
+    : m_Random(std::move(random))
+{
 }
 
 void SHR::RhythmEngine::Init()
@@ -60,34 +68,16 @@ void SHR::RhythmEngine::Init()
     m_InPause          = false;
 }
 
-SHR::RhythmEngine::Beat SHR::RhythmEngine::Advance(
-    float delta,
-    float heartRate,
-    float respPhase,
-    float exertionFraction,
-    float breathDepth,
-    float contractility,
-    float contractilityExcess,
-    float pvcChancePerSecond,
-    float riskFactor,
-    float runExtensionChance
-)
+std::optional<SHR::BeatEvent> SHR::RhythmEngine::Advance(const RhythmInput &input)
 {
-    auto noFire = [&]() -> Beat {
-        return {
-            .ShouldFire       = false,
-            .IBI              = 0.0F,
-            .SystoleDuration  = 0.0F,
-            .S1Amplitude      = 0.0F,
-            .S2Amplitude      = 0.0F,
-            .RespPhase        = respPhase,
-            .ExertionFraction = exertionFraction,
-            .BreathDepth      = breathDepth,
-            .Contractility    = contractility,
-            .FrankStarling    = 1.0F,
-            .IsPVC            = false,
-        };
-    };
+    const float delta               = input.DeltaSeconds;
+    const float heartRate           = input.HeartRate;
+    const float respPhase           = input.RespirationPhase;
+    const float exertionFraction    = input.ExertionFraction;
+    const float contractility       = input.Contractility;
+    const float pvcChancePerSecond  = input.PVCChancePerSecond;
+    const float riskFactor          = input.RiskFactor;
+    const float runExtensionChance  = input.RunExtensionChance;
 
     m_ElapsedSinceBeat += delta;
 
@@ -95,7 +85,7 @@ SHR::RhythmEngine::Beat SHR::RhythmEngine::Advance(
     {
         if (m_ElapsedSinceBeat < m_PauseDuration)
         {
-            return noFire();
+            return std::nullopt;
         }
 
         m_InPause = false;
@@ -109,7 +99,7 @@ SHR::RhythmEngine::Beat SHR::RhythmEngine::Advance(
     {
         if (m_ElapsedSinceBeat < m_PendingPVCIBI)
         {
-            return noFire();
+            return std::nullopt;
         }
 
         m_ElapsedSinceBeat -= m_PendingPVCIBI;
@@ -118,32 +108,15 @@ SHR::RhythmEngine::Beat SHR::RhythmEngine::Advance(
         // Pause only after the last run PVC; its duration was fixed when PVC1 started the run.
         if (m_RunRemaining == 0) m_InPause = true;
 
-        const float nominalIBI2    = 60.0F / heartRate;
-        const float frankStarling2 = std::clamp(
-            m_PendingPVCIBI / nominalIBI2,
-            C::FrankStarlingMin,
-            C::FrankStarlingMax
-        );
-        const float nominalSystole2 = std::clamp(
-            C::SystoleIntercept - heartRate * C::SystoleSlope,
-            C::SystoleMin,
-            C::SystoleMax
-        );
-        const float systoleDuration = std::max(nominalSystole2 * C::PVCSystoleScale, C::PVCSystoleMin);
-        const float couplingInRun = m_PendingPVCIBI / nominalIBI2;
+        const float nominalIBI    = 60.0F / heartRate;
+        const float couplingInRun = m_PendingPVCIBI / nominalIBI;
 
-        return {
-            .ShouldFire       = true,
+        return BeatEvent{
             .IBI              = m_PendingPVCIBI,
-            .SystoleDuration  = systoleDuration,
-            .S1Amplitude      = C::PVCS1Amplitude * frankStarling2,
-            .S2Amplitude      = C::PVCS2Amplitude * PVCS2Fraction(couplingInRun),
-            .RespPhase        = respPhase,
-            .ExertionFraction = exertionFraction,
-            .BreathDepth      = breathDepth,
-            .Contractility    = contractility,
-            .FrankStarling    = frankStarling2,
-            .IsPVC            = true,
+            .FillingInterval  = m_PendingPVCIBI,
+            .CouplingFraction = couplingInRun,
+            .Vigor            = contractility,
+            .Kind             = BeatKind::PVC,
         };
     }
 
@@ -156,13 +129,16 @@ SHR::RhythmEngine::Beat SHR::RhythmEngine::Advance(
     // Sample until a PVC is pending; after a PVC, require one sinus beat before sampling again.
     if (!m_PVCPending && !m_DidJustPVC)
     {
-        if (Random(0.0F, 1.0F) < pvcChancePerSecond * delta)
+        if (m_Random.Uniform(0.0F, 1.0F) < pvcChancePerSecond * delta)
         {
             m_PVCPending  = true;
             // Sample coupling once so the firing target and later pause use the same value.
             m_PVCCoupling = std::clamp(
                 std::lerp(C::PVCCouplingMax, C::PVCCouplingMin, riskFactor)
-                    * Random(1.0F - C::PVCCouplingVariation, 1.0F + C::PVCCouplingVariation),
+                    * m_Random.Uniform(
+                        1.0F - C::PVCCouplingVariation,
+                        1.0F + C::PVCCouplingVariation
+                    ),
                 C::PVCCouplingMin,
                 C::PVCCouplingMax
             );
@@ -174,7 +150,7 @@ SHR::RhythmEngine::Beat SHR::RhythmEngine::Advance(
 
     if (m_ElapsedSinceBeat < effectiveIBI)
     {
-        return noFire();
+        return std::nullopt;
     }
 
     const bool isPVC = m_PVCPending;
@@ -186,44 +162,15 @@ SHR::RhythmEngine::Beat SHR::RhythmEngine::Advance(
 
     // Use the preceding sinus interval, but the shortened coupling interval for a PVC.
     // This is a bounded cycle-length proxy, not literal diastolic time.
-    const float nominalIBI    = 60.0F / heartRate;
-    const float precedingRR   = (m_PrecedingRR > 0.0F) ? m_PrecedingRR : nominalIBI;
-    const float frankStarlingRR = isPVC ? effectiveIBI : precedingRR;
-    const float frankStarling = std::clamp(
-        frankStarlingRR / nominalIBI,
-        C::FrankStarlingMin,
-        C::FrankStarlingMax
-    );
+    const float nominalIBI      = 60.0F / heartRate;
+    const float precedingRR     = (m_PrecedingRR > 0.0F) ? m_PrecedingRR : nominalIBI;
+    const float fillingInterval = isPVC ? effectiveIBI : precedingRR;
 
     // Apply bounded Gaussian jitter to sinus beats; PVCs retain mean contractility.
     const float vigor = isPVC
         ? contractility
         : std::max(0.0F, contractility * (1.0F + C::VigorJitterScale
-            * std::min(C::VigorJitterMaxSigma, RandomNormal())));
-
-    const float contractilityGain = std::pow(10.0F, (C::ContractilityGainDb / 20.0F) * vigor);
-    const float s1Amplitude = isPVC
-        ? C::PVCS1Amplitude * frankStarling
-        : frankStarling * contractilityGain;
-    const float s2Amplitude = isPVC
-        ? C::PVCS2Amplitude * PVCS2Fraction(coupling)
-        : 1.0F;
-
-    // Use smoothed HR rather than per-beat IBI so irregular intervals do not move systole independently.
-    const float nominalSystole = std::clamp(
-        C::SystoleIntercept - heartRate * C::SystoleSlope,
-        C::SystoleMin,
-        C::SystoleMax
-    );
-    // Only contractility above the HR-implied steady state shortens sinus systole.
-    const float sinusSystole = std::max(
-        nominalSystole - C::SystolePEPShortening * contractilityExcess,
-        C::SystoleMin
-    );
-    // PVC systole uses the unshortened nominal value, independent of sympathetic PEP shortening.
-    const float systoleDuration = isPVC
-        ? std::max(nominalSystole * C::PVCSystoleScale, C::PVCSystoleMin)
-        : sinusSystole;
+            * std::min(C::VigorJitterMaxSigma, m_Random.StandardNormal())));
 
     if (isPVC)
     {
@@ -234,7 +181,7 @@ SHR::RhythmEngine::Beat SHR::RhythmEngine::Advance(
         // Hand-rolled geometric sampling supports runExtensionChance == 1.
         int runExtensions = 0;
         while (runExtensions < C::PVCRunMaxLength - 1 &&
-               Random(0.0F, 1.0F) < runExtensionChance)
+               m_Random.Uniform(0.0F, 1.0F) < runExtensionChance)
         {
             ++runExtensions;
         }
@@ -249,13 +196,19 @@ SHR::RhythmEngine::Beat SHR::RhythmEngine::Advance(
                 0.30F * m_NextIBI
             );
             m_PauseDuration = remaining *
-                Random(1.0F - C::PVCPauseVariation, 1.0F + C::PVCPauseVariation);
+                m_Random.Uniform(
+                    1.0F - C::PVCPauseVariation,
+                    1.0F + C::PVCPauseVariation
+                );
         }
         else
         {
             m_InPause = true;
             m_PauseDuration = fullPause *
-                Random(1.0F - C::PVCPauseVariation, 1.0F + C::PVCPauseVariation);
+                m_Random.Uniform(
+                    1.0F - C::PVCPauseVariation,
+                    1.0F + C::PVCPauseVariation
+                );
         }
 
         m_PrecedingRR = m_PauseDuration;
@@ -267,17 +220,11 @@ SHR::RhythmEngine::Beat SHR::RhythmEngine::Advance(
         m_PrecedingRR = effectiveIBI;
     }
 
-    return {
-        .ShouldFire       = true,
+    return BeatEvent{
         .IBI              = effectiveIBI,
-        .SystoleDuration  = systoleDuration,
-        .S1Amplitude      = s1Amplitude,
-        .S2Amplitude      = s2Amplitude,
-        .RespPhase        = respPhase,
-        .ExertionFraction = exertionFraction,
-        .BreathDepth      = breathDepth,
-        .Contractility    = vigor,
-        .FrankStarling    = frankStarling,
-        .IsPVC            = isPVC,
+        .FillingInterval  = fillingInterval,
+        .CouplingFraction = isPVC ? coupling : 0.0F,
+        .Vigor            = vigor,
+        .Kind             = isPVC ? BeatKind::PVC : BeatKind::Sinus,
     };
 }

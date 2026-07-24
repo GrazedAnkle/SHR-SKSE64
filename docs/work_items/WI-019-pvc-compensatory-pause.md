@@ -45,5 +45,5 @@ for calibration.
 ## Next action and decision points
 
 Add a deterministic rhythm fixture with controlled PVC/run draws, encode the timelines above, then change
-the pause-exit transition without losing accumulated frame overshoot. Confirm that `Beat::IBI` continues to
+the pause-exit transition without losing accumulated frame overshoot. Confirm that `BeatEvent::IBI` continues to
 mean output-buffer duration while the separate preceding-RR state records the actual filling interval.

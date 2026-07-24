@@ -10,22 +10,23 @@ a narrow fake-sink fixture cover failed submission and queued-buffer release.
 
 ## Current conclusion
 
-`HeartbeatVoice::Play` allocates a `std::vector<std::byte>` with `new`, passes it through the XAudio
-context pointer, and relies on `OnBufferEnd` to delete it. The return value from `SubmitSourceBuffer` is
-ignored, so a rejected buffer has no callback-owned cleanup path. `HeartbeatVoice::Shutdown` destroys the
-raw voice but has no caller, leaving lifetime dependent on process/static teardown rather than the class.
+`HeartbeatVoice::Play` takes the core-rendered float beat, encodes it once to PCM16 at the sink boundary,
+allocates that sample vector with `new`, passes it through the XAudio context pointer, and relies on
+`OnBufferEnd` to delete it. The return value from `SubmitSourceBuffer` is ignored, so a rejected buffer
+has no callback-owned cleanup path.
+`HeartbeatVoice::Shutdown` destroys the raw voice but has no caller, leaving lifetime dependent on
+process/static teardown rather than the class.
 
 ## Scope and non-goals
 
 Define RAII ownership for the voice and an exact transfer protocol for queued buffers. Preserve rendered
-samples, playback order, pause semantics, and the current direct mastering-voice route. The typed float
-renderer belongs to [WI-025](WI-025-typed-float-renderer.md), although both items may share a final audio
-sink boundary.
+samples, playback order, pause semantics, the one-time PCM16 sink conversion, and the current direct
+mastering-voice route. Do not move device or queue ownership into `shr_core`.
 
 ## Dependencies
 
-None for failed-submission cleanup. Coordinate the final sink interface with
-[WI-025](WI-025-typed-float-renderer.md).
+None. The established sink boundary keeps rendered float audio caller-owned and transfers encoded storage
+to callback ownership only after successful submission.
 
 ## Next action and decision points
 

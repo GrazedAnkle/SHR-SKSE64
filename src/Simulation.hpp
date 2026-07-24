@@ -15,8 +15,11 @@
  */
 #pragma once
 
+#include "PhysiologySnapshot.hpp"
+#include "SimulationSettings.hpp"
+#include "SimulationState.hpp"
+
 #include <atomic>
-#include <optional>
 
 namespace SHR
 {
@@ -34,6 +37,11 @@ namespace SHR
     class HeartRateSimulation
     {
     public:
+        explicit HeartRateSimulation(SimulationSettings settings)
+            : m_Settings(settings)
+        {
+        }
+
         void Init();
         // realDelta is frame time in seconds; gameHoursDelta is elapsed in-game hours.
         void Step(PlayerState state, float realDelta, float gameHoursDelta = 0.0F);
@@ -45,39 +53,16 @@ namespace SHR
         void NotifyCombatEntry();
         void NotifyHit();
 
-        // Restore co-save state and recompute derived targets. Zero fitness/fastHR and negative
-        // contractility/respDepth select defaults for fields absent from older saves.
-        void Restore(
-            float heartRate,
-            float exertion,
-            float adrenaline = 0.0F,
-            float fitness = 0.0F,
-            float acuteFatigue = 0.0F,
-            float longTermFatigue = 0.0F,
-            float fastHR = 0.0F,
-            float respRate = 0.0F,
-            float contractility = -1.0F,
-            float respDepth = -1.0F
-        );
-
-        float GetHeartRate() const;
-        float GetFastHR() const;
-        float GetExertion() const;
-        float GetAdrenaline() const;
-        float GetContractility() const;
-        // Nonnegative excess over the contractility implied by current HR.
-        float GetContractilityExcess() const;
-        float GetFitness() const;
-        float GetEffectiveFitness() const;
-        float GetAcuteFatigue() const;
-        float GetLongTermFatigue() const;
-        float GetRespRate() const;
-        float GetRespDepth() const;
-        float GetRespPhase() const;
-        std::optional<float> GetDeathSeconds() const;
+        PhysiologySnapshot GetSnapshot() const;
+        SimulationState GetState() const;
+        SimulationState CreateInitialState() const;
+        float ComputeEquilibriumContractility(const SimulationState &state) const;
+        void Restore(const SimulationState &state);
 
     private:
         static constexpr float Sentinel = -1.0F;
+
+        const SimulationSettings m_Settings;
 
         float m_TargetHeartRate = 0.0F;
         float m_FastHR = 0.0F;
@@ -99,6 +84,9 @@ namespace SHR
         std::atomic<float> m_FastTravelDuration = Sentinel;
 
         float EffectiveRestingHR() const;
+        float CurrentHeartRate() const;
+        float EffectiveFitness() const;
+        float ContractilityExcess() const;
         float NormalizedExertion(float exertion) const;
 
         void UpdateExertion(PlayerState state, float delta);

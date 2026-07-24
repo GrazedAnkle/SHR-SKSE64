@@ -8,6 +8,7 @@ log. The reader-facing map lives in [README.md](README.md); task status lives in
 
 Each topic has one authoritative owner. Other documents link to it instead of restating it:
 
+- [ARCHITECTURE.md](ARCHITECTURE.md) owns the core/plugin dependency and runtime boundary.
 - [SYNTHESIS_MODEL.md](SYNTHESIS_MODEL.md) owns physiological state-to-sound mechanisms.
 - [SIMULATION_MODEL.md](SIMULATION_MODEL.md) owns physiological state evolution.
 - [CONTRACTILITY_SPEC.md](CONTRACTILITY_SPEC.md) owns the current contractility signal in depth.

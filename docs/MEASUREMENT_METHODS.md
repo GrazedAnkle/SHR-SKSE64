@@ -61,7 +61,7 @@ choice, but it must not establish a general claim about hearts.
 |---|---|---|
 | S1/S2 onset-to-onset timing | Hand `s1a`/`s2a` landmarks; group median | Mark the earliest credible acoustic onset of each whole sound complex. For S2 this is normally A2-like; a later P2/clap never replaces `s2a`. Keep state transitions out of steady-state fits. `auto_annotate.py` gates each onset directly by median absolute error and separately gates systole drift. |
 | Rise time across signals | `shrlib.rise_10_90_ms` | Analytic envelope; running maximum makes it immune to pre-peak nulls. Start from an S1 annotation so pre-S1 energy cannot start the clock. Every compared S1 must also keep any earlier component safely on the same side of the relative 10% threshold; a precursor near that threshold can switch the starting component discontinuously. |
-| Local build used by the S1 compressor | `shrlib.onset_peak_idx` / `HeartbeatVoice::CompressOnsetBuild` | Last 10%-of-peak crossing on the analytic envelope. Valid for this source's final ascent, not for comparing unlike lobe structures. C++ and NumPy definitions must remain identical. |
+| Local build used by the S1 compressor | `shrlib.onset_peak_idx` / `FindBaselineAttackRegion` in `HeartbeatSource.cpp` | Last 10%-of-peak crossing on the analytic envelope, cached before beat effects. Valid for this source's final ascent, not for comparing unlike lobe structures. C++ and NumPy definitions must remain identical. |
 | HF timing across unlike S1 lobes | `shrlib.hf_temporal_skew` | HF-energy temporal centroid minus broadband-energy temporal centroid, normalized by window duration. Negative means HF leads; positive means it trails. The window must be the complete actual S1, and comparisons must match the window/S1-duration fraction. Material clipping or saturation invalidates it by manufacturing time-localized HF. Use the group median as a same-path lead/lag diagnostic and late-HF-wash detector, not as a perceptual sharpness ordering, drive proxy, cross-recording rank, or setpoint. |
 | Rise/body HF balance in like lobes | `shrlib.rise_body_contrast` plus `shrlib.lobe_count` | Fixed peak-anchored windows, whole-file zero-phase bandpass. Direction indicator only. Compare ref8 with the single-lobe engine or one signal across a sweep; do not compare multi-lobe references. |
 | S2 valve clap | A-weighted, peak-anchored HF share from `tools/measure_clap.py` | Fixed short window around the S2 envelope peak; tail-immune. Broadband S2 centroid is dominated by the fundamental and can hide the clap. |
@@ -188,10 +188,14 @@ model.
 
 ## Engine/reference parity
 
-`tools/engine_offline.py` mirrors the C++ DSP path sample-for-sample but does not model the full
-`RhythmEngine`; per-beat filling, jitter, and rhythm morphology require the appropriate sequence harness.
-Its current `is_pvc` option covers the voice's shaping bypasses and resample, not RhythmEngine-assigned PVC
-amplitudes or systole, and must not be used as a PVC calibration fixture until WI-010 closes that gap.
+`tools/engine_offline.py` mirrors the C++ sinus DSP stages but does not model the full `Runtime`;
+per-beat filling, jitter, rhythm scheduling, and acoustic mapping require the appropriate sequence
+harness. Its normalized-stereo float path is checked against C++ at the conditioned source, per-beat
+source, transmission, transducer-input, and final-output domains for the five core fixtures. The
+legacy mono audition renderer remains a duplicate reference rather than a golden implementation. Its
+current `is_pvc` option covers the voice's shaping bypasses and resample, not
+`CreateRenderSpec`-assigned PVC amplitudes or systole, and must not be used as a PVC calibration fixture
+until WI-010 closes that gap.
 Any C++ DSP change must be mirrored and checked at the same operating state. A comparison must align:
 
 - physiological state and per-beat variability;

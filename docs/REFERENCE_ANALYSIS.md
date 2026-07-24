@@ -477,10 +477,18 @@ brightening the engine produces through onset compression (see
 Measuring the engine - to compare against the references above - reuses the same metric battery
 (`tools/shrlib.py`), plus the offline mirror and two caveats.
 
-**Offline mirror.** `tools/engine_offline.py` is a sample-accurate mirror of `HeartbeatVoice::Play`
-(same DSP stages, constants parsed straight from `Constants.hpp`). It is the canonical way to audition
-a synthesis change or measure the engine without a game build. Any DSP/logic change to the engine must
-be mirrored here (constant-value retunes propagate automatically).
+**Offline mirror.** `tools/engine_offline.py` is the working NumPy mirror of the sinus path through
+`CreateRenderSpec` and the core renderer (same mapping and DSP stages, constants parsed straight from
+`Constants.hpp`). Its established audition path uses one mono channel, so it is not the exact golden
+renderer for the active normalized-stereo float playback path. Its normalized-stereo reference path is
+checked against C++ through source conditioning and the source, transmission, transducer-input, and output
+domains of rest, peak, recovery, inspiration, and PVC renders. The largest observed sample delta is below
+`5e-7`; C++ performs the sole output PCM conversion at XAudio submission. Callers supply beat state; the
+legacy audition path's PVC option previews voice shaping but does not
+reproduce PVC amplitudes or systole. It remains the canonical way to audition a synthesis change or
+measure the engine without a game build until callers move to the compiled core under
+[WI-027](work_items/WI-027-unified-offline-execution.md). Any intervening DSP/logic change must still be
+mirrored here (constant-value retunes propagate automatically).
 
 **In-game captures** (a recording of the running mod) confirm the shipped DLL matches the mirror.
 Extract the audio with `ffmpeg -map 0:a:0 -ac 2 -ar 48000`. The heartbeat voice is centred (mono), so a
@@ -515,11 +523,15 @@ naturally.
   can raise the centroid while dulling the beat. For perceived brightness use the **80-200 Hz "octave"**,
   or an A-weighted HF measure.
 
-**The game playback path is spectrally transparent, so the offline mirror is faithful to the shipped
-audio.** Controlled captures on the shipping DSP - each pinned to a known state (fixed HR, contractility,
-breath off, PVCs off) and build-verified from its log line, standing still with the in-game sound slider
-at 0 so the heartbeat is isolated - match the mirror's 80-200 Hz-to-body ratio to three decimals across
-rest and high HR at both zero and full contractility. There is no routing-path brightness attenuation:
+**The game playback route is spectrally transparent, so core-rendered output transfers faithfully.**
+Controlled captures pinned to a known state (fixed HR, contractility, breath off, PVCs off) and standing
+still with the in-game sound slider at 0 so the heartbeat is isolated match the corresponding offline
+80-200 Hz-to-body ratio to three decimals across rest and high HR at both zero and full contractility.
+The active float path also has a lossless, centred, unclipped before/after capture comparison and a
+level-matched ear pass across rest, rising and peak drive, inspiration, and recovery. Fixed four-second
+windows matched by phase and HR show no drive-dependent 80-200 Hz-to-body offset. PVCs were deliberately
+omitted because their sound remains pending retuning, so this is not a perceptual PVC validation.
+There is no routing-path brightness attenuation:
 brightness tuned to sound right offline transfers in-game, and the source sample (not the playback path)
 is the brightness ceiling. The one measurable in-game difference is a small (~3-4%) crest reduction on the
 loudest (full-contractility) beats, absent at rest - mild peak-limiting in the game's mastering voice, a

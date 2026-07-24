@@ -2,6 +2,12 @@
   "name": "shr",
   "version-string": "0.1.0",
   "features": {
+    "core-dsp": {
+      "description": "Build the portable deterministic audio renderer.",
+      "dependencies": [
+        "pocketfft"
+      ]
+    },
     "scripts": {
       "description": "Install Papyrus sources for this program to develop on top of it."
     },

@@ -11,12 +11,13 @@ removed. A stress or deterministic mailbox test covers concurrent event delivery
 
 ## Current conclusion
 
-`HeartRateSimulation` uses atomics for jump, sleep, and fast-travel notifications, while combat and hit
-callbacks mutate `m_Adrenaline` directly and the remaining model state is ordinary scalar state.
-`InputHandler` separately exposes a reference to an `atomic_int`, and XAudio releases buffers from its
-callback thread. This mixture does not state whether SKSE event sinks and the player update hook are
-guaranteed to share a thread. It is therefore an architectural uncertainty and a possible data-race risk,
-not a confirmed defect until the engine callback contract is established.
+`Runtime` forwards typed notifications directly to `HeartRateSimulation`, which uses atomics for jump,
+sleep, and fast-travel notifications, while combat and hit callbacks mutate `m_Adrenaline` directly and
+the remaining model state is ordinary scalar state. `InputHandler` separately exposes a reference to an
+`atomic_int`, and XAudio releases buffers from its callback thread. This mixture does not state whether
+SKSE event sinks and the player update hook are guaranteed to share a thread. It is therefore an
+architectural uncertainty and a possible data-race risk, not a confirmed defect until the engine callback
+contract is established.
 
 ## Scope and non-goals
 
@@ -27,7 +28,7 @@ ownership work in [WI-022](WI-022-audio-resource-ownership.md).
 
 ## Dependencies
 
-Coordinate the event-ingress boundary with [WI-024](WI-024-core-runtime-boundary.md).
+Use the established [`Runtime` event-ingress boundary](../ARCHITECTURE.md#runtime-contract).
 
 ## Next action and decision points
 

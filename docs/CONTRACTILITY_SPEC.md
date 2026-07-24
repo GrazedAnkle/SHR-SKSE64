@@ -7,12 +7,13 @@ state evolution is in [SIMULATION_MODEL.md](SIMULATION_MODEL.md).
 
 ## Current scope
 
-`HeartRateSimulation` exposes contractility as an audio-only scalar through `GetContractility()` and
-`GetContractilityExcess()`. The scalar itself does not feed back into heart rate, exertion, or metabolic
-demand. Its current v1 drivers are not cleanly separated, however: `UpdateExertion` adds `m_Adrenaline` to
-its target, routing acute arousal through exertion and HR, while `ContractilityTarget` reads that exertion
-and adds `m_Adrenaline` again as a direct adrenergic term. Contractility v2 owns removal of this known
-double route rather than treating it as an isolated coefficient fix.
+`HeartRateSimulation` exposes contractility as audio-only values through
+`PhysiologySnapshot::Contractility` and `PhysiologySnapshot::ContractilityExcess`. The scalar itself does
+not feed back into heart rate, exertion, or metabolic demand. Its current v1 drivers are not cleanly
+separated, however: `UpdateExertion` adds `m_Adrenaline` to its target, routing acute arousal through
+exertion and HR, while `ContractilityTarget` reads that exertion and adds `m_Adrenaline` again as a direct
+adrenergic term. Contractility v2 owns removal of this known double route rather than treating it as an
+isolated coefficient fix.
 
 The public interface is deliberately narrower than the internal driver model. A future separation of
 sympathetic nervous drive and circulating catecholamines can replace the internals without changing the
@@ -57,17 +58,21 @@ correction. They must be rebalanced together with the sympathetic term; see
 
 ## Audio consumers
 
-Each consumer reads contractility for inotropy. `Beat::ExertionFraction` remains the ventilation driver.
+`RhythmEngine` samples per-beat `BeatEvent::Vigor` from the mean contractility. The acoustic map then
+combines that event fact with the firing `PhysiologySnapshot`; respiratory depth and phase remain separate
+transmission inputs, while `RhythmInput::ExertionFraction` only attenuates RSA with exertion.
 
-1. **S1 loudness.** `RhythmEngine` combines contractility gain with the per-beat Frank-Starling filling
-   term. `ContractilityGainDb` controls the rest-to-forceful span; unity at rest preserves the source's
-   resting level.
+1. **S1 loudness.** `CreateRenderSpec` combines event vigor with the per-beat Frank-Starling filling term.
+   `ContractilityGainDb` controls the rest-to-forceful span; unity at rest preserves the source's resting
+   level.
 2. **Systole recovery correction.** The steady-state line already includes the drive associated with its
-   HR. `SystolePEPShortening` therefore multiplies `GetContractilityExcess()`, the contractility above what
-   current HR implies, rather than total contractility.
-3. **S1 onset and brightness.** `HeartbeatVoice::CompressOnsetBuild` scales with per-beat vigor, so one
-   physiological driver makes a forceful beat louder, faster-rising, and brighter while preserving the
-   source's post-peak body.
+   HR. In the acoustic map, `SystolePEPShortening` therefore multiplies
+   `PhysiologySnapshot::ContractilityExcess`, the contractility above what current HR implies, rather than
+   total contractility.
+3. **S1 onset and brightness.** `CreateRenderSpec` derives onset compression from the same event vigor
+   and filling term; `RenderBeat` applies that scalar to the cached baseline S1 attack region. One
+   physiological driver therefore makes a forceful beat louder, faster-rising, and brighter while
+   preserving the source's post-peak body.
 4. **Beat-to-beat variation.** `RhythmEngine` applies bounded vigor jitter around the mean contractility.
    The same per-beat draw moves loudness and envelope character together.
 
@@ -78,9 +83,11 @@ dulling is also separate and uses `ResamplePVCRatio`.
 ## Interface and persistence
 
 - `HeartRateSimulation` owns `m_Contractility` and updates it from exertion and adrenaline.
-- `SkyrimHeartRate.cpp` passes `GetContractility()` and `GetContractilityExcess()` into
-  `RhythmEngine::Advance`.
-- `RhythmEngine` stores per-beat force in `Beat::Contractility`; `HeartbeatVoice::Play` consumes it.
+- `Runtime::Step` passes `PhysiologySnapshot::Contractility` into `RhythmEngine::Advance`, then combines
+  the resulting event with the complete snapshot through `CreateRenderSpec`.
+- `RhythmEngine` stores sampled per-beat force in `BeatEvent::Vigor`; `CreateRenderSpec` converts it and
+  `ContractilityExcess` into controls consumed by the core beat renderer; `HeartbeatVoice::Play` forwards
+  the resolved specification to that renderer.
 - The CTLY co-save record persists the state. Saves without that field seed contractility to the restored
   exertion/adrenaline equilibrium.
 
@@ -90,7 +97,7 @@ As-built values and provenance tags live in `src/Constants.hpp`. The focused pro
 ## Deferred driver separation
 
 Contractility v2 will split the current slow state into first-class sympathetic/noradrenergic and
-circulating epinephrine drivers while retaining the existing getter boundary. In particular, it will
+circulating epinephrine drivers while retaining the existing snapshot boundary. In particular, it will
 replace the v1 adrenaline-through-exertion plus direct-adrenergic double route rather than tuning around it:
 
 - HR becomes a consequence of vagal withdrawal plus the separated sympathetic/catecholamine terms.

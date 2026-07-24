@@ -23,11 +23,12 @@ of state. Heart sounds are band-limited (essentially nothing above ~200 Hz) and 
 the source's spectrum *after the low-cut* (below).
 
 The **primary brightness lever is a static source low-cut** (`SourceHighPassHz`,
-`HeartbeatVoice::ApplyHighPass`) - the recording-chain-timbre correction this section opened with. The
-source's S1 fundamental sits near 22 Hz with ~37% of its energy below 40 Hz, roughly an octave below
-real hearts (references 62-75 Hz) which is indicative of capture-path sub-bass coloration
+`PrepareHeartbeatSource` / `ApplyHeartbeatSourceHighPass`) - the recording-chain-timbre correction this
+section opened with. The
+source's S1 fundamental sits near 22 Hz with ~37% of its energy below 40 Hz, roughly an
+octave below real hearts (references 62-75 Hz) which is indicative of capture-path sub-bass coloration
 (contact-transducer proximity resonance / no subsonic filter / cinematic sub weight). A 2-pole
-Butterworth high-pass on the S1/S2 sub-samples at load (before `NormalizeJoint`, so the
+Butterworth high-pass on the S1/S2 sub-samples at load (before joint normalization, so the
 renormalization gain-stages for the removed energy) removes that boom so the source's own
 fundamental reads clear at ~76 Hz. It is *not* a resample/pitch shift (cf. coupling 2). The sub-bass
 octave masks the source's own upper harmonics; the cut therefore un-dulls the source and lifts its
@@ -225,17 +226,17 @@ Subtle but real effects that separate synthetic from recorded. Capture as many a
      pressure rise and more abrupt deceleration. Grounded on the within-recording drive pairs
      (ref11 -21.9 ms, ref14 -7.4 ms, level confound
      controlled; [REFERENCE_ANALYSIS.md](REFERENCE_ANALYSIS.md)); the source is not slow relative to the
-     references. `CompressOnsetBuild` implements it: it walks the analytic envelope
-     (`HeartbeatVoice::AnalyticEnv`, pocketfft - the same transform `shrlib.env_analytic` uses) at
-     `AttackBuildThreshold` = 0.10, the project's single onset definition, and compresses the ~9.7 ms
-     build. The two band-split numbers cited below (80-200 Hz onset ~2.3 ms, 0-80 Hz rise ~9.8 ms) are
+      references. `FindBaselineAttackRegion` computes it from the analytic envelope (pocketfft - the same
+      transform `shrlib.env_analytic` uses) at `AttackBuildThreshold` = 0.10, the project's single onset
+      definition; `PrepareS1SourceStage` consumes that cached region and compresses the ~9.7 ms build.
+      The two band-split numbers cited below (80-200 Hz onset ~2.3 ms, 0-80 Hz rise ~9.8 ms) are
      **excluded from tuning evidence**: a quarter period at 140 Hz is 1.8 ms and at 25 Hz is 10 ms,
      suspiciously like the invalid attack ruler's output on band-limited signals. See the
      [measurement-validity policy](MEASUREMENT_METHODS.md#validity-before-value). The slow part
      is the low-frequency **"whomp" body** (0-80 Hz), and that gradual low
      swell *is* the heart-sound character. So the onset is sped by **time-compressing only the final
-     ascent to the peak** and splicing the lead-in and body back on - a faster *gradual*
-     swell, F0/whomp preserved (`HeartbeatVoice::CompressOnsetBuild`, `k = 1 + (AttackCompressMax -
+      ascent to the peak** and splicing the lead-in and body back on - a faster *gradual*
+      swell, F0/whomp preserved (`PrepareS1SourceStage`, `k = 1 + (AttackCompressMax -
      1)*contractility*frankStarlingNorm`). It is high-HR only: the resting/low-HR beat is already
      near-indistinguishable from a real recording (rest k=1, untouched). Drive it by per-beat vigor
      (contractility x preload) so the sharpest beats are occasional ("not every beat"), not uniform.
@@ -339,11 +340,12 @@ circulating catecholamine clearance at about two minutes. The slow decay is the 
 that makes post-exercise beats linger as forceful even as HR recovers. Full implementation spec in
 [CONTRACTILITY_SPEC.md](CONTRACTILITY_SPEC.md).
 
-The current signal is an **audio-only scalar** behind a stable `GetContractility()` interface. The scalar
-does not feed back into HR, but its v1 inputs have a known double route: adrenaline first enters the
-exertion target and HR, then enters `ContractilityTarget` again as a direct adrenergic term. Contractility
-v2 will replace that routing with separated vagal, noradrenergic, and epinephrine drivers feeding HR,
-contractility, and a fight-or-flight gameplay effect without changing consumers. The current
+The current signal is an **audio-only scalar** exposed through
+`PhysiologySnapshot::Contractility`. The scalar does not feed back into HR, but its v1 inputs have a
+known double route: adrenaline first enters the exertion target and HR, then enters
+`ContractilityTarget` again as a direct adrenergic term. Contractility v2 will replace that routing with
+separated vagal, noradrenergic, and epinephrine drivers feeding HR, contractility, and a fight-or-flight
+gameplay effect without changing consumers. The current
 bi-exponential HR model conflates
 noradrenaline (roughly one-minute timescale) and epinephrine (roughly two-minute timescale) in one
 slow component and models only chronotropy (the heart-rate effect). Their deferred separation is described in

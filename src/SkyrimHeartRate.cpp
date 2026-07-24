@@ -20,8 +20,9 @@
 #include "HeartbeatVoice.hpp"
 #include "InputHandler.hpp"
 #include "NotificationPolicy.hpp"
-#include "RhythmEngine.hpp"
-#include "Simulation.hpp"
+#include "Runtime.hpp"
+
+#include <optional>
 
 namespace
 {
@@ -92,26 +93,45 @@ namespace
         };
     }
 
+    struct LegacyCoSaveState
+    {
+        std::optional<float> HeartRate;
+        std::optional<float> FastHeartRate;
+        std::optional<float> Exertion;
+        std::optional<float> Adrenaline;
+        std::optional<float> Fitness;
+        std::optional<float> AcuteFatigue;
+        std::optional<float> LongTermFatigue;
+        std::optional<float> RespirationRate;
+        std::optional<float> Contractility;
+        std::optional<float> RespirationDepth;
+    };
+
     void InitSerialization();
 
     void OnSave(SKSE::SerializationInterface *serde);
     void OnRevert(SKSE::SerializationInterface *serde);
     void OnLoad(SKSE::SerializationInterface *serde);
+    SHR::SimulationState FromLegacyCoSave(const LegacyCoSaveState &records);
 
     void Update(const RE::PlayerCharacter *player, float delta);
-    void HandleFeedback(const RE::PlayerCharacter *player, float delta);
+    void HandleFeedback(const RE::PlayerCharacter *player, const SHR::StepResult &result);
 
     SHR::PlayerState FromPlayer(const RE::PlayerCharacter *player);
 
     REL::Relocation<decltype(Update)> s_OriginalUpdate;
 
-    SHR::HeartRateSimulation s_Simulation;
-    SHR::RhythmEngine        s_RhythmEngine;
-    SHR::HeartbeatVoice      s_HeartbeatVoice;
+    std::optional<SHR::Runtime> s_Runtime;
+    SHR::HeartbeatVoice s_HeartbeatVoice;
 
     float s_LastHoursPassed = 0.0F;
 
     SHR::HeartRateLevel s_PreviousHeartRateLevel;
+
+    SHR::Runtime &RuntimeInstance()
+    {
+        return s_Runtime.value();
+    }
 }
 
 void SHR::InstallHooks()
@@ -135,40 +155,47 @@ void SHR::HeartRateManager::InstallHooks(SKSE::Trampoline &trampoline)
 void SHR::HeartRateManager::Init()
 {
     InitSerialization();
-    s_Simulation.Init();
-    s_RhythmEngine.Init();
+    const auto &config = Config::Get();
+    s_Runtime.emplace(RuntimeSettings{
+        .Simulation = {
+            .RestingHeartRate = config.HeartRate.Resting,
+            .MaximumHeartRate = config.HeartRate.Max,
+        },
+        .ArrhythmiaSusceptibility = config.Arrhythmia.Susceptibility,
+    });
+    RuntimeInstance().Init();
     s_HeartbeatVoice.Init();
     s_LastHoursPassed = RE::Calendar::GetSingleton()->GetHoursPassed();
 }
 
 void SHR::HeartRateManager::NotifyJump()
 {
-    s_Simulation.NotifyJump();
+    RuntimeInstance().NotifyJump();
 }
 
 void SHR::HeartRateManager::NotifySleep(float duration)
 {
-    s_Simulation.NotifySleep(duration);
+    RuntimeInstance().NotifySleep(duration);
 }
 
 void SHR::HeartRateManager::NotifyFastTravel(float duration)
 {
-    s_Simulation.NotifyFastTravel(duration);
+    RuntimeInstance().NotifyFastTravel(duration);
 }
 
 void SHR::HeartRateManager::NotifyCombatEntry()
 {
-    s_Simulation.NotifyCombatEntry();
+    RuntimeInstance().NotifyCombatEntry();
 }
 
 void SHR::HeartRateManager::NotifyHit()
 {
-    s_Simulation.NotifyHit();
+    RuntimeInstance().NotifyHit();
 }
 
 float SHR::HeartRateManager::GetHeartRate()
 {
-    return s_Simulation.GetHeartRate();
+    return RuntimeInstance().GetSnapshot().HeartRate;
 }
 
 namespace
@@ -186,62 +213,46 @@ namespace
 
     void OnSave(SKSE::SerializationInterface *serde)
     {
-        const float heartRate = s_Simulation.GetHeartRate();
+        const SHR::SimulationState state = RuntimeInstance().GetState();
+
+        const float heartRate = state.FastHeartRate + state.SlowHeartRate;
         if (!serde->WriteRecord(Record::HeartRate::Type, Record::HeartRate::Version, heartRate))
         {
             SKSE::log::error("Failed to serialize heart rate");
         }
-
-        const float fastHR = s_Simulation.GetFastHR();
-        if (!serde->WriteRecord(Record::FastHR::Type, Record::FastHR::Version, fastHR))
+        if (!serde->WriteRecord(Record::FastHR::Type, Record::FastHR::Version, state.FastHeartRate))
         {
             SKSE::log::error("Failed to serialize fast HR component");
         }
-
-        const float exertion = s_Simulation.GetExertion();
-        if (!serde->WriteRecord(Record::Exertion::Type, Record::Exertion::Version, exertion))
+        if (!serde->WriteRecord(Record::Exertion::Type, Record::Exertion::Version, state.Exertion))
         {
             SKSE::log::error("Failed to serialize exertion");
         }
-
-        const float adrenaline = s_Simulation.GetAdrenaline();
-        if (!serde->WriteRecord(Record::Adrenaline::Type, Record::Adrenaline::Version, adrenaline))
+        if (!serde->WriteRecord(Record::Adrenaline::Type, Record::Adrenaline::Version, state.Adrenaline))
         {
             SKSE::log::error("Failed to serialize adrenaline");
         }
-
-        const float fitness = s_Simulation.GetFitness();
-        if (!serde->WriteRecord(Record::Fitness::Type, Record::Fitness::Version, fitness))
+        if (!serde->WriteRecord(Record::Fitness::Type, Record::Fitness::Version, state.Fitness))
         {
             SKSE::log::error("Failed to serialize fitness");
         }
-
-        const float acuteFatigue = s_Simulation.GetAcuteFatigue();
-        if (!serde->WriteRecord(Record::AcuteFatigue::Type, Record::AcuteFatigue::Version, acuteFatigue))
+        if (!serde->WriteRecord(Record::AcuteFatigue::Type, Record::AcuteFatigue::Version, state.AcuteFatigue))
         {
             SKSE::log::error("Failed to serialize acute fatigue");
         }
-
-        const float longTermFatigue = s_Simulation.GetLongTermFatigue();
-        if (!serde->WriteRecord(Record::LongTermFatigue::Type, Record::LongTermFatigue::Version, longTermFatigue))
+        if (!serde->WriteRecord(Record::LongTermFatigue::Type, Record::LongTermFatigue::Version, state.LongTermFatigue))
         {
             SKSE::log::error("Failed to serialize long-term fatigue");
         }
-
-        const float respRate = s_Simulation.GetRespRate();
-        if (!serde->WriteRecord(Record::RespRate::Type, Record::RespRate::Version, respRate))
+        if (!serde->WriteRecord(Record::RespRate::Type, Record::RespRate::Version, state.RespirationRate))
         {
             SKSE::log::error("Failed to serialize respiratory rate");
         }
-
-        const float contractility = s_Simulation.GetContractility();
-        if (!serde->WriteRecord(Record::Contractility::Type, Record::Contractility::Version, contractility))
+        if (!serde->WriteRecord(Record::Contractility::Type, Record::Contractility::Version, state.Contractility))
         {
             SKSE::log::error("Failed to serialize contractility");
         }
-
-        const float respDepth = s_Simulation.GetRespDepth();
-        if (!serde->WriteRecord(Record::RespDepth::Type, Record::RespDepth::Version, respDepth))
+        if (!serde->WriteRecord(Record::RespDepth::Type, Record::RespDepth::Version, state.RespirationDepth))
         {
             SKSE::log::error("Failed to serialize respiratory depth");
         }
@@ -249,8 +260,7 @@ namespace
 
     void OnRevert([[maybe_unused]] SKSE::SerializationInterface *serde)
     {
-        s_Simulation.Init();
-        s_RhythmEngine.Init();
+        RuntimeInstance().Init();
         s_HeartbeatVoice.FlushAndStop();
         s_LastHoursPassed = RE::Calendar::GetSingleton()->GetHoursPassed();
     }
@@ -261,52 +271,50 @@ namespace
         std::uint32_t recordSize;
         std::uint32_t recordVersion;
 
-        const float restingHR = SHR::Config::Get().HeartRate.Resting;
-        float heartRate = restingHR;
-        float fastHR = 0.0F;
-        float exertion = C::IdleMets;
-        float adrenaline = 0.0F;
-        float fitness = C::FitnessBaseMets + (C::BaseRestingHR - restingHR) / C::RestingHRSlope;
-        float acuteFatigue = 0.0F;
-        float longTermFatigue = 0.0F;
-        float respRate = C::RestingRespRate;
-        // Negative sentinels select backward-compatible defaults when older saves omit these records.
-        float contractility = -1.0F;
-        float respDepth = -1.0F;
+        LegacyCoSaveState records;
+
+        const SHR::SimulationState initial = RuntimeInstance().CreateInitialState();
+
+        const float initialHeartRate = initial.FastHeartRate + initial.SlowHeartRate;
+        const auto readRecord = [serde](std::optional<float> &destination, float fallback) {
+            float value = fallback;
+            serde->ReadRecordData(value);
+            destination = value;
+        };
 
         while (serde->GetNextRecordInfo(recordType, recordVersion, recordSize))
         {
             switch (recordType)
             {
             case Record::HeartRate::Type:
-                serde->ReadRecordData(heartRate);
+                readRecord(records.HeartRate, initialHeartRate);
                 break;
             case Record::FastHR::Type:
-                serde->ReadRecordData(fastHR);
+                readRecord(records.FastHeartRate, 0.0F);
                 break;
             case Record::Exertion::Type:
-                serde->ReadRecordData(exertion);
+                readRecord(records.Exertion, initial.Exertion);
                 break;
             case Record::Adrenaline::Type:
-                serde->ReadRecordData(adrenaline);
+                readRecord(records.Adrenaline, initial.Adrenaline);
                 break;
             case Record::Fitness::Type:
-                serde->ReadRecordData(fitness);
+                readRecord(records.Fitness, initial.Fitness);
                 break;
             case Record::AcuteFatigue::Type:
-                serde->ReadRecordData(acuteFatigue);
+                readRecord(records.AcuteFatigue, initial.AcuteFatigue);
                 break;
             case Record::LongTermFatigue::Type:
-                serde->ReadRecordData(longTermFatigue);
+                readRecord(records.LongTermFatigue, initial.LongTermFatigue);
                 break;
             case Record::RespRate::Type:
-                serde->ReadRecordData(respRate);
+                readRecord(records.RespirationRate, initial.RespirationRate);
                 break;
             case Record::Contractility::Type:
-                serde->ReadRecordData(contractility);
+                readRecord(records.Contractility, -1.0F);
                 break;
             case Record::RespDepth::Type:
-                serde->ReadRecordData(respDepth);
+                readRecord(records.RespirationDepth, -1.0F);
                 break;
             default:
                 {
@@ -318,18 +326,51 @@ namespace
             }
         }
 
-        s_Simulation.Restore(
-            heartRate,
-            exertion,
-            adrenaline,
-            fitness,
-            acuteFatigue,
-            longTermFatigue,
-            fastHR,
-            respRate,
-            contractility,
-            respDepth
+        RuntimeInstance().Restore(FromLegacyCoSave(records));
+    }
+
+    SHR::SimulationState FromLegacyCoSave(const LegacyCoSaveState &records)
+    {
+        SHR::SimulationState state = RuntimeInstance().CreateInitialState();
+
+        const float heartRate = records.HeartRate.value_or(
+            state.FastHeartRate + state.SlowHeartRate
         );
+        const float fastHeartRate = records.FastHeartRate.value_or(0.0F);
+        state.FastHeartRate = fastHeartRate > 0.0F
+            ? fastHeartRate
+            : C::HRFastFraction * heartRate;
+        state.SlowHeartRate = heartRate - state.FastHeartRate;
+        state.Exertion = records.Exertion.value_or(state.Exertion);
+        state.Adrenaline = records.Adrenaline.value_or(state.Adrenaline);
+        state.Fitness = records.Fitness.value_or(state.Fitness);
+        if (state.Fitness <= 0.0F)
+        {
+            state.Fitness = RuntimeInstance().CreateInitialState().Fitness;
+        }
+        state.AcuteFatigue = records.AcuteFatigue.value_or(state.AcuteFatigue);
+        state.LongTermFatigue = records.LongTermFatigue.value_or(state.LongTermFatigue);
+        state.RespirationRate = records.RespirationRate.value_or(state.RespirationRate);
+        if (state.RespirationRate <= 0.0F)
+        {
+            state.RespirationRate = C::RestingRespRate;
+        }
+
+        const float respirationDepth = records.RespirationDepth.value_or(-1.0F);
+        state.RespirationDepth = respirationDepth >= 0.0F
+            ? std::clamp(respirationDepth, 0.0F, 1.0F)
+            : 0.0F;
+
+        const float contractility = records.Contractility.value_or(-1.0F);
+        state.Contractility = contractility >= 0.0F
+            ? contractility
+            : RuntimeInstance().ComputeEquilibriumContractility(state);
+
+        // The current co-save schema does not persist these fields. Preserve the legacy restore
+        // behavior: restart the respiratory oscillator and leave an active death timer untouched.
+        state.RespirationPhase = 0.0F;
+        state.DeathSeconds = RuntimeInstance().GetState().DeathSeconds;
+        return state;
     }
 
     void Update(const RE::PlayerCharacter *player, float delta)
@@ -348,9 +389,13 @@ namespace
         const float gameHoursDelta = currentHours - s_LastHoursPassed;
         s_LastHoursPassed = currentHours;
 
-        const SHR::PlayerState playerState = FromPlayer(player);
-        s_Simulation.Step(playerState, delta, gameHoursDelta);
-        HandleFeedback(player, delta);
+        const SHR::StepResult result = RuntimeInstance().Step({
+            .Player         = FromPlayer(player),
+            .DeltaSeconds   = delta,
+            .GameHoursDelta = gameHoursDelta,
+            .OutputEnabled  = SHR::InputHandler::IsListening(),
+        });
+        HandleFeedback(player, result);
     }
 
     SHR::PlayerState FromPlayer(const RE::PlayerCharacter *player)
@@ -366,66 +411,14 @@ namespace
         };
     }
 
-    void HandleFeedback(const RE::PlayerCharacter *player, float delta)
+    void HandleFeedback(const RE::PlayerCharacter *player, const SHR::StepResult &result)
     {
-        if (!SHR::InputHandler::IsListening())
+        if (!result.Beat)
         {
             return;
         }
 
-        const float heartRate = s_Simulation.GetHeartRate();
-
-        constexpr float maxDeathSeconds = 2.0F * SHR::HeartRateManager::DeathArrhythmiaChanceIncreaseDuration;
-        const float deathFactor =
-            s_Simulation.GetDeathSeconds()
-                .transform([maxDeathSeconds](float seconds) {
-                  return std::min(seconds, maxDeathSeconds) / maxDeathSeconds;
-                })
-                .value_or(0.0F);
-        const float hrRange = SHR::Config::Get().HeartRate.Max - SHR::VeryHighHeartRateThreshold;
-        const float extremeHRFactor = std::clamp((heartRate - SHR::VeryHighHeartRateThreshold) / hrRange, 0.0F, 1.0F);
-        const float fatigueFactor = s_Simulation.GetLongTermFatigue() / C::LongTermFatigueMax;
-        const float riskFactor = std::max({ deathFactor, extremeHRFactor, fatigueFactor });
-
-        const float effectiveFitness = s_Simulation.GetEffectiveFitness();
-        const float exertionFraction = std::clamp(
-            (s_Simulation.GetExertion() - C::IdleMets) / (effectiveFitness - C::IdleMets),
-            0.0F,
-            1.0F
-        );
-
-        const float susceptibility = SHR::Config::Get().Arrhythmia.Susceptibility;
-
-        const float pvcChance = susceptibility * std::lerp(C::PVCChanceNormal, C::PVCChanceMax, riskFactor);
-
-        const float adrenalineFactor   = std::min(s_Simulation.GetAdrenaline() / 5.0F, 1.0F);
-        const float acuteFatigueFactor = s_Simulation.GetAcuteFatigue() / C::AcuteFatigueMax;
-        const float runExtensionChance = std::min(
-            susceptibility *
-            C::PVCRunExtensionChance *
-            (1.0F + adrenalineFactor + acuteFatigueFactor + extremeHRFactor),
-            1.0F
-        );
-
-        const auto beat = s_RhythmEngine.Advance(
-            delta,
-            heartRate,
-            s_Simulation.GetRespPhase(),
-            exertionFraction,
-            s_Simulation.GetRespDepth(),
-            s_Simulation.GetContractility(),
-            s_Simulation.GetContractilityExcess(),
-            pvcChance,
-            riskFactor,
-            runExtensionChance
-        );
-
-        if (!beat.ShouldFire)
-        {
-            return;
-        }
-
-        if (beat.IsPVC)
+        if (result.Beat->Event.Kind == SHR::BeatKind::PVC)
         {
             const auto notification = SHR::NotificationPolicy::SelectArrhythmia(
                 SHR::Config::Get().Notification
@@ -436,8 +429,9 @@ namespace
             }
         }
 
-        s_HeartbeatVoice.Play(beat);
+        s_HeartbeatVoice.Play(result.Beat->Render);
 
+        const float heartRate = result.Physiology.HeartRate;
         const SHR::HeartRateLevel currentLevel = SHR::GetHeartRateLevel(heartRate);
         if (currentLevel != s_PreviousHeartRateLevel)
         {

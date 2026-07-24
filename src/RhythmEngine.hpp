@@ -15,43 +15,28 @@
  */
 #pragma once
 
+#include "BeatEvent.hpp"
+#include "RhythmInput.hpp"
+#include "RhythmRandom.hpp"
+
+#include <optional>
+
 namespace SHR
 {
     class RhythmEngine
     {
     public:
-        struct Beat
-        {
-            bool  ShouldFire;
-            float IBI;              // seconds; heartbeat buffer duration
-            float SystoleDuration;  // seconds; S1-to-S2 onset
-            float S1Amplitude;      // source-relative gain
-            float S2Amplitude;      // source-relative gain; may be zero for a PVC
-            float RespPhase;        // [0, 1]
-            float ExertionFraction; // [0, 1] RSA attenuation driver
-            float BreathDepth;      // [0, 1]
-            float Contractility;    // per-beat value; jitter may push it above 1
-            float FrankStarling;    // bounded preload multiplier
-            bool  IsPVC;
-        };
+        RhythmEngine();
+        explicit RhythmEngine(RhythmRandom random);
 
         void Init();
 
-        // Advances rhythm state by delta seconds and returns ShouldFire=false until a beat is due.
-        Beat Advance(
-            float delta,
-            float heartRate,
-            float respPhase,
-            float exertionFraction,
-            float breathDepth,
-            float contractility,
-            float contractilityExcess,
-            float pvcChancePerSecond,
-            float riskFactor,
-            float runExtensionChance
-        );
+        // Advances rhythm state and returns no event until a beat is due.
+        std::optional<BeatEvent> Advance(const RhythmInput &input);
 
     private:
+        RhythmRandom m_Random;
+
         float m_ElapsedSinceBeat = 0.0F;
         float m_NextIBI          = 0.0F;
         float m_PauseDuration    = 0.0F;

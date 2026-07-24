@@ -13,19 +13,20 @@
  * You should have received a copy of the GNU General Public License along with
  * SHR. If not, see <https://www.gnu.org/licenses/>.
  */
-#include "Config.hpp"
 #include "Constants.hpp"
 #include "Simulation.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <utility>
 
 namespace
 {
     namespace C = SHR::Constants;
+    constexpr SHR::SimulationSettings DefaultSimulationSettings;
 
     // Default step size approximates 30 FPS. gameHoursPerStep is used in fitness modeling.
     void RunFor(
@@ -45,15 +46,56 @@ namespace
     // Helper function to derive fitness from resting HR.
     float StartingFitness()
     {
-        return C::FitnessBaseMets + (C::BaseRestingHR - SHR::Config::Get().HeartRate.Resting) / C::RestingHRSlope;
+        return C::FitnessBaseMets +
+            (C::BaseRestingHR - DefaultSimulationSettings.RestingHeartRate) / C::RestingHRSlope;
+    }
+
+    // Recreate the legacy co-save defaults used by the pre-SimulationState test setup. Production
+    // compatibility translation belongs to the SKSE adapter; these tests use the helper only to keep
+    // their existing physiological starting conditions legible.
+    void RestoreLegacyState(
+        SHR::HeartRateSimulation &sim,
+        float heartRate,
+        float exertion,
+        float adrenaline = 0.0F,
+        float fitness = 0.0F,
+        float acuteFatigue = 0.0F,
+        float longTermFatigue = 0.0F,
+        float fastHeartRate = 0.0F,
+        float respirationRate = 0.0F,
+        float contractility = -1.0F,
+        float respirationDepth = -1.0F
+    )
+    {
+        SHR::SimulationState state = sim.GetState();
+        state.FastHeartRate = fastHeartRate > 0.0F
+            ? fastHeartRate
+            : C::HRFastFraction * heartRate;
+        state.SlowHeartRate = heartRate - state.FastHeartRate;
+        state.Exertion = exertion;
+        state.Adrenaline = adrenaline;
+        state.Fitness = fitness > 0.0F ? fitness : sim.CreateInitialState().Fitness;
+        state.AcuteFatigue = acuteFatigue;
+        state.LongTermFatigue = longTermFatigue;
+        state.RespirationRate = respirationRate > 0.0F
+            ? respirationRate
+            : C::RestingRespRate;
+        state.RespirationDepth = respirationDepth >= 0.0F
+            ? std::clamp(respirationDepth, 0.0F, 1.0F)
+            : 0.0F;
+        state.RespirationPhase = 0.0F;
+        state.Contractility = contractility >= 0.0F
+            ? contractility
+            : sim.ComputeEquilibriumContractility(state);
+        sim.Restore(state);
     }
 }
 
 struct SimFixture
 {
-    SimFixture()
+    SimFixture() :
+        sim(DefaultSimulationSettings)
     {
-        SHR::Config::Set(SHR::Config{ });
         sim.Init();
     }
 
@@ -62,11 +104,11 @@ struct SimFixture
 
 TEST_CASE_METHOD(SimFixture, "Idle HR converges to resting", "[simulation]")
 {
-    const float resting = SHR::Config::Get().HeartRate.Resting;
+    const float resting = DefaultSimulationSettings.RestingHeartRate;
 
     RunFor(sim, SHR::PlayerState{ }, 300.0F);
 
-    REQUIRE_THAT(sim.GetHeartRate(), Catch::Matchers::WithinAbs(resting, 1.0F));
+    REQUIRE_THAT(sim.GetSnapshot().HeartRate, Catch::Matchers::WithinAbs(resting, 1.0F));
 }
 
 TEST_CASE_METHOD(SimFixture, "Sprinting raises HR above resting", "[simulation]")
@@ -75,7 +117,7 @@ TEST_CASE_METHOD(SimFixture, "Sprinting raises HR above resting", "[simulation]"
     sprinting.IsSprinting = true;
     RunFor(sim, sprinting, 120.0F);
 
-    REQUIRE(sim.GetHeartRate() > SHR::Config::Get().HeartRate.Resting + 10.0F);
+    REQUIRE(sim.GetSnapshot().HeartRate > DefaultSimulationSettings.RestingHeartRate + 10.0F);
 }
 
 TEST_CASE_METHOD(SimFixture, "HR recovers toward resting after exercise", "[simulation]")
@@ -83,48 +125,48 @@ TEST_CASE_METHOD(SimFixture, "HR recovers toward resting after exercise", "[simu
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
     RunFor(sim, sprinting, 120.0F);
-    const float peakHR = sim.GetHeartRate();
+    const float peakHR = sim.GetSnapshot().HeartRate;
 
     RunFor(sim, SHR::PlayerState{ }, 300.0F);
 
-    REQUIRE(sim.GetHeartRate() < peakHR - 10.0F);
+    REQUIRE(sim.GetSnapshot().HeartRate < peakHR - 10.0F);
 }
 
 TEST_CASE_METHOD(SimFixture, "Combat entry raises HR above idle baseline", "[simulation]")
 {
     RunFor(sim, SHR::PlayerState{ }, 300.0F);
-    const float idleHR = sim.GetHeartRate();
+    const float idleHR = sim.GetSnapshot().HeartRate;
 
     sim.NotifyCombatEntry();
     RunFor(sim, SHR::PlayerState{ }, 60.0F);
 
-    REQUIRE(sim.GetHeartRate() > idleHR + 1.0F);
+    REQUIRE(sim.GetSnapshot().HeartRate > idleHR + 1.0F);
 }
 
 TEST_CASE_METHOD(SimFixture, "Jump impulse raises exertion immediately", "[simulation]")
 {
     RunFor(sim, SHR::PlayerState{ }, 300.0F);
-    const float beforeJump = sim.GetExertion();
+    const float beforeJump = sim.GetSnapshot().Exertion;
 
     sim.NotifyJump();
     sim.Step(SHR::PlayerState{ }, 0.1F);
 
-    REQUIRE(sim.GetExertion() > beforeJump);
+    REQUIRE(sim.GetSnapshot().Exertion > beforeJump);
 }
 
 TEST_CASE_METHOD(SimFixture, "Death sets target HR to zero and tracks duration", "[simulation]")
 {
-    REQUIRE_FALSE(sim.GetDeathSeconds().has_value());
+    REQUIRE_FALSE(sim.GetSnapshot().DeathSeconds.has_value());
 
     SHR::PlayerState dead = { };
     dead.IsDead = true;
 
     sim.Step(dead, 1.0F);
-    REQUIRE(sim.GetDeathSeconds().has_value());
-    REQUIRE_THAT(*sim.GetDeathSeconds(), Catch::Matchers::WithinAbs(1.0F, 0.001F));
+    REQUIRE(sim.GetSnapshot().DeathSeconds.has_value());
+    REQUIRE_THAT(*sim.GetSnapshot().DeathSeconds, Catch::Matchers::WithinAbs(1.0F, 0.001F));
 
     sim.Step(dead, 1.0F);
-    REQUIRE_THAT(*sim.GetDeathSeconds(), Catch::Matchers::WithinAbs(2.0F, 0.001F));
+    REQUIRE_THAT(*sim.GetSnapshot().DeathSeconds, Catch::Matchers::WithinAbs(2.0F, 0.001F));
 }
 
 TEST_CASE_METHOD(SimFixture, "Resurrection clears death seconds", "[simulation]")
@@ -132,10 +174,10 @@ TEST_CASE_METHOD(SimFixture, "Resurrection clears death seconds", "[simulation]"
     SHR::PlayerState dead = { };
     dead.IsDead = true;
     RunFor(sim, dead, 5.0F);
-    REQUIRE(sim.GetDeathSeconds().has_value());
+    REQUIRE(sim.GetSnapshot().DeathSeconds.has_value());
 
     sim.Step(SHR::PlayerState{ }, 1.0F);
-    REQUIRE_FALSE(sim.GetDeathSeconds().has_value());
+    REQUIRE_FALSE(sim.GetSnapshot().DeathSeconds.has_value());
 }
 
 TEST_CASE_METHOD(SimFixture, "Sleep resets exertion and drops HR to sleep value", "[simulation]")
@@ -143,28 +185,28 @@ TEST_CASE_METHOD(SimFixture, "Sleep resets exertion and drops HR to sleep value"
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
     RunFor(sim, sprinting, 30.0F);
-    REQUIRE(sim.GetExertion() > C::IdleMets + 1.0F);
+    REQUIRE(sim.GetSnapshot().Exertion > C::IdleMets + 1.0F);
 
     // By construction, ComputeTargetHeartRate(Idle) == config.HeartRate.Resting.
-    const float expectedSleepHR = SHR::Config::Get().HeartRate.Resting * C::SleepFraction;
+    const float expectedSleepHR = DefaultSimulationSettings.RestingHeartRate * C::SleepFraction;
     sim.NotifySleep(8.0F * 60.0F * 60.0F);
     sim.Step(SHR::PlayerState{ }, 0.033F);
 
-    REQUIRE_THAT(sim.GetExertion(), Catch::Matchers::WithinAbs(C::IdleMets, 0.01F));
-    REQUIRE_THAT(sim.GetHeartRate(), Catch::Matchers::WithinAbs(expectedSleepHR, 0.05F));
+    REQUIRE_THAT(sim.GetSnapshot().Exertion, Catch::Matchers::WithinAbs(C::IdleMets, 0.01F));
+    REQUIRE_THAT(sim.GetSnapshot().HeartRate, Catch::Matchers::WithinAbs(expectedSleepHR, 0.05F));
 }
 
 TEST_CASE_METHOD(SimFixture, "HR rises from sleep HR to resting after waking", "[simulation]")
 {
-    const float expectedSleepHR = SHR::Config::Get().HeartRate.Resting * C::SleepFraction;
+    const float expectedSleepHR = DefaultSimulationSettings.RestingHeartRate * C::SleepFraction;
     sim.NotifySleep(8.0F * 60.0F * 60.0F);
     sim.Step(SHR::PlayerState{ }, 0.033F);
-    REQUIRE_THAT(sim.GetHeartRate(), Catch::Matchers::WithinAbs(expectedSleepHR, 0.05F));
+    REQUIRE_THAT(sim.GetSnapshot().HeartRate, Catch::Matchers::WithinAbs(expectedSleepHR, 0.05F));
 
     // After waking and idling, HR converges back to resting.
     RunFor(sim, SHR::PlayerState{ }, 500.0F);
 
-    REQUIRE_THAT(sim.GetHeartRate(), Catch::Matchers::WithinAbs(SHR::Config::Get().HeartRate.Resting, 1.0F));
+    REQUIRE_THAT(sim.GetSnapshot().HeartRate, Catch::Matchers::WithinAbs(DefaultSimulationSettings.RestingHeartRate, 1.0F));
 }
 
 TEST_CASE_METHOD(SimFixture, "Fast travel from high exertion reduces exertion", "[simulation]")
@@ -172,12 +214,12 @@ TEST_CASE_METHOD(SimFixture, "Fast travel from high exertion reduces exertion", 
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
     RunFor(sim, sprinting, 120.0F);
-    const float preTravelExertion = sim.GetExertion();
+    const float preTravelExertion = sim.GetSnapshot().Exertion;
 
     sim.NotifyFastTravel(60.0F * 60.0F);
     sim.Step(SHR::PlayerState{ }, 0.1F);
 
-    REQUIRE(sim.GetExertion() < preTravelExertion);
+    REQUIRE(sim.GetSnapshot().Exertion < preTravelExertion);
 }
 
 TEST_CASE_METHOD(SimFixture, "Sleep decays lingering contractility across the slept duration", "[simulation]")
@@ -187,12 +229,12 @@ TEST_CASE_METHOD(SimFixture, "Sleep decays lingering contractility across the sl
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
     RunFor(sim, sprinting, 120.0F);
-    REQUIRE(sim.GetContractility() > 0.8F);
+    REQUIRE(sim.GetSnapshot().Contractility > 0.8F);
 
     sim.NotifySleep(8.0F * 60.0F * 60.0F);
     sim.Step(SHR::PlayerState{ }, 0.033F);
 
-    REQUIRE(sim.GetContractility() < 0.05F);
+    REQUIRE(sim.GetSnapshot().Contractility < 0.05F);
 }
 
 TEST_CASE_METHOD(SimFixture, "Fast travel decays lingering contractility toward walking effort", "[simulation]")
@@ -200,34 +242,35 @@ TEST_CASE_METHOD(SimFixture, "Fast travel decays lingering contractility toward 
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
     RunFor(sim, sprinting, 120.0F);
-    REQUIRE(sim.GetContractility() > 0.8F);
+    REQUIRE(sim.GetSnapshot().Contractility > 0.8F);
 
-    // An hour of (assumed-walking) travel is many decay time constants: contractility falls far from
-    // its sprint peak toward the modest walking-effort target, rather than advancing only one frame.
+    // An hour of (assumed-walking) travel is many decay time constants: contractility falls far
+    // from its sprint peak toward the modest walking-effort target, rather than advancing only one
+    // frame.
     sim.NotifyFastTravel(60.0F * 60.0F);
     sim.Step(SHR::PlayerState{ }, 0.1F);
 
-    REQUIRE(sim.GetContractility() < 0.3F);
+    REQUIRE(sim.GetSnapshot().Contractility < 0.3F);
 }
 
 TEST_CASE_METHOD(SimFixture, "Restore sets HR and exertion for co-save loading", "[simulation]")
 {
-    sim.Restore(72.0F, 3.5F);
+    RestoreLegacyState(sim, 72.0F, 3.5F);
 
-    REQUIRE_THAT(sim.GetHeartRate(), Catch::Matchers::WithinAbs(72.0F, 0.001F));
-    REQUIRE_THAT(sim.GetExertion(), Catch::Matchers::WithinAbs(3.5F, 0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().HeartRate, Catch::Matchers::WithinAbs(72.0F, 0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().Exertion, Catch::Matchers::WithinAbs(3.5F, 0.001F));
     // Without explicit fastHR, the components are split proportionally.
-    REQUIRE_THAT(sim.GetFastHR(), Catch::Matchers::WithinAbs(C::HRFastFraction * 72.0F, 0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().FastHeartRate, Catch::Matchers::WithinAbs(C::HRFastFraction * 72.0F, 0.001F));
 }
 
 TEST_CASE_METHOD(SimFixture, "Restore with explicit fast component preserves bi-exponential state", "[simulation]")
 {
     const float totalHR = 90.0F;
     const float fastHR = 60.0F;
-    sim.Restore(totalHR, C::IdleMets, 0.0F, 0.0F, 0.0F, 0.0F, fastHR);
+    RestoreLegacyState(sim, totalHR, C::IdleMets, 0.0F, 0.0F, 0.0F, 0.0F, fastHR);
 
-    REQUIRE_THAT(sim.GetFastHR(), Catch::Matchers::WithinAbs(fastHR,  0.001F));
-    REQUIRE_THAT(sim.GetHeartRate(), Catch::Matchers::WithinAbs(totalHR, 0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().FastHeartRate, Catch::Matchers::WithinAbs(fastHR,  0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().HeartRate, Catch::Matchers::WithinAbs(totalHR, 0.001F));
 }
 
 // --- Physiological magnitude tests ---
@@ -236,7 +279,7 @@ TEST_CASE_METHOD(SimFixture, "Restore with explicit fast component preserves bi-
 
 TEST_CASE_METHOD(SimFixture, "Sustained sprint converges to Max HR", "[simulation][physiology]")
 {
-    const float maxHR = SHR::Config::Get().HeartRate.Max;
+    const float maxHR = DefaultSimulationSettings.MaximumHeartRate;
 
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
@@ -244,7 +287,7 @@ TEST_CASE_METHOD(SimFixture, "Sustained sprint converges to Max HR", "[simulatio
     // convergence. The extra tau accounts for exertion ramp-up.
     RunFor(sim, sprinting, 6.0F * C::SlowOnsetTau);
 
-    REQUIRE_THAT(sim.GetHeartRate(), Catch::Matchers::WithinAbs(maxHR, 1.0F));
+    REQUIRE_THAT(sim.GetSnapshot().HeartRate, Catch::Matchers::WithinAbs(maxHR, 1.0F));
 }
 
 TEST_CASE_METHOD(SimFixture, "Exertion reaches effective fitness at the configured accumulation rate", "[simulation][physiology]")
@@ -263,25 +306,24 @@ TEST_CASE_METHOD(SimFixture, "Exertion reaches effective fitness at the configur
         sim.Step(sprinting, 1.0F);
     }
 
-    // Exertion is capped at effective fitness, which may be slightly below raw fitness
-    // due to acute fatigue accumulated over the steps. Check against the actual ceiling.
-    REQUIRE_THAT(sim.GetExertion(), Catch::Matchers::WithinAbs(sim.GetEffectiveFitness(), 0.01F));
+    // Exertion is capped at effective fitness, which may be slightly below raw fitness due to acute
+    // fatigue accumulated over the steps. Check against the actual ceiling.
+    REQUIRE_THAT(sim.GetSnapshot().Exertion, Catch::Matchers::WithinAbs(sim.GetSnapshot().EffectiveFitness, 0.01F));
 }
 
 TEST_CASE("Fast HR component reaches 63% convergence after one FastOnsetTau", "[simulation][physiology]")
 {
-    SHR::Config config;
-    config.HeartRate.Resting = C::BaseRestingHR;
-    SHR::Config::Set(config);
-    SHR::HeartRateSimulation sim;
+    auto settings = DefaultSimulationSettings;
+    settings.RestingHeartRate = C::BaseRestingHR;
+    SHR::HeartRateSimulation sim(settings);
     sim.Init();
 
-    const float maxHR = config.HeartRate.Max;
+    const float maxHR = settings.MaximumHeartRate;
 
     // Sedentary fitness (FitnessBaseMets), which means normFitness = 0, and
     // thus FastOnsetTau should be FastOnsetTauSedentary.
     // Exertion pinned to the fitness ceiling so target is MaxHR from t=0.
-    sim.Restore(C::BaseRestingHR, C::FitnessBaseMets, 0.0F, C::FitnessBaseMets);
+    RestoreLegacyState(sim, C::BaseRestingHR, C::FitnessBaseMets, 0.0F, C::FitnessBaseMets);
 
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
@@ -291,16 +333,17 @@ TEST_CASE("Fast HR component reaches 63% convergence after one FastOnsetTau", "[
     const float fastInitial = C::HRFastFraction * C::BaseRestingHR;
     const float expected = fastInitial + (fastTarget - fastInitial) * (1.0F - std::exp(-1.0F));
 
-    REQUIRE_THAT(sim.GetFastHR(), Catch::Matchers::WithinAbs(expected, 1.0F));
+    REQUIRE_THAT(sim.GetSnapshot().FastHeartRate, Catch::Matchers::WithinAbs(expected, 1.0F));
 }
 
 TEST_CASE_METHOD(SimFixture, "Slow HR component reaches 63% convergence after one SlowOnsetTau", "[simulation][physiology]")
 {
-    const float resting = SHR::Config::Get().HeartRate.Resting;
-    const float maxHR   = SHR::Config::Get().HeartRate.Max;
+    const float resting = DefaultSimulationSettings.RestingHeartRate;
+    const float maxHR   = DefaultSimulationSettings.MaximumHeartRate;
 
-    // Seed at resting with exertion already at the fitness ceiling so target is Max from t=0.
-    sim.Restore(resting, StartingFitness());
+    // Seed at resting with exertion already at the fitness ceiling so target is
+    // Max from t=0.
+    RestoreLegacyState(sim, resting, StartingFitness());
 
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
@@ -308,7 +351,7 @@ TEST_CASE_METHOD(SimFixture, "Slow HR component reaches 63% convergence after on
 
     const float slowTarget  = (1.0F - C::HRFastFraction) * maxHR;
     const float slowInitial = (1.0F - C::HRFastFraction) * resting;
-    const float slowHR = sim.GetHeartRate() - sim.GetFastHR();
+    const float slowHR = sim.GetSnapshot().HeartRate - sim.GetSnapshot().FastHeartRate;
     const float expected = slowInitial + (slowTarget - slowInitial) * (1.0F - std::exp(-1.0F));
 
     REQUIRE_THAT(slowHR, Catch::Matchers::WithinAbs(expected, 1.0F));
@@ -316,42 +359,41 @@ TEST_CASE_METHOD(SimFixture, "Slow HR component reaches 63% convergence after on
 
 TEST_CASE("Fast component decays 63% toward resting in one FastRecoveryTau", "[simulation][physiology]")
 {
-    SHR::Config config;
-    config.HeartRate.Resting = C::BaseRestingHR;
-    SHR::Config::Set(config);
-    SHR::HeartRateSimulation sim;
+    auto settings = DefaultSimulationSettings;
+    settings.RestingHeartRate = C::BaseRestingHR;
+    SHR::HeartRateSimulation sim(settings);
     sim.Init();
 
-    const float maxHR = config.HeartRate.Max;
+    const float maxHR = settings.MaximumHeartRate;
     const float fastPeak = C::HRFastFraction * maxHR;
 
-    // Sedentary fitness impies normFitness = 0, which implies FastRecoveryTauSedentary.
-    sim.Restore(maxHR, C::IdleMets, 0.0F, C::FitnessBaseMets, 0.0F, 0.0F, fastPeak);
+    // Sedentary fitness impies normFitness = 0, which implies
+    // FastRecoveryTauSedentary.
+    RestoreLegacyState(sim, maxHR, C::IdleMets, 0.0F, C::FitnessBaseMets, 0.0F, 0.0F, fastPeak);
     RunFor(sim, SHR::PlayerState{ }, C::FastRecoveryTauSedentary);
 
     const float fastTarget = C::HRFastFraction * C::BaseRestingHR;
     const float expected = fastTarget + (fastPeak - fastTarget) * std::exp(-1.0F);
 
-    REQUIRE_THAT(sim.GetFastHR(), Catch::Matchers::WithinAbs(expected, 1.0F));
+    REQUIRE_THAT(sim.GetSnapshot().FastHeartRate, Catch::Matchers::WithinAbs(expected, 1.0F));
 }
 
 TEST_CASE("Slow component retains most of its value after one FastRecoveryTau", "[simulation][physiology]")
 {
-    SHR::Config config;
-    config.HeartRate.Resting = C::BaseRestingHR;
-    SHR::Config::Set(config);
-    SHR::HeartRateSimulation sim;
+    auto settings = DefaultSimulationSettings;
+    settings.RestingHeartRate = C::BaseRestingHR;
+    SHR::HeartRateSimulation sim(settings);
     sim.Init();
 
-    const float maxHR = config.HeartRate.Max;
+    const float maxHR = settings.MaximumHeartRate;
     const float fastPeak = C::HRFastFraction * maxHR;
     const float slowPeak = (1.0F - C::HRFastFraction) * maxHR;
 
-    sim.Restore(maxHR, C::IdleMets, 0.0F, C::FitnessBaseMets, 0.0F, 0.0F, fastPeak);
+    RestoreLegacyState(sim, maxHR, C::IdleMets, 0.0F, C::FitnessBaseMets, 0.0F, 0.0F, fastPeak);
     RunFor(sim, SHR::PlayerState{ }, C::FastRecoveryTauSedentary);
 
     const float slowTarget = (1.0F - C::HRFastFraction) * C::BaseRestingHR;
-    const float slowHR = sim.GetHeartRate() - sim.GetFastHR();
+    const float slowHR = sim.GetSnapshot().HeartRate - sim.GetSnapshot().FastHeartRate;
     const float expected = slowTarget + (slowPeak - slowTarget) * std::exp(-C::FastRecoveryTauSedentary / C::SlowRecoveryTau);
 
     REQUIRE_THAT(slowHR, Catch::Matchers::WithinAbs(expected, 1.0F));
@@ -359,52 +401,51 @@ TEST_CASE("Slow component retains most of its value after one FastRecoveryTau", 
 
 TEST_CASE("Fit character's fast HR recovers more than sedentary from same peak HR", "[simulation][physiology]")
 {
-    SHR::Config::Set(SHR::Config{ });
-    const float maxHR = SHR::Config::Get().HeartRate.Max;
+    const float maxHR = DefaultSimulationSettings.MaximumHeartRate;
     const float fastPeak = C::HRFastFraction * maxHR;
 
     // Both start at the same fast peak; athlete has shorter tau AND lower resting target.
-    SHR::HeartRateSimulation sedentary;
-    sedentary.Restore(maxHR, C::IdleMets, 0.0F, C::FitnessBaseMets, 0.0F, 0.0F, fastPeak);
+    SHR::HeartRateSimulation sedentary(DefaultSimulationSettings);
+    RestoreLegacyState(sedentary, maxHR, C::IdleMets, 0.0F, C::FitnessBaseMets, 0.0F, 0.0F, fastPeak);
 
-    SHR::HeartRateSimulation athlete;
-    athlete.Restore(maxHR, C::IdleMets, 0.0F, C::FitnessMaxMets, 0.0F, 0.0F, fastPeak);
+    SHR::HeartRateSimulation athlete(DefaultSimulationSettings);
+    RestoreLegacyState(athlete, maxHR, C::IdleMets, 0.0F, C::FitnessMaxMets, 0.0F, 0.0F, fastPeak);
 
     RunFor(sedentary, SHR::PlayerState{ }, C::FastRecoveryTauSedentary);
     RunFor(athlete,   SHR::PlayerState{ }, C::FastRecoveryTauSedentary);
 
-    REQUIRE(athlete.GetFastHR() < sedentary.GetFastHR());
+    REQUIRE(athlete.GetSnapshot().FastHeartRate < sedentary.GetSnapshot().FastHeartRate);
 }
 
 // --- Adrenaline tests ---
 
 TEST_CASE_METHOD(SimFixture, "Combat entry spikes adrenaline immediately", "[simulation][adrenaline]")
 {
-    REQUIRE_THAT(sim.GetAdrenaline(), Catch::Matchers::WithinAbs(0.0F, 0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().Adrenaline, Catch::Matchers::WithinAbs(0.0F, 0.001F));
 
     sim.NotifyCombatEntry();
 
-    REQUIRE(sim.GetAdrenaline() > 0.0F);
+    REQUIRE(sim.GetSnapshot().Adrenaline > 0.0F);
 }
 
 TEST_CASE_METHOD(SimFixture, "Hit stacks adrenaline on top of combat entry", "[simulation][adrenaline]")
 {
     sim.NotifyCombatEntry();
-    const float afterCombat = sim.GetAdrenaline();
+    const float afterCombat = sim.GetSnapshot().Adrenaline;
 
     sim.NotifyHit();
 
-    REQUIRE(sim.GetAdrenaline() > afterCombat);
+    REQUIRE(sim.GetSnapshot().Adrenaline > afterCombat);
 }
 
 TEST_CASE_METHOD(SimFixture, "Adrenaline decays by half after one half-life", "[simulation][adrenaline]")
 {
     sim.NotifyCombatEntry();
-    const float initial = sim.GetAdrenaline();
+    const float initial = sim.GetSnapshot().Adrenaline;
 
     RunFor(sim, SHR::PlayerState{ }, C::AdrenalineHalfLife);
 
-    REQUIRE_THAT(sim.GetAdrenaline(), Catch::Matchers::WithinAbs(initial * 0.5F, 0.05F));
+    REQUIRE_THAT(sim.GetSnapshot().Adrenaline, Catch::Matchers::WithinAbs(initial * 0.5F, 0.05F));
 }
 
 TEST_CASE_METHOD(SimFixture, "Stacked adrenaline cannot drive exertion above fitness ceiling", "[simulation][adrenaline]")
@@ -416,93 +457,127 @@ TEST_CASE_METHOD(SimFixture, "Stacked adrenaline cannot drive exertion above fit
     }
     sim.Step(SHR::PlayerState{ }, 0.033F);
 
-    REQUIRE(sim.GetExertion() <= sim.GetFitness() + 0.01F);
+    REQUIRE(sim.GetSnapshot().Exertion <= sim.GetSnapshot().Fitness + 0.01F);
 }
 
 TEST_CASE_METHOD(SimFixture, "Sleep clears adrenaline", "[simulation][adrenaline]")
 {
     sim.NotifyCombatEntry();
-    REQUIRE(sim.GetAdrenaline() > 0.0F);
+    REQUIRE(sim.GetSnapshot().Adrenaline > 0.0F);
 
     sim.NotifySleep(8.0F * 60.0F * 60.0F);
     sim.Step(SHR::PlayerState{ }, 0.033F);
 
-    REQUIRE_THAT(sim.GetAdrenaline(), Catch::Matchers::WithinAbs(0.0F, 0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().Adrenaline, Catch::Matchers::WithinAbs(0.0F, 0.001F));
 }
 
 TEST_CASE_METHOD(SimFixture, "Fast travel clears adrenaline over elapsed duration", "[simulation][adrenaline]")
 {
     sim.NotifyCombatEntry();
-    const float initial = sim.GetAdrenaline();
+    const float initial = sim.GetSnapshot().Adrenaline;
 
     // 1 hour (3600s) is much longer than two 2-minute half-lives so we should expect adrenaline to be nearly gone.
     sim.NotifyFastTravel(3600.0F);
     sim.Step(SHR::PlayerState{ }, 0.033F);
 
-    REQUIRE(sim.GetAdrenaline() < initial * 0.01F);
+    REQUIRE(sim.GetSnapshot().Adrenaline < initial * 0.01F);
 }
 
 TEST_CASE_METHOD(SimFixture, "Restore preserves adrenaline from co-save", "[simulation][adrenaline]")
 {
     const float savedAdrenaline = 1.5F;
-    sim.Restore(72.0F, 3.5F, savedAdrenaline);
+    RestoreLegacyState(sim, 72.0F, 3.5F, savedAdrenaline);
 
-    REQUIRE_THAT(sim.GetAdrenaline(), Catch::Matchers::WithinAbs(savedAdrenaline, 0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().Adrenaline, Catch::Matchers::WithinAbs(savedAdrenaline, 0.001F));
 }
 
 // --- Long-term stamina (fitness) tests ---
 
-TEST_CASE("High resting HR config initializes at that HR without clamping to BaseRestingHR", "[simulation][fitness]")
+TEST_CASE("High resting HR setting initializes at that HR without clamping to BaseRestingHR", "[simulation][fitness]")
 {
-    SHR::Config config;
-    config.HeartRate.Resting = C::MaxRestingHR;
-    SHR::Config::Set(config);
+    auto settings = DefaultSimulationSettings;
+    settings.RestingHeartRate = C::MaxRestingHR;
 
-    SHR::HeartRateSimulation sim;
+    SHR::HeartRateSimulation sim(settings);
     sim.Init();
 
-    REQUIRE_THAT(sim.GetHeartRate(), Catch::Matchers::WithinAbs(C::MaxRestingHR, 0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().HeartRate, Catch::Matchers::WithinAbs(C::MaxRestingHR, 0.001F));
+}
+
+TEST_CASE("Simulation settings are instance-local", "[simulation][settings]")
+{
+    auto customSettings = DefaultSimulationSettings;
+    customSettings.RestingHeartRate = 65.0F;
+    customSettings.MaximumHeartRate = 175.0F;
+
+    SHR::HeartRateSimulation defaultSim(DefaultSimulationSettings);
+    SHR::HeartRateSimulation customSim(customSettings);
+    defaultSim.Init();
+    customSim.Init();
+
+    REQUIRE_THAT(
+        defaultSim.GetSnapshot().HeartRate,
+        Catch::Matchers::WithinAbs(DefaultSimulationSettings.RestingHeartRate, 0.001F)
+    );
+    REQUIRE_THAT(
+        customSim.GetSnapshot().HeartRate,
+        Catch::Matchers::WithinAbs(customSettings.RestingHeartRate, 0.001F)
+    );
+
+    SHR::PlayerState sprinting;
+    sprinting.IsSprinting = true;
+    RunFor(defaultSim, sprinting, 600.0F);
+    RunFor(customSim, sprinting, 600.0F);
+
+    REQUIRE_THAT(
+        defaultSim.GetSnapshot().HeartRate,
+        Catch::Matchers::WithinAbs(DefaultSimulationSettings.MaximumHeartRate, 1.0F)
+    );
+    REQUIRE_THAT(
+        customSim.GetSnapshot().HeartRate,
+        Catch::Matchers::WithinAbs(customSettings.MaximumHeartRate, 1.0F)
+    );
 }
 
 TEST_CASE_METHOD(SimFixture, "Fitness initializes from resting heart rate", "[simulation][fitness]")
 {
-    REQUIRE_THAT(sim.GetFitness(), Catch::Matchers::WithinAbs(StartingFitness(), 0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().Fitness, Catch::Matchers::WithinAbs(StartingFitness(), 0.001F));
 }
 
 TEST_CASE_METHOD(SimFixture, "Fitness rises ~63% toward max after one gain tau of training", "[simulation][fitness]")
 {
-    const float initial = sim.GetFitness();
+    const float initial = sim.GetSnapshot().Fitness;
 
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
     sim.Step(sprinting, 0.033F, C::FitnessGainTau);
 
     const float expected = initial + (1.0F - std::exp(-1.0F)) * (C::FitnessMaxMets - initial);
-    REQUIRE_THAT(sim.GetFitness(), Catch::Matchers::WithinAbs(expected, 0.01F));
+    REQUIRE_THAT(sim.GetSnapshot().Fitness, Catch::Matchers::WithinAbs(expected, 0.01F));
 }
 
 TEST_CASE_METHOD(SimFixture, "Fitness decays ~63% toward base after one decay tau of inactivity", "[simulation][fitness]")
 {
-    sim.Restore(SHR::Config::Get().HeartRate.Resting, C::IdleMets, 0.0F, C::FitnessMaxMets);
+    RestoreLegacyState(sim, DefaultSimulationSettings.RestingHeartRate, C::IdleMets, 0.0F, C::FitnessMaxMets);
 
-    const float initial = sim.GetFitness();
+    const float initial = sim.GetSnapshot().Fitness;
 
     sim.Step(SHR::PlayerState{ }, 0.033F, C::FitnessDecayTau);
 
     const float expected = initial + (1.0F - std::exp(-1.0F)) * (C::FitnessBaseMets - initial);
-    REQUIRE_THAT(sim.GetFitness(), Catch::Matchers::WithinAbs(expected, 0.01F));
+    REQUIRE_THAT(sim.GetSnapshot().Fitness, Catch::Matchers::WithinAbs(expected, 0.01F));
 }
 
 TEST_CASE_METHOD(SimFixture, "Higher fitness lowers steady-state resting HR", "[simulation][fitness]")
 {
     RunFor(sim, SHR::PlayerState{ }, 300.0F);
-    const float baseRestingHR = sim.GetHeartRate();
+    const float baseRestingHR = sim.GetSnapshot().HeartRate;
 
-    SHR::HeartRateSimulation simFit;
+    SHR::HeartRateSimulation simFit(DefaultSimulationSettings);
     simFit.Init();
-    simFit.Restore(SHR::Config::Get().HeartRate.Resting, C::IdleMets, 0.0F, C::FitnessMaxMets);
+    RestoreLegacyState(simFit, DefaultSimulationSettings.RestingHeartRate, C::IdleMets, 0.0F, C::FitnessMaxMets);
     RunFor(simFit, SHR::PlayerState{ }, 300.0F);
-    const float fitRestingHR = simFit.GetHeartRate();
+    const float fitRestingHR = simFit.GetSnapshot().HeartRate;
 
     REQUIRE(fitRestingHR < baseRestingHR - 1.0F);
 }
@@ -510,38 +585,38 @@ TEST_CASE_METHOD(SimFixture, "Higher fitness lowers steady-state resting HR", "[
 TEST_CASE_METHOD(SimFixture, "Resting HR at max fitness matches slope formula", "[simulation][fitness][physiology]")
 {
     // Seed at max fitness; let HR converge to its new resting point at idle.
-    sim.Restore(SHR::Config::Get().HeartRate.Resting, C::IdleMets, 0.0F, C::FitnessMaxMets);
+    RestoreLegacyState(sim, DefaultSimulationSettings.RestingHeartRate, C::IdleMets, 0.0F, C::FitnessMaxMets);
     RunFor(sim, SHR::PlayerState{ }, 800.0F);
 
     const float expected = C::BaseRestingHR - (C::FitnessMaxMets - C::FitnessBaseMets) * C::RestingHRSlope;
 
-    REQUIRE_THAT(sim.GetHeartRate(), Catch::Matchers::WithinAbs(expected, 1.0F));
+    REQUIRE_THAT(sim.GetSnapshot().HeartRate, Catch::Matchers::WithinAbs(expected, 1.0F));
 }
 
 TEST_CASE_METHOD(SimFixture, "Restore preserves fitness from co-save", "[simulation][fitness]")
 {
     const float savedFitness = 17.0F;
-    sim.Restore(55.0F, 1.5F, 0.0F, savedFitness);
+    RestoreLegacyState(sim, 55.0F, 1.5F, 0.0F, savedFitness);
 
-    REQUIRE_THAT(sim.GetFitness(), Catch::Matchers::WithinAbs(savedFitness, 0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().Fitness, Catch::Matchers::WithinAbs(savedFitness, 0.001F));
 }
 
 // --- Acute fatigue tests ---
 
 TEST_CASE_METHOD(SimFixture, "Acute fatigue accumulates during sustained exertion", "[simulation][fatigue]")
 {
-    REQUIRE_THAT(sim.GetAcuteFatigue(), Catch::Matchers::WithinAbs(0.0F, 0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().AcuteFatigue, Catch::Matchers::WithinAbs(0.0F, 0.001F));
 
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
     RunFor(sim, sprinting, 3.0F * C::AcuteFatigueGainTau);
 
-    // The system is self-limiting: as fatigue rises it reduces GetEffectiveFitness(), which
+    // The system is self-limiting: as fatigue rises it reduces effective-fitness snapshot, which
     // lowers the exertion cap and thus the fatigue target. The equilibrium is roughly
-    // (fitness - idle) / (fitness - idle + AcuteFatigueMax) * max, ~73% for default config.
-    // After 3 tau we should be well above 50% and close to that ceiling.
-    REQUIRE(sim.GetAcuteFatigue() > C::AcuteFatigueMax * 0.5F);
-    REQUIRE(sim.GetAcuteFatigue() < C::AcuteFatigueMax);
+    // (fitness - idle) / (fitness - idle + AcuteFatigueMax) * max, ~73% for default config. After
+    // 3 tau we should be well above 50% and close to that ceiling.
+    REQUIRE(sim.GetSnapshot().AcuteFatigue > C::AcuteFatigueMax * 0.5F);
+    REQUIRE(sim.GetSnapshot().AcuteFatigue < C::AcuteFatigueMax);
 }
 
 TEST_CASE_METHOD(SimFixture, "Acute fatigue decays toward zero at rest", "[simulation][fatigue]")
@@ -549,11 +624,11 @@ TEST_CASE_METHOD(SimFixture, "Acute fatigue decays toward zero at rest", "[simul
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
     RunFor(sim, sprinting, 3.0F * C::AcuteFatigueGainTau);
-    REQUIRE(sim.GetAcuteFatigue() > C::AcuteFatigueMax * 0.5F);
+    REQUIRE(sim.GetSnapshot().AcuteFatigue > C::AcuteFatigueMax * 0.5F);
 
     RunFor(sim, SHR::PlayerState{ }, 3.0F * C::AcuteFatigueDecayTau);
 
-    REQUIRE(sim.GetAcuteFatigue() < C::AcuteFatigueMax * 0.1F);
+    REQUIRE(sim.GetSnapshot().AcuteFatigue < C::AcuteFatigueMax * 0.1F);
 }
 
 TEST_CASE_METHOD(SimFixture, "Sleep clears acute fatigue", "[simulation][fatigue]")
@@ -561,23 +636,23 @@ TEST_CASE_METHOD(SimFixture, "Sleep clears acute fatigue", "[simulation][fatigue
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
     RunFor(sim, sprinting, 600.0F);
-    REQUIRE(sim.GetAcuteFatigue() > 0.0F);
+    REQUIRE(sim.GetSnapshot().AcuteFatigue > 0.0F);
 
     sim.NotifySleep(8.0F * C::SecondsPerHour);
     sim.Step(SHR::PlayerState{ }, 0.033F);
 
-    REQUIRE_THAT(sim.GetAcuteFatigue(), Catch::Matchers::WithinAbs(0.0F, 0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().AcuteFatigue, Catch::Matchers::WithinAbs(0.0F, 0.001F));
 }
 
 TEST_CASE_METHOD(SimFixture, "Acute fatigue reduces effective fitness below raw fitness", "[simulation][fatigue]")
 {
-    const float rawFitness = sim.GetFitness();
+    const float rawFitness = sim.GetSnapshot().Fitness;
 
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
     RunFor(sim, sprinting, 3.0F * C::AcuteFatigueGainTau);
 
-    REQUIRE(sim.GetEffectiveFitness() < rawFitness - 0.5F);
+    REQUIRE(sim.GetSnapshot().EffectiveFitness < rawFitness - 0.5F);
 }
 
 TEST_CASE_METHOD(SimFixture, "Fatigued exertion cap is lower than rested exertion cap", "[simulation][fatigue]")
@@ -586,54 +661,55 @@ TEST_CASE_METHOD(SimFixture, "Fatigued exertion cap is lower than rested exertio
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
     RunFor(sim, sprinting, 3.0F * C::AcuteFatigueGainTau);
-    const float fatiguedExertionCap = sim.GetEffectiveFitness();
+    const float fatiguedExertionCap = sim.GetSnapshot().EffectiveFitness;
 
     // Compare against a fresh sim at the same fitness level.
-    SHR::HeartRateSimulation fresh;
+    SHR::HeartRateSimulation fresh(DefaultSimulationSettings);
     fresh.Init();
-    REQUIRE(fatiguedExertionCap < fresh.GetEffectiveFitness() - 0.5F);
+    REQUIRE(fatiguedExertionCap < fresh.GetSnapshot().EffectiveFitness - 0.5F);
 }
 
 // --- Long-term fatigue tests ---
 
 TEST_CASE_METHOD(SimFixture, "Long-term fatigue builds from sustained acute fatigue", "[simulation][fatigue]")
 {
-    REQUIRE_THAT(sim.GetLongTermFatigue(), Catch::Matchers::WithinAbs(0.0F, 0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().LongTermFatigue, Catch::Matchers::WithinAbs(0.0F, 0.001F));
 
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
 
-    // Run at max exertion for several game-hour steps to drive long-term fatigue gain.
-    // Using large gameHoursDelta to compress time.
+    // Run at max exertion for several game-hour steps to drive long-term fatigue gain. Using large
+    // gameHoursDelta to compress time.
     for (int i = 0; i < 20; ++i)
     {
         sim.Step(sprinting, 1.0F, C::LongTermFatigueGainTau / 10.0F);
     }
 
-    REQUIRE(sim.GetLongTermFatigue() > 0.0F);
+    REQUIRE(sim.GetSnapshot().LongTermFatigue > 0.0F);
 }
 
 TEST_CASE_METHOD(SimFixture, "Sleep partially clears long-term fatigue proportional to duration", "[simulation][fatigue]")
 {
     // Seed with max long-term fatigue.
-    sim.Restore(55.0F, C::IdleMets, 0.0F, 0.0F, 0.0F, C::LongTermFatigueMax);
-    const float initial = sim.GetLongTermFatigue();
+    RestoreLegacyState(sim, 55.0F, C::IdleMets, 0.0F, 0.0F, 0.0F, C::LongTermFatigueMax);
+    const float initial = sim.GetSnapshot().LongTermFatigue;
 
-    // 8 game-hours of sleep should clear ~55% (rate = 0.099/h, 1 - exp(-8*0.099) ~= 0.55).
+    // 8 game-hours of sleep should clear ~55% (rate = 0.099/h, 1 - exp(-8*0.099)
+    // ~= 0.55).
     sim.NotifySleep(8.0F * C::SecondsPerHour);
     sim.Step(SHR::PlayerState{ }, 0.033F);
 
-    const float remaining = sim.GetLongTermFatigue();
+    const float remaining = sim.GetSnapshot().LongTermFatigue;
     REQUIRE(remaining < initial * 0.5F);   // more than half cleared
     REQUIRE(remaining > 0.0F);             // not fully cleared
 }
 
 TEST_CASE_METHOD(SimFixture, "Long-term fatigue reduces effective fitness", "[simulation][fatigue]")
 {
-    const float rawFitness = sim.GetFitness();
-    sim.Restore(55.0F, C::IdleMets, 0.0F, rawFitness, 0.0F, C::LongTermFatigueMax);
+    const float rawFitness = sim.GetSnapshot().Fitness;
+    RestoreLegacyState(sim, 55.0F, C::IdleMets, 0.0F, rawFitness, 0.0F, C::LongTermFatigueMax);
 
-    REQUIRE(sim.GetEffectiveFitness() < rawFitness - 0.5F);
+    REQUIRE(sim.GetSnapshot().EffectiveFitness < rawFitness - 0.5F);
 }
 
 // --- Overtraining tests ---
@@ -642,8 +718,9 @@ TEST_CASE_METHOD(SimFixture, "Training with maximum fatigue produces no fitness 
 {
     // Seed at base fitness with both fatigue scalars maxed out.
     const float baseFitness = C::FitnessBaseMets;
-    sim.Restore(
-        SHR::Config::Get().HeartRate.Resting,
+    RestoreLegacyState(
+        sim,
+        DefaultSimulationSettings.RestingHeartRate,
         C::IdleMets,
         0.0F,
         baseFitness,
@@ -657,16 +734,17 @@ TEST_CASE_METHOD(SimFixture, "Training with maximum fatigue produces no fitness 
     sim.Step(sprinting, 1.0F, C::FitnessGainTau);
 
     // With full fatigue (trainingEfficacy = 0), fitness should be unchanged.
-    REQUIRE_THAT(sim.GetFitness(), Catch::Matchers::WithinAbs(baseFitness, 0.01F));
+    REQUIRE_THAT(sim.GetSnapshot().Fitness, Catch::Matchers::WithinAbs(baseFitness, 0.01F));
 }
 
 TEST_CASE_METHOD(SimFixture, "Training with partial fatigue produces reduced fitness gain", "[simulation][fatigue]")
 {
-    const float startFitness = sim.GetFitness();
+    const float startFitness = sim.GetSnapshot().Fitness;
 
     // Half acute fatigue only - efficacy = 0.75 (average of 0.5 acute + 0 long-term).
-    sim.Restore(
-        SHR::Config::Get().HeartRate.Resting,
+    RestoreLegacyState(
+        sim,
+        DefaultSimulationSettings.RestingHeartRate,
         C::IdleMets,
         0.0F,
         startFitness,
@@ -674,9 +752,9 @@ TEST_CASE_METHOD(SimFixture, "Training with partial fatigue produces reduced fit
         0.0F
     );
 
-    SHR::HeartRateSimulation fresh;
+    SHR::HeartRateSimulation fresh(DefaultSimulationSettings);
     fresh.Init();
-    const float freshStartFitness = fresh.GetFitness();
+    const float freshStartFitness = fresh.GetSnapshot().Fitness;
 
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
@@ -684,8 +762,8 @@ TEST_CASE_METHOD(SimFixture, "Training with partial fatigue produces reduced fit
     sim.Step(sprinting, 1.0F, dt);
     fresh.Step(sprinting, 1.0F, dt);
 
-    const float fatiguedGain = sim.GetFitness() - startFitness;
-    const float freshGain = fresh.GetFitness() - freshStartFitness;
+    const float fatiguedGain = sim.GetSnapshot().Fitness - startFitness;
+    const float freshGain = fresh.GetSnapshot().Fitness - freshStartFitness;
     REQUIRE(fatiguedGain < freshGain);
 }
 
@@ -695,10 +773,10 @@ TEST_CASE_METHOD(SimFixture, "Restore preserves acute and long-term fatigue from
 {
     const float savedAcute    = 2.5F;
     const float savedLongTerm = 1.2F;
-    sim.Restore(55.0F, C::IdleMets, 0.0F, 0.0F, savedAcute, savedLongTerm);
+    RestoreLegacyState(sim, 55.0F, C::IdleMets, 0.0F, 0.0F, savedAcute, savedLongTerm);
 
-    REQUIRE_THAT(sim.GetAcuteFatigue(),    Catch::Matchers::WithinAbs(savedAcute,    0.001F));
-    REQUIRE_THAT(sim.GetLongTermFatigue(), Catch::Matchers::WithinAbs(savedLongTerm, 0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().AcuteFatigue,    Catch::Matchers::WithinAbs(savedAcute,    0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().LongTermFatigue, Catch::Matchers::WithinAbs(savedLongTerm, 0.001F));
 }
 
 // --- Respiratory rate tests ---
@@ -716,36 +794,41 @@ TEST_CASE("Ventilation knots produce convex RR and plateauing depth targets", "[
     REQUIRE(C::RespDepthAtRCP < 1.0F);
 
     const float rrSlope1 = (C::RespRateAtVT1 - C::RestingRespRate) / C::VentilationVT1Fraction;
-    const float rrSlope2 = (C::RespRateAtRCP - C::RespRateAtVT1) /
-        (C::VentilationRCPFraction - C::VentilationVT1Fraction);
-    const float rrSlope3 = (C::MaxRespRate - C::RespRateAtRCP) /
-        (1.0F - C::VentilationRCPFraction);
+    const float rrSlope2 = (C::RespRateAtRCP - C::RespRateAtVT1) / (C::VentilationRCPFraction - C::VentilationVT1Fraction);
+    const float rrSlope3 = (C::MaxRespRate - C::RespRateAtRCP) / (1.0F - C::VentilationRCPFraction);
     REQUIRE(rrSlope1 < rrSlope2);
     REQUIRE(rrSlope2 < rrSlope3);
 
     const float depthSlope1 = C::RespDepthAtVT1 / C::VentilationVT1Fraction;
-    const float depthSlope2 = (C::RespDepthAtRCP - C::RespDepthAtVT1) /
-        (C::VentilationRCPFraction - C::VentilationVT1Fraction);
-    const float depthSlope3 = (1.0F - C::RespDepthAtRCP) /
-        (1.0F - C::VentilationRCPFraction);
+    const float depthSlope2 = (C::RespDepthAtRCP - C::RespDepthAtVT1) / (C::VentilationRCPFraction - C::VentilationVT1Fraction);
+    const float depthSlope3 = (1.0F - C::RespDepthAtRCP) / (1.0F - C::VentilationRCPFraction);
     REQUIRE(depthSlope1 > depthSlope2);
     REQUIRE(depthSlope2 > depthSlope3);
 
     const auto observeTarget = [](float fraction)
     {
-        SHR::HeartRateSimulation sim;
+        SHR::HeartRateSimulation sim(DefaultSimulationSettings);
         const float fitness = C::IdleMets + (C::SprintingMets - C::IdleMets) / fraction;
-        sim.Restore(
-            100.0F, C::SprintingMets, 0.0F, fitness, 0.0F, 0.0F, 60.0F,
-            C::RestingRespRate, 0.0F, 0.0F
+        RestoreLegacyState(
+            sim,
+            100.0F,
+            C::SprintingMets,
+            0.0F,
+            fitness,
+            0.0F,
+            0.0F,
+            60.0F,
+            C::RestingRespRate,
+            0.0F,
+            0.0F
         );
         constexpr float delta = 0.001F;
         sim.Step(SHR::PlayerState{ .IsSprinting = true }, delta);
         const float rrGain = 1.0F - std::exp(-delta / C::RespOnsetTau);
         const float depthGain = 1.0F - std::exp(-delta / C::BreathDepthOnsetTau);
         const float inferredRR = C::RestingRespRate +
-            (sim.GetRespRate() - C::RestingRespRate) / rrGain;
-        return std::pair{ inferredRR, sim.GetRespDepth() / depthGain };
+            (sim.GetSnapshot().RespirationRate - C::RestingRespRate) / rrGain;
+        return std::pair{ inferredRR, sim.GetSnapshot().RespirationDepth / depthGain };
     };
 
     const auto [rrVT1, depthVT1] = observeTarget(C::VentilationVT1Fraction);
@@ -759,8 +842,7 @@ TEST_CASE("Ventilation knots produce convex RR and plateauing depth targets", "[
 
 TEST_CASE("RespPhase advances at the correct rate during idle breathing", "[simulation][respiration]")
 {
-    SHR::Config::Set(SHR::Config{ });
-    SHR::HeartRateSimulation sim;
+    SHR::HeartRateSimulation sim(DefaultSimulationSettings);
     sim.Init();
 
     // At idle, target == RestingRespRate == current, so m_RespRate is stable.
@@ -768,43 +850,40 @@ TEST_CASE("RespPhase advances at the correct rate during idle breathing", "[simu
     const float delta = 60.0F / C::RestingRespRate * 0.5F;  // half a breath cycle
     sim.Step(SHR::PlayerState{ }, delta);
 
-    REQUIRE_THAT(sim.GetRespPhase(), Catch::Matchers::WithinAbs(0.5F, 0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().RespirationPhase, Catch::Matchers::WithinAbs(0.5F, 0.001F));
 }
 
 TEST_CASE("RespPhase wraps around after one full breath cycle", "[simulation][respiration]")
 {
-    SHR::Config::Set(SHR::Config{ });
-    SHR::HeartRateSimulation sim;
+    SHR::HeartRateSimulation sim(DefaultSimulationSettings);
     sim.Init();
 
     const float fullCycle = 60.0F / C::RestingRespRate;
     sim.Step(SHR::PlayerState{ }, fullCycle);
 
-    REQUIRE_THAT(sim.GetRespPhase(), Catch::Matchers::WithinAbs(0.0F, 0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().RespirationPhase, Catch::Matchers::WithinAbs(0.0F, 0.001F));
 }
 
 TEST_CASE("RR rises above resting after sustained maximal exertion", "[simulation][respiration]")
 {
-    SHR::Config::Set(SHR::Config{ });
-    SHR::HeartRateSimulation sim;
+    SHR::HeartRateSimulation sim(DefaultSimulationSettings);
     sim.Init();
 
     SHR::PlayerState sprinting{ };
     sprinting.IsSprinting = true;
     RunFor(sim, sprinting, 5.0F * C::RespOnsetTau);
 
-    REQUIRE(sim.GetRespRate() > C::RestingRespRate * 1.5F);
+    REQUIRE(sim.GetSnapshot().RespirationRate > C::RestingRespRate * 1.5F);
 }
 
 TEST_CASE("RR converges 63% toward target in one onset tau from resting", "[simulation][respiration]")
 {
-    SHR::Config::Set(SHR::Config{ });
-    SHR::HeartRateSimulation sim;
-    const float maxHR = SHR::Config::Get().HeartRate.Max;
+    SHR::HeartRateSimulation sim(DefaultSimulationSettings);
+    const float maxHR = DefaultSimulationSettings.MaximumHeartRate;
     const float fastHR = C::HRFastFraction * maxHR;
     // Fitness == SprintingMets makes sprinting the aerobic ceiling. Acute fatigue can make the raw
     // fraction exceed one during the step, but the ventilation target remains clamped at maximum.
-    sim.Restore(maxHR, C::SprintingMets, 0.0F, C::SprintingMets, 0.0F, 0.0F, fastHR, C::RestingRespRate);
+    RestoreLegacyState(sim, maxHR, C::SprintingMets, 0.0F, C::SprintingMets, 0.0F, 0.0F, fastHR, C::RestingRespRate);
 
     SHR::PlayerState sprinting{ };
     sprinting.IsSprinting = true;
@@ -812,38 +891,37 @@ TEST_CASE("RR converges 63% toward target in one onset tau from resting", "[simu
 
     const float expected = C::RestingRespRate +
         (1.0F - std::exp(-1.0F)) * (C::MaxRespRate - C::RestingRespRate);
-    REQUIRE_THAT(sim.GetRespRate(), Catch::Matchers::WithinAbs(expected, 0.5F));
+    REQUIRE_THAT(sim.GetSnapshot().RespirationRate, Catch::Matchers::WithinAbs(expected, 0.5F));
 }
 
 TEST_CASE("RR recovers 63% toward resting in one recovery tau after exertion", "[simulation][respiration]")
 {
-    SHR::Config::Set(SHR::Config{ });
-    SHR::HeartRateSimulation sim;
-    const float maxHR = SHR::Config::Get().HeartRate.Max;
+    SHR::HeartRateSimulation sim(DefaultSimulationSettings);
+    const float maxHR = DefaultSimulationSettings.MaximumHeartRate;
     const float fastHR = C::HRFastFraction * maxHR;
     // Start at MaxRespRate with idle exertion, target = RestingRespRate, RR should decay.
-    sim.Restore(maxHR, C::IdleMets, 0.0F, C::FitnessBaseMets, 0.0F, 0.0F, fastHR, C::MaxRespRate);
+    RestoreLegacyState(sim, maxHR, C::IdleMets, 0.0F, C::FitnessBaseMets, 0.0F, 0.0F, fastHR, C::MaxRespRate);
 
     sim.Step(SHR::PlayerState{ }, C::RespRecoveryTau);
 
     const float expected = C::MaxRespRate + (1.0F - std::exp(-1.0F)) * (C::RestingRespRate - C::MaxRespRate);
-    REQUIRE_THAT(sim.GetRespRate(), Catch::Matchers::WithinAbs(expected, 0.5F));
+    REQUIRE_THAT(sim.GetSnapshot().RespirationRate, Catch::Matchers::WithinAbs(expected, 0.5F));
 }
 
 TEST_CASE("Respiratory depth rises gradually on the onset time constant", "[simulation][respiration]")
 {
-    SHR::Config::Set(SHR::Config{ });
-    SHR::HeartRateSimulation sim;
+    SHR::HeartRateSimulation sim(DefaultSimulationSettings);
     sim.Init();
 
-    sim.Restore(
-        SHR::Config::Get().HeartRate.Max,
+    RestoreLegacyState(
+        sim,
+        DefaultSimulationSettings.MaximumHeartRate,
         C::SprintingMets,
         0.0F,
         C::SprintingMets,
         0.0F,
         0.0F,
-        C::HRFastFraction * SHR::Config::Get().HeartRate.Max,
+        C::HRFastFraction * DefaultSimulationSettings.MaximumHeartRate,
         C::RestingRespRate,
         0.0F,
         0.0F
@@ -851,8 +929,8 @@ TEST_CASE("Respiratory depth rises gradually on the onset time constant", "[simu
     sim.Step(SHR::PlayerState{ .IsSprinting = true }, C::BreathDepthOnsetTau);
 
     const float expected = 1.0F - std::exp(-1.0F);
-    REQUIRE_THAT(sim.GetRespDepth(), Catch::Matchers::WithinAbs(expected, 0.01F));
-    REQUIRE(sim.GetRespDepth() < 1.0F);
+    REQUIRE_THAT(sim.GetSnapshot().RespirationDepth, Catch::Matchers::WithinAbs(expected, 0.01F));
+    REQUIRE(sim.GetSnapshot().RespirationDepth < 1.0F);
 }
 
 TEST_CASE_METHOD(SimFixture, "Respiratory depth lingers after exertion stops", "[simulation][respiration]")
@@ -861,45 +939,42 @@ TEST_CASE_METHOD(SimFixture, "Respiratory depth lingers after exertion stops", "
     sprinting.IsSprinting = true;
     RunFor(sim, sprinting, 120.0F);
 
-    const float peakDepth = sim.GetRespDepth();
+    const float peakDepth = sim.GetSnapshot().RespirationDepth;
     REQUIRE(peakDepth > 0.8F);
 
     RunFor(sim, SHR::PlayerState{ }, 30.0F);
 
-    REQUIRE_THAT(sim.GetExertion(), Catch::Matchers::WithinAbs(C::IdleMets, 0.5F));
-    REQUIRE(sim.GetRespDepth() > 0.5F);
-    REQUIRE(sim.GetRespDepth() < peakDepth);
+    REQUIRE_THAT(sim.GetSnapshot().Exertion, Catch::Matchers::WithinAbs(C::IdleMets, 0.5F));
+    REQUIRE(sim.GetSnapshot().RespirationDepth > 0.5F);
+    REQUIRE(sim.GetSnapshot().RespirationDepth < peakDepth);
 
     const float rrRecoveryFraction =
-        (sim.GetRespRate() - C::RestingRespRate) / (C::MaxRespRate - C::RestingRespRate);
-    REQUIRE(sim.GetRespDepth() > rrRecoveryFraction);
+        (sim.GetSnapshot().RespirationRate - C::RestingRespRate) / (C::MaxRespRate - C::RestingRespRate);
+    REQUIRE(sim.GetSnapshot().RespirationDepth > rrRecoveryFraction);
 }
 
 TEST_CASE("Restore preserves respiratory rate from co-save", "[simulation][respiration]")
 {
-    SHR::Config::Set(SHR::Config{ });
-    SHR::HeartRateSimulation sim;
+    SHR::HeartRateSimulation sim(DefaultSimulationSettings);
     sim.Init();
 
     const float savedRR = 28.5F;
-    sim.Restore(72.0F, C::IdleMets, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, savedRR);
+    RestoreLegacyState(sim, 72.0F, C::IdleMets, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, savedRR);
 
-    REQUIRE_THAT(sim.GetRespRate(),  Catch::Matchers::WithinAbs(savedRR, 0.001F));
-    REQUIRE_THAT(sim.GetRespPhase(), Catch::Matchers::WithinAbs(0.0F,    0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().RespirationRate,  Catch::Matchers::WithinAbs(savedRR, 0.001F));
+    REQUIRE_THAT(sim.GetSnapshot().RespirationPhase, Catch::Matchers::WithinAbs(0.0F,    0.001F));
 }
 
 TEST_CASE("Restore preserves respiratory depth and defaults old saves to rest", "[simulation][respiration]")
 {
-    SHR::Config::Set(SHR::Config{ });
-    SHR::HeartRateSimulation sim;
+    SHR::HeartRateSimulation sim(DefaultSimulationSettings);
     sim.Init();
 
-    sim.Restore(72.0F, C::IdleMets, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, C::RestingRespRate,
-                -1.0F, 0.62F);
-    REQUIRE_THAT(sim.GetRespDepth(), Catch::Matchers::WithinAbs(0.62F, 0.001F));
+    RestoreLegacyState(sim, 72.0F, C::IdleMets, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, C::RestingRespRate, -1.0F, 0.62F);
+    REQUIRE_THAT(sim.GetSnapshot().RespirationDepth, Catch::Matchers::WithinAbs(0.62F, 0.001F));
 
-    sim.Restore(72.0F, C::IdleMets);
-    REQUIRE_THAT(sim.GetRespDepth(), Catch::Matchers::WithinAbs(0.0F, 0.001F));
+    RestoreLegacyState(sim, 72.0F, C::IdleMets);
+    REQUIRE_THAT(sim.GetSnapshot().RespirationDepth, Catch::Matchers::WithinAbs(0.0F, 0.001F));
 }
 
 TEST_CASE_METHOD(SimFixture, "Contractility rises during sustained exertion", "[simulation][contractility]")
@@ -908,9 +983,9 @@ TEST_CASE_METHOD(SimFixture, "Contractility rises during sustained exertion", "[
     sprinting.IsSprinting = true;
     RunFor(sim, sprinting, 120.0F);
 
-    // Exertion is capped at fitness, so normalized exertion -> 1; after several onset
-    // taus contractility approaches its target.
-    REQUIRE(sim.GetContractility() > 0.8F);
+    // Exertion is capped at fitness, so normalized exertion -> 1; after several
+    // onset taus contractility approaches its target.
+    REQUIRE(sim.GetSnapshot().Contractility > 0.8F);
 }
 
 TEST_CASE_METHOD(SimFixture, "Contractility lingers after exertion stops (recovery hysteresis)", "[simulation][contractility]")
@@ -918,44 +993,42 @@ TEST_CASE_METHOD(SimFixture, "Contractility lingers after exertion stops (recove
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
     RunFor(sim, sprinting, 120.0F);
-    const float peak = sim.GetContractility();
+    const float peak = sim.GetSnapshot().Contractility;
 
-    // Idle long enough for exertion to fall back to idle (fast) but well within the
-    // contractility decay tau (~120s): the signal must still be elevated.
+    // Idle long enough for exertion to fall back to idle (fast) but well within
+    // the contractility decay tau (~120s): the signal must still be elevated.
     RunFor(sim, SHR::PlayerState{ }, 30.0F);
 
-    REQUIRE_THAT(sim.GetExertion(), Catch::Matchers::WithinAbs(C::IdleMets, 0.5F));
-    REQUIRE(sim.GetContractility() > 0.4F);   // lingers despite exertion gone
-    REQUIRE(sim.GetContractility() < peak);   // but has begun to decay
+    REQUIRE_THAT(sim.GetSnapshot().Exertion, Catch::Matchers::WithinAbs(C::IdleMets, 0.5F));
+    REQUIRE(sim.GetSnapshot().Contractility > 0.4F);   // lingers despite exertion gone
+    REQUIRE(sim.GetSnapshot().Contractility < peak);   // but has begun to decay
 }
 
 TEST_CASE_METHOD(SimFixture, "Idle contractility settles near zero", "[simulation][contractility]")
 {
     RunFor(sim, SHR::PlayerState{ }, 300.0F);
 
-    REQUIRE(sim.GetContractility() < 0.1F);
+    REQUIRE(sim.GetSnapshot().Contractility < 0.1F);
 }
 
 TEST_CASE("Restore preserves contractility from co-save", "[simulation][contractility]")
 {
-    SHR::Config::Set(SHR::Config{ });
-    SHR::HeartRateSimulation sim;
+    SHR::HeartRateSimulation sim(DefaultSimulationSettings);
     sim.Init();
 
     const float saved = 0.62F;
-    sim.Restore(160.0F, 8.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, saved);
-    REQUIRE_THAT(sim.GetContractility(), Catch::Matchers::WithinAbs(saved, 0.001F));
+    RestoreLegacyState(sim, 160.0F, 8.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, saved);
+    REQUIRE_THAT(sim.GetSnapshot().Contractility, Catch::Matchers::WithinAbs(saved, 0.001F));
 }
 
 TEST_CASE("Restore without contractility record re-seeds equilibrium", "[simulation][contractility]")
 {
-    SHR::Config::Set(SHR::Config{ });
-    SHR::HeartRateSimulation sim;
+    SHR::HeartRateSimulation sim(DefaultSimulationSettings);
     sim.Init();
 
     // Idle drive -> equilibrium ~0. Omitting the arg uses the sentinel default.
-    sim.Restore(72.0F, C::IdleMets);
-    REQUIRE(sim.GetContractility() < 0.05F);
+    RestoreLegacyState(sim, 72.0F, C::IdleMets);
+    REQUIRE(sim.GetSnapshot().Contractility < 0.05F);
 }
 
 TEST_CASE_METHOD(SimFixture, "Contractility excess is ~zero in steady state", "[simulation][contractility]")
@@ -964,7 +1037,7 @@ TEST_CASE_METHOD(SimFixture, "Contractility excess is ~zero in steady state", "[
     sprinting.IsSprinting = true;
     RunFor(sim, sprinting, 180.0F);   // steady sprint: contractility and HR both maxed
 
-    REQUIRE(sim.GetContractilityExcess() < 0.05F);
+    REQUIRE(sim.GetSnapshot().ContractilityExcess < 0.05F);
 }
 
 TEST_CASE_METHOD(SimFixture, "Contractility excess appears during recovery", "[simulation][contractility]")
@@ -974,5 +1047,5 @@ TEST_CASE_METHOD(SimFixture, "Contractility excess appears during recovery", "[s
     RunFor(sim, sprinting, 180.0F);
     RunFor(sim, SHR::PlayerState{ }, 25.0F);   // HR drops faster than contractility decays
 
-    REQUIRE(sim.GetContractilityExcess() > 0.1F);
+    REQUIRE(sim.GetSnapshot().ContractilityExcess > 0.1F);
 }

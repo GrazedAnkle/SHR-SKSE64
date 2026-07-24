@@ -1,0 +1,84 @@
+# Runtime Architecture
+
+SHR separates deterministic heart behavior from Skyrim and audio-device integration. The
+Skyrim-independent `shr_core` library owns physiology, rhythm scheduling, per-beat acoustic mapping,
+source conditioning, and beat rendering; the plugin translates engine state and effects at the boundary.
+This document owns that dependency and runtime boundary. [SIMULATION_MODEL.md](SIMULATION_MODEL.md) owns
+physiological state evolution, while [SYNTHESIS_MODEL.md](SYNTHESIS_MODEL.md) owns the state-to-sound
+mechanisms.
+
+## Dependency boundary
+
+Dependencies point inward:
+
+```text
+Skyrim adapters                         shr_core
+---------------                         --------
+RE player state ----> StepInput ------> Runtime
+Config / TOML ------> RuntimeSettings    |-- HeartRateSimulation --> PhysiologySnapshot
+SKSE events --------> typed events       |-- RhythmEngine --------> optional BeatEvent
+co-save records <---> SimulationState    `-- CreateRenderSpec ----> RenderSpec
+                                                                  |
+ decoded source --------------------------> source conditioning -> beat renderer
+                                                                  |
+                                                           XAudio sink
+```
+
+`shr_core` has no CommonLib, XAudio, TOML, spdlog, or plugin-precompiled-header dependency. Pocketfft is a
+private numerical implementation dependency for the analytic envelope; it does not cross the public API.
+The plugin and core tests link that same library rather than compiling private copies of its
+implementations. The `Core-Release-Clang` preset resolves only portable core dependencies and proves the
+boundary without configuring CommonLib or the plugin target.
+
+The active plugin path decodes source PCM into a typed float `HeartbeatSource`, performs the complete
+source -> transmission -> transducer chain through `RenderBeat`, then calls `EncodePcm16` exactly once at
+the XAudio submission boundary. `TraceBeatRender` retains domain outputs for tests and offline inspection
+without burdening normal playback.
+
+## Runtime contract
+
+`Runtime` is the single owner of `HeartRateSimulation` and `RhythmEngine`. A `Step`:
+
+1. advances physiology from `StepInput::Player`, real frame time, and elapsed game time;
+2. captures the post-step `PhysiologySnapshot`;
+3. derives rhythm and arrhythmia inputs from that snapshot;
+4. advances rhythm when output is enabled; and
+5. maps a fired `BeatEvent` and the same snapshot into a `RenderSpec`.
+
+`StepResult` always returns the physiology snapshot and optionally pairs the raw beat event with its
+resolved render specification. Keeping both values lets notification policy and offline traces inspect
+rhythm facts without reconstructing them from renderer controls.
+
+Listening is part of the runtime behavior contract. When `StepInput::OutputEnabled` is false, physiology
+continues to advance but rhythm remains frozen. This preserves beat scheduling when heartbeat output is
+disabled rather than silently consuming a rhythm sequence.
+
+`Runtime::Init` resets simulation and rhythm together. `SimulationState` is the persistence boundary and
+contains only state required to resume the physiological model; rhythm state is not persisted.
+`Runtime::Restore` therefore restores that simulation value without interpreting record versions or
+missing fields. The Skyrim serialization adapter owns versioned records, validation policy, and
+legacy-field defaults.
+
+## Value and responsibility split
+
+- `RuntimeSettings` contains subject/runtime configuration: `SimulationSettings` and arrhythmia
+  susceptibility. Model coefficients remain auditable defaults in `Constants.hpp`; a future offline
+  coefficient-override API is a separate immutable value rather than an expansion of runtime settings.
+- `PhysiologySnapshot` is the cohesive downstream view of current physiological and derived state.
+  `SimulationState` is the complete resumable state.
+- `RhythmInput` carries the values required to schedule a beat. `BeatEvent` owns scheduled-beat facts:
+  kind, interval and coupling/filling timing, and sampled per-beat vigor.
+- `CreateRenderSpec` owns the conversion from an event plus its firing snapshot into amplitudes, systole,
+  bounded Frank-Starling gain, onset compression, and respiratory transmission controls.
+- Core source conditioning slices the decoded asset, applies its static high-pass and joint
+  normalization, and stores owned normalized-stereo S1/S2 plus the baseline S1 attack region for the
+  float renderer. `RenderBeat` consumes that source and a `RenderSpec` without filesystem, device, or
+  Skyrim state. The plugin owns WAV container parsing; offline clients may supply the same decoded
+  samples without reproducing conditioning or rendering.
+- The Skyrim adapter owns RE/SKSE mapping, game-clock sampling, event delivery, co-save translation, HUD
+  policy, pause/resume integration, WAV/file I/O, and XAudio submission. The audio sink owns device
+  volume and queue/resource behavior.
+
+Core event ingress is synchronous and typed. Whether an SKSE callback can forward directly or requires a
+single-writer mailbox remains a thread-contract decision under
+[WI-026](work_items/WI-026-runtime-thread-contract.md).

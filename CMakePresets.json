@@ -139,6 +139,27 @@
           "value": "Release"
         }
       }
+    },
+    {
+      "name": "Core-Release-Clang",
+      "inherits": [
+        "vcpkg",
+        "clang"
+      ],
+      "displayName": "Core Release (Clang)",
+      "description": "Skyrim-independent core build with only portable core dependencies.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/core-release-clang",
+      "cacheVariables": {
+        "BUILD_PLUGIN": "OFF",
+        "BUILD_TESTS": "OFF",
+        "VCPKG_MANIFEST_NO_DEFAULT_FEATURES": "ON",
+        "VCPKG_MANIFEST_FEATURES": "core-dsp",
+        "CMAKE_BUILD_TYPE": {
+          "type": "STRING",
+          "value": "Release"
+        }
+      }
     }
   ],
   "testPresets": [

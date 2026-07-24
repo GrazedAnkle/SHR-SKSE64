@@ -28,8 +28,6 @@ namespace SHR
     public:
         using Timestamp = std::chrono::time_point<std::chrono::steady_clock>;
 
-        static constexpr float DeathArrhythmiaChanceIncreaseDuration = 2.0F * 60.0F;
-
         static void InstallHooks(SKSE::Trampoline &trampoline);
 
         static void Init();

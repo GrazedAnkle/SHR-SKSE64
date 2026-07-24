@@ -7,11 +7,12 @@ history.
 ## Reading path
 
 1. [Glossary](GLOSSARY.md) for project terminology.
-2. [Synthesis Model](SYNTHESIS_MODEL.md) and [Simulation Model](SIMULATION_MODEL.md) for the two halves of
+2. [Runtime Architecture](ARCHITECTURE.md) for the core/plugin boundary and data flow.
+3. [Synthesis Model](SYNTHESIS_MODEL.md) and [Simulation Model](SIMULATION_MODEL.md) for the two halves of
    the system: state-to-sound and state evolution.
-3. [Measurement Methods](MEASUREMENT_METHODS.md) before trusting a number, then
+4. [Measurement Methods](MEASUREMENT_METHODS.md) before trusting a number, then
    [Reference Analysis](REFERENCE_ANALYSIS.md) for the evidence.
-4. [Roadmap](ROADMAP.md) for current priorities, dependencies, and focused work items.
+5. [Roadmap](ROADMAP.md) for current priorities, dependencies, and focused work items.
 
 ## Document map
 

@@ -1,13 +1,14 @@
-"""Sample-accurate sinus DSP mirror of HeartbeatVoice::Play.
+"""Sample-accurate sinus mirror of CreateRenderSpec plus HeartbeatVoice::Play.
 
-Callers supply the beat state; this module does not reproduce RhythmEngine timing or morphology.
+Callers supply beat/acoustic state; this module does not reproduce RhythmEngine timing or expose the full
+CreateRenderSpec input/output contract.
 For sinus beats it applies the engine's contractility gain to S1 and keeps S2 at unit amplitude.
 The `is_pvc` option is only a voice-shaping preview: it exercises the PVC bypass/resample branch but does
-not reproduce RhythmEngine's per-beat PVC amplitudes or systole. WI-010 owns that parity extension.
+not reproduce CreateRenderSpec's per-beat PVC amplitudes or systole. WI-010 owns that parity extension.
 
-Processing order from HeartbeatVoice.cpp:
+Processing order from AcousticMapper.cpp and HeartbeatVoice.cpp:
   load -> ApplyHighPass(source low-cut) on S1 + S2 -> NormalizeJoint(S1, S2 -> SourceRestLevel) [load time]
-  per beat: CompressOnsetBuild(vigor) on S1 ; ApplyLowPass(breath muffle) on S1 + S2 ;
+  per beat: compress the cached baseline S1 attack ; ApplyLowPass(breath muffle) on S1 + S2 ;
             CopySamples(S1, amp = fs*contractility-gain) + CopySamples(S2, amp = 1.0) with per-sample
             soft-knee LAST (source -> transmission -> transducer).
 Retired lobe-tamer and resonator-tail stages remain available only as explicitly
@@ -19,6 +20,7 @@ Measurement rationale and engine/reference comparison rules live in docs/MEASURE
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -100,6 +102,354 @@ def read_src(path: str | Path) -> np.ndarray:
     assert sr == SR, sr
     return x * 32768.0  # int16-magnitude float, mono
 
+
+@dataclass(frozen=True)
+class FloatSourceConditioningStages:
+    """Normalized-stereo reference stages for the compiled-core parity gate."""
+
+    sliced_s1: np.ndarray
+    sliced_s2: np.ndarray
+    highpass_s1: np.ndarray
+    highpass_s2: np.ndarray
+    normalized_s1: np.ndarray
+    normalized_s2: np.ndarray
+    baseline_s1_attack: tuple[int, int] | None
+
+
+@dataclass(frozen=True)
+class FloatBeatRenderSpec:
+    """Direct float-renderer controls matching C++ RenderSpec."""
+
+    ibi: float
+    systole_duration: float
+    s1_amplitude: float
+    s2_amplitude: float
+    s1_resample_ratio: float
+    s2_resample_ratio: float
+    lowpass_cutoff_hz: float
+    onset_compression: float
+    is_pvc: bool = False
+
+
+@dataclass(frozen=True)
+class FloatBeatRenderStages:
+    """Source, transmission, transducer-input, and final float-renderer domains."""
+
+    source_s1: np.ndarray
+    source_s2: np.ndarray
+    transmitted_s1: np.ndarray
+    transmitted_s2: np.ndarray
+    transducer_input: np.ndarray
+    output: np.ndarray
+
+
+def read_src_float(path: str | Path) -> np.ndarray:
+    """Load normalized interleaved channels without changing the legacy mono audition path."""
+    source, sr = sf.read(path, dtype="float32", always_2d=True)
+    assert sr == SR, sr
+    return source
+
+
+def _highpass_biquad_float32(x: np.ndarray, fc: float) -> np.ndarray:
+    """Float32, per-channel source high-pass matching HeartbeatSource.cpp."""
+    output = np.asarray(x, dtype=np.float32).copy()
+    if not np.isfinite(fc):
+        raise ValueError("source high-pass cutoff must be finite")
+    if fc <= 0.0 or len(output) == 0:
+        return output
+    if fc >= SR / 2:
+        raise ValueError("source high-pass cutoff must be below Nyquist")
+
+    f32 = np.float32
+    q = f32(1.0 / np.sqrt(f32(2.0)))
+    w0 = f32(f32(2.0) * f32(np.pi) * f32(fc) / f32(SR))
+    cw = f32(np.cos(w0))
+    alpha = f32(np.sin(w0) / f32(f32(2.0) * q))
+    a0 = f32(f32(1.0) + alpha)
+    b0 = f32(f32(f32(1.0) + cw) / f32(2.0) / a0)
+    b1 = f32(-f32(f32(1.0) + cw) / a0)
+    b2 = f32(f32(f32(1.0) + cw) / f32(2.0) / a0)
+    a1 = f32(f32(-f32(2.0) * cw) / a0)
+    a2 = f32(f32(f32(1.0) - alpha) / a0)
+
+    states = np.zeros((output.shape[1], 4), dtype=np.float32)
+    for frame in range(len(output)):
+        for channel in range(output.shape[1]):
+            x1, x2, y1, y2 = states[channel]
+            sample = output[frame, channel]
+            value = f32(
+                f32(b0 * sample) +
+                f32(b1 * x1) +
+                f32(b2 * x2) -
+                f32(a1 * y1) -
+                f32(a2 * y2)
+            )
+            states[channel] = (sample, x1, value, y1)
+            output[frame, channel] = value
+    return output
+
+
+def _normalize_float_source_joint(
+    s1: np.ndarray,
+    s2: np.ndarray,
+    target: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    if not np.isfinite(target) or target < 0.0:
+        raise ValueError("heartbeat source normalization target must be finite and nonnegative")
+    if not np.isfinite(s1).all() or not np.isfinite(s2).all():
+        raise ValueError("cannot normalize a non-finite heartbeat source sample")
+    peak = np.float32(max(np.abs(s1).max(initial=0.0), np.abs(s2).max(initial=0.0)))
+    if peak == 0.0:
+        return s1.copy(), s2.copy()
+    scale = np.float32(np.float32(target) / peak)
+    return (
+        np.asarray(s1 * scale, dtype=np.float32),
+        np.asarray(s2 * scale, dtype=np.float32),
+    )
+
+
+def baseline_attack_region(s1: np.ndarray, threshold: float) -> tuple[int, int] | None:
+    """Locate the conditioned baseline S1 region; this is not a rendered-beat landmark."""
+    if not np.isfinite(threshold) or not 0.0 <= threshold <= 1.0:
+        raise ValueError("attack threshold fraction must be between zero and one")
+    if len(s1) == 0:
+        return None
+    envelope = shrlib.env_analytic(np.asarray(s1[:, 0], dtype=np.float64), SR, ms=0.0)
+    peak_frame = int(np.argmax(envelope))
+    peak = envelope[peak_frame]
+    if peak_frame == 0 or peak <= 0.0:
+        return None
+    below = np.flatnonzero(envelope[:peak_frame] < threshold * peak)
+    start_frame = int(below[-1]) + 1 if len(below) else 0
+    return start_frame, peak_frame
+
+
+def prep_source_float_stages(
+    path: str | Path,
+    src_highpass: float | None = None,
+) -> FloatSourceConditioningStages:
+    """Expose normalized-stereo float stages for C++/NumPy migration comparisons."""
+    source = read_src_float(path)
+    sliced_s1 = source[S1_ON:S1_END].copy()
+    sliced_s2 = source[S2_ON:S2_END].copy()
+    cutoff = SRC_HIGHPASS_HZ if src_highpass is None else src_highpass
+    highpass_s1 = _highpass_biquad_float32(sliced_s1, cutoff)
+    highpass_s2 = _highpass_biquad_float32(sliced_s2, cutoff)
+    normalized_s1, normalized_s2 = _normalize_float_source_joint(
+        highpass_s1,
+        highpass_s2,
+        SOURCE_REST_LEVEL,
+    )
+    return FloatSourceConditioningStages(
+        sliced_s1=sliced_s1,
+        sliced_s2=sliced_s2,
+        highpass_s1=highpass_s1,
+        highpass_s2=highpass_s2,
+        normalized_s1=normalized_s1,
+        normalized_s2=normalized_s2,
+        baseline_s1_attack=baseline_attack_region(normalized_s1, ATTACK_BUILD_THR),
+    )
+
+
+def _compress_float_onset(
+    source: np.ndarray,
+    attack: tuple[int, int] | None,
+    compression: float,
+    is_pvc: bool,
+) -> np.ndarray:
+    output = np.asarray(source, dtype=np.float32)
+    if is_pvc or compression <= 1.0 or attack is None:
+        return output.copy()
+
+    onset, peak = attack
+    build_frames = peak - onset
+    compressed_frames = max(
+        1,
+        int(np.float32(build_frames) / np.float32(compression)),
+    )
+    if compressed_frames >= build_frames:
+        return output.copy()
+
+    compressed = np.empty(
+        (len(output) - build_frames + compressed_frames, output.shape[1]),
+        dtype=np.float32,
+    )
+    compressed[:onset] = output[:onset]
+    f32 = np.float32
+    for frame in range(compressed_frames):
+        position = f32(
+            f32(onset) +
+            f32(f32(frame) * f32(build_frames) / f32(compressed_frames))
+        )
+        i0 = min(int(position), peak)
+        i1 = min(i0 + 1, peak)
+        fraction = f32(position - f32(i0))
+        for channel in range(output.shape[1]):
+            a = output[i0, channel]
+            b = output[i1, channel]
+            compressed[onset + frame, channel] = f32(a + f32(fraction * f32(b - a)))
+    compressed[onset + compressed_frames:] = output[peak:]
+    return compressed
+
+
+def _lowpass_float32(source: np.ndarray, cutoff_hz: float, poles: int) -> np.ndarray:
+    output = np.asarray(source, dtype=np.float32).copy()
+    if cutoff_hz <= 0.0 or len(output) == 0:
+        return output
+
+    f32 = np.float32
+    exponent = f32(
+        f32(-2.0) * f32(np.pi) * f32(cutoff_hz) / f32(SR)
+    )
+    alpha = f32(f32(1.0) - f32(np.exp(exponent)))
+    if alpha >= 1.0:
+        return output
+
+    for _ in range(poles):
+        states = np.zeros(output.shape[1], dtype=np.float32)
+        for frame in range(len(output)):
+            for channel in range(output.shape[1]):
+                state = states[channel]
+                state = f32(
+                    state +
+                    f32(alpha * f32(output[frame, channel] - state))
+                )
+                states[channel] = state
+                output[frame, channel] = state
+    return output
+
+
+def _copy_resampled_float32(
+    destination: np.ndarray,
+    offset: int,
+    source: np.ndarray,
+    output_frames: int,
+    ratio: float,
+    amplitude: float,
+    crossfade_frames: int,
+    fade_in: bool,
+    fade_out: bool,
+) -> None:
+    if output_frames == 0 or len(source) == 0:
+        return
+
+    f32 = np.float32
+    crossfade = min(crossfade_frames, output_frames // 2)
+    for frame in range(output_frames):
+        taper = f32(1.0)
+        if fade_in and crossfade > 0 and frame < crossfade:
+            taper = f32(taper * f32(f32(frame + 1) / f32(crossfade)))
+        if fade_out and crossfade > 0 and frame >= output_frames - crossfade:
+            taper = f32(taper * f32(f32(output_frames - frame) / f32(crossfade)))
+
+        position = f32(f32(frame) * f32(ratio))
+        i0 = min(int(position), len(source) - 1)
+        i1 = min(i0 + 1, len(source) - 1)
+        fraction = f32(position - f32(i0))
+        scale = f32(f32(amplitude) * taper)
+        for channel in range(source.shape[1]):
+            a = source[i0, channel]
+            b = source[i1, channel]
+            interpolated = f32(a + f32(fraction * f32(b - a)))
+            destination[offset + frame, channel] = f32(interpolated * scale)
+
+
+def _mix_float_transducer_input(
+    s1: np.ndarray,
+    s2: np.ndarray,
+    render: FloatBeatRenderSpec,
+) -> np.ndarray:
+    f32 = np.float32
+    total_frames = int(f32(f32(render.ibi) * f32(SR)))
+    systole_frames = int(f32(f32(render.systole_duration) * f32(SR)))
+    crossfade_frames = int(f32(f32(CROSSFADE_MS) * f32(0.001) * f32(SR)))
+    s1_resampled = int(f32(f32(len(s1)) / f32(render.s1_resample_ratio)))
+    s2_resampled = int(f32(f32(len(s2)) / f32(render.s2_resample_ratio)))
+    s1_cap = int(f32(f32(S1_SYS_FRAC) * f32(systole_frames)))
+    s1_frames = min(s1_resampled, s1_cap, total_frames)
+    s2_start = systole_frames
+    s2_window = max(0, total_frames - s2_start)
+    s2_cap = int(f32(f32(S2_WIN_FRAC) * f32(s2_window)))
+    s2_frames = min(s2_resampled, s2_cap, s2_window)
+
+    output = np.zeros((total_frames, s1.shape[1]), dtype=np.float32)
+    _copy_resampled_float32(
+        output,
+        0,
+        s1,
+        s1_frames,
+        render.s1_resample_ratio,
+        render.s1_amplitude,
+        crossfade_frames,
+        False,
+        True,
+    )
+    _copy_resampled_float32(
+        output,
+        s2_start,
+        s2,
+        s2_frames,
+        render.s2_resample_ratio,
+        render.s2_amplitude,
+        crossfade_frames,
+        True,
+        True,
+    )
+    return output
+
+
+def _soft_knee_float32(source: np.ndarray) -> np.ndarray:
+    output = np.asarray(source, dtype=np.float32).copy()
+    f32 = np.float32
+    knee = f32(SOFT_KNEE)
+    for sample in np.nditer(output, op_flags=["readwrite"]):
+        value = f32(sample)
+        magnitude = f32(abs(value))
+        if magnitude <= knee:
+            continue
+        over = f32(f32(magnitude - knee) / f32(f32(1.0) - knee))
+        limited = f32(knee + f32(f32(f32(1.0) - knee) * f32(np.tanh(over))))
+        sample[...] = f32(np.copysign(limited, value))
+    return output
+
+
+def render_beat_float_stages(
+    source: FloatSourceConditioningStages,
+    render: FloatBeatRenderSpec,
+) -> FloatBeatRenderStages:
+    """Render normalized stereo float stages from direct RenderSpec-equivalent controls."""
+    source_s1 = _compress_float_onset(
+        source.normalized_s1,
+        source.baseline_s1_attack,
+        render.onset_compression,
+        render.is_pvc,
+    )
+    source_s2 = source.normalized_s2.copy()
+    transmitted_s1 = _lowpass_float32(
+        source_s1,
+        render.lowpass_cutoff_hz,
+        BREATH_LP_POLES,
+    )
+    transmitted_s2 = _lowpass_float32(
+        source_s2,
+        render.lowpass_cutoff_hz,
+        BREATH_LP_POLES,
+    )
+    transducer_input = _mix_float_transducer_input(
+        transmitted_s1,
+        transmitted_s2,
+        render,
+    )
+    return FloatBeatRenderStages(
+        source_s1=source_s1,
+        source_s2=source_s2,
+        transmitted_s1=transmitted_s1,
+        transmitted_s2=transmitted_s2,
+        transducer_input=transducer_input,
+        output=_soft_knee_float32(transducer_input),
+    )
+
+
 def normalize_joint(s1: np.ndarray, s2: np.ndarray, target: float) -> tuple[np.ndarray, np.ndarray]:
     pk = max(np.abs(s1).max(), np.abs(s2).max())
     if pk == 0:
@@ -110,9 +460,9 @@ def normalize_joint(s1: np.ndarray, s2: np.ndarray, target: float) -> tuple[np.n
 def compress_onset_build(s: np.ndarray, k: float) -> np.ndarray:
     """Compress the final ascent by k while retaining the lead-in and post-peak body.
 
-    Mirrors HeartbeatVoice::CompressOnsetBuild. The analytic envelope avoids raw
-    waveform zero crossings that would stop the backward search early. `ms=0.0`
-    matches the engine's unsmoothed pocketfft AnalyticEnv.
+    Mirrors FindBaselineAttackRegion and PrepareS1SourceStage. The analytic
+    envelope avoids raw waveform zero crossings that would stop the backward
+    search early. `ms=0.0` matches the engine's unsmoothed pocketfft envelope.
     """
     if k <= 1.0 or len(s) < 4:
         return s
