@@ -226,166 +226,6 @@ namespace
         data.swap(out);
     }
 
-    // Edge-clamped symmetric moving average. half <= 0 is a passthrough.
-    std::vector<float> BoxSmooth(const std::vector<float> &x, std::int32_t half)
-    {
-        const std::int32_t n = static_cast<std::int32_t>(x.size());
-        if (half <= 0 || n == 0) return x;
-        std::vector<float> out(static_cast<std::size_t>(n), 0.0F);
-        const float        norm = 1.0F / static_cast<float>(2 * half + 1);
-        for (std::int32_t i = 0; i < n; ++i)
-        {
-            float acc = 0.0F;
-            for (std::int32_t j = -half; j <= half; ++j)
-            {
-                acc += x[static_cast<std::size_t>(std::clamp(i + j, 0, n - 1))];
-            }
-            out[static_cast<std::size_t>(i)] = acc * norm;
-        }
-        return out;
-    }
-
-    // Apply a decaying post-peak envelope ceiling. Samples below it are unchanged; all channels share
-    // one smoothed per-frame gain, and strength zero is a no-op. Matches tools/engine_offline.py.
-    void ApplyTameLobe(std::vector<std::byte> &data, std::uint32_t samplesPerFrame, float sampleRate, float strength)
-    {
-        if (strength <= 0.0F || samplesPerFrame == 0 || sampleRate <= 0.0F) return;
-        const std::uint32_t frames = static_cast<std::uint32_t>(
-            data.size() / sizeof(std::int16_t) / samplesPerFrame
-        );
-        if (frames < 4) return;
-
-        std::vector<float> mag(frames, 0.0F);
-        for (std::uint32_t f = 0; f < frames; ++f)
-        {
-            float m = 0.0F;
-            for (std::uint32_t s = 0; s < samplesPerFrame; ++s)
-            {
-                std::int16_t v = 0;
-                std::memcpy(&v, data.data() + (static_cast<std::size_t>(f) * samplesPerFrame + s) * sizeof(v), sizeof(v));
-                m = std::max(m, std::abs(static_cast<float>(v)));
-            }
-            mag[f] = m;
-        }
-
-        const std::int32_t envHalf = std::max(
-            1,
-            static_cast<std::int32_t>(C::LobeTameEnvMs * 0.001F * sampleRate * 0.5F)
-        );
-        const std::vector<float> env = BoxSmooth(mag, envHalf);
-
-        std::uint32_t peakFrame = 0;
-        float         peakMag   = mag[0];
-        for (std::uint32_t f = 1; f < frames; ++f)
-        {
-            if (mag[f] > peakMag) { peakMag = mag[f]; peakFrame = f; }
-        }
-
-        const float        rPole = std::exp(-1.0F / (C::LobeTameDecayMs * 0.001F * sampleRate));
-        std::vector<float> gain(frames, 1.0F);
-        float              ceil = env[peakFrame];
-        for (std::uint32_t f = peakFrame + 1; f < frames; ++f)
-        {
-            ceil *= rPole;
-            const float e = env[f] > 1e-9F ? env[f] : 1.0F;
-            const float g = std::min(1.0F, ceil / e);
-            gain[f]       = std::clamp(1.0F - strength * (1.0F - g), 0.0F, 1.0F);
-        }
-        const std::vector<float> gainS = BoxSmooth(gain, std::max(1, envHalf / 2));
-
-        for (std::uint32_t f = 0; f < frames; ++f)
-        {
-            for (std::uint32_t s = 0; s < samplesPerFrame; ++s)
-            {
-                const std::size_t i = (static_cast<std::size_t>(f) * samplesPerFrame + s) * sizeof(std::int16_t);
-                std::int16_t      v = 0;
-                std::memcpy(&v, data.data() + i, sizeof(v));
-                const std::int16_t out = static_cast<std::int16_t>(
-                    std::clamp(static_cast<float>(v) * gainS[f], -32768.0F, 32767.0F)
-                );
-                std::memcpy(data.data() + i, &out, sizeof(out));
-            }
-        }
-    }
-
-    // Add a phase-continuous two-pole resonator ring, faded in after the dry front and normalized
-    // relative to the input peak. Lengthens the buffer.
-    void ApplyTail(std::vector<std::byte> &data, std::uint32_t samplesPerFrame, float sampleRate)
-    {
-        if (C::TailRingLevel <= 0.0F || samplesPerFrame == 0 || sampleRate <= 0.0F) return;
-        const std::int32_t peak = PeakSample(data);
-        if (peak == 0) return;
-
-        const std::uint32_t ch        = std::min<std::uint32_t>(samplesPerFrame, 2U);
-        const std::uint32_t dryFrames = static_cast<std::uint32_t>(data.size() / sizeof(std::int16_t) / samplesPerFrame);
-        const std::uint32_t padFrames = static_cast<std::uint32_t>(C::TailExtraMs * 0.001F * sampleRate);
-        const std::uint32_t total     = dryFrames + padFrames;
-        const std::size_t   totalN    = static_cast<std::size_t>(total) * samplesPerFrame;
-
-        const std::uint32_t spliceFrame = static_cast<std::uint32_t>(C::TailSpliceMs * 0.001F * sampleRate);
-        const std::uint32_t rampFrames  = std::max(1U, static_cast<std::uint32_t>(C::TailRampMs * 0.001F * sampleRate));
-
-        // Resonator: y[n] = b0*x[n] + a1*y[n-1] + a2*y[n-2]. Rings at TailResonatorHz; the pole radius
-        // sets the decay so the ring envelope falls with TailDecayMs. b0 = 1 - r keeps the passband gain ~1.
-        const float w0    = 2.0F * std::numbers::pi_v<float> * C::TailResonatorHz / sampleRate;
-        const float rPole = std::exp(-1.0F / (C::TailDecayMs * 0.001F * sampleRate));
-        const float a1    = 2.0F * rPole * std::cos(w0);
-        const float a2    = -(rPole * rPole);
-        const float b0    = 1.0F - rPole;
-
-        // Render the windowed ring over the dry signal and trailing silence, tracking its peak.
-        std::vector<float>   ring(totalN, 0.0F);
-        std::array<float, 2> y1 = { };
-        std::array<float, 2> y2 = { };
-        float                ringPeak = 0.0F;
-        for (std::uint32_t f = 0; f < total; ++f)
-        {
-            float win = 1.0F;
-            if (f < spliceFrame)                  win = 0.0F;
-            else if (f < spliceFrame + rampFrames)
-                win = 0.5F - 0.5F * std::cos(std::numbers::pi_v<float> *
-                    static_cast<float>(f - spliceFrame) / static_cast<float>(rampFrames));
-            for (std::uint32_t s = 0; s < samplesPerFrame; ++s)
-            {
-                float x = 0.0F;
-                if (f < dryFrames)
-                {
-                    std::int16_t v = 0;
-                    std::memcpy(&v, data.data() + (static_cast<std::size_t>(f) * samplesPerFrame + s) * sizeof(v), sizeof(v));
-                    x = static_cast<float>(v);
-                }
-                float &Y1 = y1[s % ch];
-                float &Y2 = y2[s % ch];
-                const float yn = b0 * x + a1 * Y1 + a2 * Y2;
-                Y2 = Y1;
-                Y1 = yn;
-                const float r = win * yn;
-                ring[static_cast<std::size_t>(f) * samplesPerFrame + s] = r;
-                ringPeak = std::max(ringPeak, std::abs(r));
-            }
-        }
-        if (ringPeak <= 0.0F) return;
-        const float ringScale = C::TailRingLevel * static_cast<float>(peak) / ringPeak;
-
-        // Mix the scaled ring with the dry signal into the lengthened buffer.
-        std::vector<std::byte> out(totalN * sizeof(std::int16_t), std::byte{ 0 });
-        const std::size_t      dryN = data.size() / sizeof(std::int16_t);
-        for (std::size_t i = 0; i < totalN; ++i)
-        {
-            float dry = 0.0F;
-            if (i < dryN)
-            {
-                std::int16_t v = 0;
-                std::memcpy(&v, data.data() + i * sizeof(v), sizeof(v));
-                dry = static_cast<float>(v);
-            }
-            const float        sum = dry + ring[i] * ringScale;
-            const std::int16_t o   = static_cast<std::int16_t>(std::clamp(sum, -32768.0F, 32767.0F));
-            std::memcpy(out.data() + i * sizeof(o), &o, sizeof(o));
-        }
-        data.swap(out);
-    }
-
     // Scale both buffers together, preserving relative amplitude, until their joint peak is
     // 32767 * targetFraction.
     void NormalizeJoint(
@@ -683,11 +523,6 @@ void SHR::HeartbeatVoice::Play(const RhythmEngine::Beat &beat)
         );
         const float k = 1.0F + (C::AttackCompressMax - 1.0F) * contractility * fsNorm;
         CompressOnsetBuild(s1Work, samplesPerFrame, k);
-
-        ApplyTameLobe(s1Work, samplesPerFrame, static_cast<float>(sampleRate),
-            std::clamp(contractility, 0.0F, 1.0F));
-
-        ApplyTail(s1Work, samplesPerFrame, static_cast<float>(sampleRate));
     }
 
     // MARK: Transmission Stage
@@ -699,7 +534,7 @@ void SHR::HeartbeatVoice::Play(const RhythmEngine::Beat &beat)
         ApplyLowPass(s2Work, samplesPerFrame, breathCutoffHz, static_cast<float>(sampleRate));
     }
 
-    // Onset compression and the tail can change the S1 frame count.
+    // Onset compression can change the S1 frame count.
     const std::uint32_t s1FullFrames = static_cast<std::uint32_t>(s1Work.size() / bytesPerFrame);
 
     const std::uint32_t s1Resampled = static_cast<std::uint32_t>(static_cast<float>(s1FullFrames) / s1ResampleRatio);

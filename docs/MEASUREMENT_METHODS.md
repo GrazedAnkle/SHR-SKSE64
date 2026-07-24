@@ -26,10 +26,13 @@ Before trusting a measurement:
 Anchor-free metrics are preferred for cross-signal comparisons. An anchored metric may still be useful
 inside a declared validity domain, but that domain must be demonstrated rather than assumed.
 
-The synthetic fixture in `tests/test_metrics.py` supports a deterministic white-noise floor. Its current
-20 dB-SNR contract demonstrates that `rise_10_90_ms` and the explicitly bounded F0 ruler remain within
-their declared tolerances across 40-200 Hz; it does not grant noise invariance to centroid, lobe count, or
-other rulers whose estimand genuinely changes when broadband floor energy is added.
+The synthetic fixture in `tests/test_metrics.py` supports a deterministic white-noise floor. Its 20 dB-SNR
+contract demonstrates that `rise_10_90_ms` and the explicitly bounded F0 ruler remain within their
+declared tolerances across 40-200 Hz on a single effective onset; it does not grant noise invariance to
+centroid, lobe count, or other rulers whose estimand genuinely changes when broadband floor energy is
+added. The rise ruler has an invalid multi-component domain: moving an earlier component from just below
+to just above the relative 10% threshold changes which component starts the clock and moves the result
+discontinuously while the main rise remains identical. The multi-component fixture fixes this boundary.
 
 ## Recording-chain confounds
 
@@ -57,7 +60,7 @@ choice, but it must not establish a general claim about hearts.
 | Comparison | Preferred ruler | Required conditions and interpretation |
 |---|---|---|
 | S1/S2 onset-to-onset timing | Hand `s1a`/`s2a` landmarks; group median | Mark the earliest credible acoustic onset of each whole sound complex. For S2 this is normally A2-like; a later P2/clap never replaces `s2a`. Keep state transitions out of steady-state fits. `auto_annotate.py` gates each onset directly by median absolute error and separately gates systole drift. |
-| Rise time across signals | `shrlib.rise_10_90_ms` | Analytic envelope; running maximum makes it immune to pre-peak nulls. Start from an S1 annotation so earlier energy cannot start the clock. |
+| Rise time across signals | `shrlib.rise_10_90_ms` | Analytic envelope; running maximum makes it immune to pre-peak nulls. Start from an S1 annotation so pre-S1 energy cannot start the clock. Every compared S1 must also keep any earlier component safely on the same side of the relative 10% threshold; a precursor near that threshold can switch the starting component discontinuously. |
 | Local build used by the S1 compressor | `shrlib.onset_peak_idx` / `HeartbeatVoice::CompressOnsetBuild` | Last 10%-of-peak crossing on the analytic envelope. Valid for this source's final ascent, not for comparing unlike lobe structures. C++ and NumPy definitions must remain identical. |
 | HF timing across unlike S1 lobes | `shrlib.hf_temporal_skew` | HF-energy temporal centroid minus broadband-energy temporal centroid, normalized by window duration. Negative means HF leads; positive means it trails. The window must be the complete actual S1, and comparisons must match the window/S1-duration fraction. Material clipping or saturation invalidates it by manufacturing time-localized HF. Use the group median as a same-path lead/lag diagnostic and late-HF-wash detector, not as a perceptual sharpness ordering, drive proxy, cross-recording rank, or setpoint. |
 | Rise/body HF balance in like lobes | `shrlib.rise_body_contrast` plus `shrlib.lobe_count` | Fixed peak-anchored windows, whole-file zero-phase bandpass. Direction indicator only. Compare ref8 with the single-lobe engine or one signal across a sweep; do not compare multi-lobe references. |

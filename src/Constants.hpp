@@ -141,20 +141,6 @@ namespace SHR::Constants
     // must remain between the source's ~2.35% null and ~55% precursor lobe or it selects another ascent.
     constexpr float AttackBuildThreshold = 0.10F; // onset = last pre-peak crossing of this fraction of the S1 peak
 
-    // --- S1 ring-down tail [dsp] ---
-    // TailResonatorHz must not exceed the S1 body mode or the ring can re-peak. Lengthens the S1 buffer;
-    // callers must re-read its frame count. See SYNTHESIS_MODEL coupling 5.
-    constexpr float TailRingLevel   = 0.15F;  // peak/S1 peak; 0 = disabled
-    constexpr float TailResonatorHz = 46.0F;  // Hz; must be <= S1 body mode
-    constexpr float TailDecayMs     = 45.0F;  // ms; resonator-envelope decay tau
-    constexpr float TailSpliceMs    = 78.0F;  // ms; ring fade-in start after the whomp
-    constexpr float TailRampMs      = 15.0F;  // ms; raised-cosine fade-in duration
-    constexpr float TailExtraMs     = 140.0F; // ms; S1 buffer extension for the decay
-
-    // --- Secondary-lobe tamer [dsp] ---
-    constexpr float LobeTameDecayMs = 22.0F; // ms; post-peak decaying-ceiling tau
-    constexpr float LobeTameEnvMs   = 2.0F;  // ms; detector window, gain smoothing uses half
-
     // --- PVC dulling [dsp] ---
     constexpr float ResamplePVCRatio = 0.90F; // (0, 1]; ectopic-S1 playback/pitch ratio
 

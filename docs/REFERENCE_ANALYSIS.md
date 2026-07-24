@@ -408,7 +408,7 @@ are not comparable.
   | runner-up / peak | 0.00 | 0.47 | 0.55 | 0.62-0.90 | 0.46 | 0.77-0.85 | 0.43-0.81 |
 
   **ref8 is the only reliably single-lobe recording** - plausibly why it reads as the smooth, dull one,
-  and why it is the closest perceptual match to our (lobe-tamed) source. Everywhere else `argmax` flips
+  and why it is the closest perceptual match to our source. Everywhere else `argmax` flips
   lobe between beats: ref15's `~150bpm` group spans rise/body contrast **0.75** (peak on lobe 1) to
   **80.39** (peak on lobe 3). Consequences: `s1_attack_ms` and `s1_contrast` are only comparable between
   signals of the same lobe structure (ref8 vs the engine), and `s1_lobes` / `s1_lobe_runnerup` are now
@@ -422,6 +422,13 @@ are not comparable.
   the visibly less-slanted high-drive spectrogram, not establishing an inverse sharpness law. Ref14 is
   excluded because its saturation changes between states. Use skew as a same-path HF lead/lag diagnostic
   and late-HF-wash detector, never a perceptual ordering, drive proxy, cross-recording rank, or setpoint.
+- **Late S1 energy does not establish a synthetic tail.** Fixed S1-onset-relative 20-100 Hz windows show
+  ref8's late energy decaying to its adjacent background before S2 rather than literally overlapping it.
+  Several other high-rate groups retain material late-S1 energy. This establishes that late structure is
+  plausible, but raw phase alignment cannot distinguish a coherent modal ring from energy-only
+  valve/tissue/flow sound and does not identify a resonator frequency. Ref8 remains a timbral target, not
+  physiological evidence. The corresponding engine design belongs in
+  [SYNTHESIS_MODEL.md](SYNTHESIS_MODEL.md#second-order-couplings).
 - **Respiratory sinus arrhythmia:** ref6 (strong), ref9 (+/-10%), ref11
 - **PVCs:** ref9 (7+, full morphology), ref7 (3)
 - **Breath muffle observations:** ref11 deep-breath (indicative centroid -34%; the concurrent F0 -14%
@@ -462,7 +469,7 @@ are not comparable.
 **Spectral drive finding - grounds contractility brightening:** ref15's clean within-recording pair shows
 S1 centroid rising x1.16 with F0 and S2 flat. Ref11 independently supports the direction, not a calibrated
 ratio, until its window baselines are reconciled. These observations ground the contractility-scaled S1
-brightening the engine produces through onset compression and the lobe tamer (see
+brightening the engine produces through onset compression (see
 [SYNTHESIS_MODEL.md](SYNTHESIS_MODEL.md#sourcing-and-shaping)).
 
 ## Analyzing our own output (offline mirror and in-game captures)
@@ -504,8 +511,9 @@ naturally.
   varies with contractility) or *drive-flat* (an artifact).
 - *Broadband centroid is the wrong brightness metric for our source.* The magnitude-weighted centroid
   (fmax 1200 Hz) is dominated by the loud low fundamental and our source's 20-40 Hz boom, so it can move
-  *opposite* to perceived brightness (the ~46 Hz ring-down tail *raises* the centroid while dulling the
-  beat). For perceived brightness use the **80-200 Hz "octave"**, or an A-weighted HF measure.
+  *opposite* to perceived brightness: adding low-frequency ring energy above the source's sub-40 Hz boom
+  can raise the centroid while dulling the beat. For perceived brightness use the **80-200 Hz "octave"**,
+  or an A-weighted HF measure.
 
 **The game playback path is spectrally transparent, so the offline mirror is faithful to the shipped
 audio.** Controlled captures on the shipping DSP - each pinned to a known state (fixed HR, contractility,

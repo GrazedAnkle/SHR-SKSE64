@@ -65,9 +65,9 @@ Each consumer reads contractility for inotropy. `Beat::ExertionFraction` remains
 2. **Systole recovery correction.** The steady-state line already includes the drive associated with its
    HR. `SystolePEPShortening` therefore multiplies `GetContractilityExcess()`, the contractility above what
    current HR implies, rather than total contractility.
-3. **S1 onset and brightness.** `HeartbeatVoice::CompressOnsetBuild` and
-   `HeartbeatVoice::ApplyTameLobe` scale with per-beat vigor, so one physiological driver makes a forceful
-   beat louder, faster-rising, and brighter.
+3. **S1 onset and brightness.** `HeartbeatVoice::CompressOnsetBuild` scales with per-beat vigor, so one
+   physiological driver makes a forceful beat louder, faster-rising, and brighter while preserving the
+   source's post-peak body.
 4. **Beat-to-beat variation.** `RhythmEngine` applies bounded vigor jitter around the mean contractility.
    The same per-beat draw moves loudness and envelope character together.
 

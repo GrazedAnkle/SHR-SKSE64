@@ -35,8 +35,7 @@ or perceptual bound is the honest constraint.
 - Structured state-sensitive bindings described by the
   [reference-state ledger](../MEASUREMENT_METHODS.md#reference-state-ledger).
 - Calibration rules in [MEASUREMENT_METHODS.md](../MEASUREMENT_METHODS.md#calibration-and-provenance).
-- [WI-010](WI-010-pvc-tuning.md) for PVC coefficients and
-  [WI-011](WI-011-post-exciter-lobe-tail.md) for tail/lobe coefficients.
+- [WI-010](WI-010-pvc-tuning.md) for PVC coefficients.
 
 ## Next action and decision points
 
@@ -44,9 +43,9 @@ Audit placeholder `[[uncited]]` entries feature-by-feature, beginning with the c
 For each, either write the structural/ear/reference rationale, create a compatible leaf and binding, or
 link the work item that must resolve it. First state the observable being protected, then calculate or
 measure the broadest defensible interval and map that interval back to the constant family. Treat coupled
-families together: breath filter cutoff/poles/order, tail center/decay/splice/extension, amplitude gain and
-limiter headroom, and PVC timing/amplitude/morphology. The maintainer decides whether an ear-set value's
-rationale is faithful before the placeholder is removed.
+families together: breath filter cutoff/poles/order, amplitude gain and limiter headroom, and PVC
+timing/amplitude/morphology. The maintainer decides whether an ear-set value's rationale is faithful before
+the placeholder is removed.
 
 ## Observed separate work
 

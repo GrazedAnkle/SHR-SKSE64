@@ -19,44 +19,40 @@ two things we must treat differently:
   with drive; its one drive-responsive spectral feature is the site-dependent P2 clap (coupling 2).
 
 We keep the source's resting timbre as the baseline and modulate brightness from there as a function
-of state. Heart sounds are band-limited (essentially nothing above ~200 Hz) and the whole brightness
-difference between recordings lives in the 100-200 Hz octave - exactly the "tinny/tube" stethoscope
-coloration - so there is a real crispness ceiling. It is set by the source's spectrum *after the
-low-cut* (below), not by the source being "too dull to EQ". Replacing the sample was rejected: a
-brighter real recording cannot escape that stethoscope character, and the candidates also had recording
-defects.
+of state. Heart sounds are band-limited (essentially nothing above ~200 Hz) and brightness is set by
+the source's spectrum *after the low-cut* (below).
 
 The **primary brightness lever is a static source low-cut** (`SourceHighPassHz`,
 `HeartbeatVoice::ApplyHighPass`) - the recording-chain-timbre correction this section opened with. The
 source's S1 fundamental sits near 22 Hz with ~37% of its energy below 40 Hz, roughly an octave below
-real hearts (references 62-75 Hz): a capture-path sub-bass coloration (contact-transducer proximity
-resonance / no subsonic filter / cinematic sub weight), not physiology. A 2-pole Butterworth high-pass
-on the S1/S2 sub-samples at load (before `NormalizeJoint`, so the renormalization gain-stages for the
-removed energy) removes that boom so the source's own fundamental reads clear at ~76 Hz. It is *not* a
-resample/pitch shift (which would impose another heart, cf. coupling 2). The buried octave had masked
-the source's own upper harmonics, so the cut un-dulls the source and lifts its HF fraction: with the
-exciter removed, the rendered S1 sits **mid-range among the references** for HF content, no longer the dull
-outlier the exciter was built to rescue. Corner selection used F0/band match, attack preservation, and
-fundamental headroom. The remaining tail and S2-conditioning consequences are separated into focused work
-rather than changing the adopted corner.
+real hearts (references 62-75 Hz) which is indicative of capture-path sub-bass coloration
+(contact-transducer proximity resonance / no subsonic filter / cinematic sub weight). A 2-pole
+Butterworth high-pass on the S1/S2 sub-samples at load (before `NormalizeJoint`, so the
+renormalization gain-stages for the removed energy) removes that boom so the source's own
+fundamental reads clear at ~76 Hz. It is *not* a resample/pitch shift (cf. coupling 2). The sub-bass
+octave masks the source's own upper harmonics; the cut therefore un-dulls the source and lifts its
+HF fraction. The rendered S1 sits **mid-range among the references** for HF content without an
+exciter. `SourceHighPassHz` preserves the attack and leaves fundamental headroom. The post-peak
+source body also requires no tamer or synthetic tail; the intact body is the perceptually preferred
+match to ref8 across rest, high drive, natural breathing, and recovery. S2 conditioning remains a
+separate decision rather than changing the adopted S1 corner.
 
 **Runtime drive-brightening** - the rise of S1 brightness with contractility - is produced by the
-contractility-scaled **onset compression** and **lobe tamer** (coupling 5), which sharpen the S1
-envelope: a steeper pressure rise and more abrupt blood/tissue deceleration can produce a sharper transient,
-which carries more HF. This is a physiologically compatible working mechanism, grounded directionally in
-the ref11 and ref15 within-recording drive pairs; those recordings do not isolate the exact causal
-decomposition or coefficient. The exact ref11 magnitude remains method-sensitive; see
-[WI-005](work_items/WI-005-cross-gap-audit.md).
+contractility-scaled **onset compression** (coupling 5), which sharpens the S1 envelope: a steeper
+pressure rise and more abrupt blood/tissue deceleration can produce a sharper transient, which carries
+more HF. The source's post-peak lobes and decay remain intact. This is a physiologically compatible
+working mechanism, grounded directionally in the ref11 and ref15 within-recording drive pairs; those
+recordings do not isolate the exact causal decomposition or coefficient. The exact ref11 magnitude
+remains method-sensitive; see [WI-005](work_items/WI-005-cross-gap-audit.md).
+
 **Resampling is reserved for *pitch* motion** - the breath pitch-dip and PVC dulling - not for
 brightness: speeding the sample up shifts the fundamental, which reads as sped-up rather than forceful.
 
-The removed **harmonic exciter** manufactured 100-200 Hz harmonics with a contractility-scaled tanh
-waveshaper. It was removed after the source low-cut invalidated its "dull source" premise and analysis
-showed that it pushed HF into the lobe *body*, the perceptual sign opposite a sharper attack. Several
-envelope and breath-muffle settings were originally tuned against its manufactured HF, so those settings
-need validation against the current chain when touched; see
-[WI-011](work_items/WI-011-post-exciter-lobe-tail.md) and
-[WI-008](work_items/WI-008-spectral-breath-muffle.md).
+The cardiac-source chain has no **harmonic exciter**. A contractility-scaled tanh waveshaper would
+manufacture 100-200 Hz harmonics even though the source low-cut already places S1 HF content in the
+reference range, and it would concentrate that HF in the lobe *body* rather than the rise. That temporal
+placement is the perceptual sign opposite a sharper attack. Breath muffle must be evaluated on this
+exciter-free spectrum under [WI-008](work_items/WI-008-spectral-breath-muffle.md).
 
 ## Signal-chain architecture
 
@@ -71,10 +67,8 @@ order.
    rises within the ref11 and ref15 drive pairs (same recording/site; directional, with the ref11
    magnitude under [cross-gap audit](work_items/WI-005-cross-gap-audit.md)), so the brightening is cardiac,
    not merely a cross-recording timbre difference; ref13's HR rise shows loudness and centroid climbing
-   with exertion, and the attack
-   sharpening is re-established on the within-recording drive pairs (ref11 -21.9 ms, ref14 -7.4 ms,
-   measured as the null-immune 10-90% rise).
-   These drive **S1**;
+   with exertion, and the attack sharpening is re-established on the within-recording drive pairs
+   (ref11 -21.9 ms, ref14 -7.4 ms, measured as the null-immune 10-90% rise). These drive **S1**;
    **S2 loudness is held fixed** (S1 amplitude scales with contractility and Frank-Starling, S2 stays
    at unit amplitude), so the S2/S1 loudness ratio falls as drive rises - as the references show.
 2. **Transmission (chest, lung, tissue between heart and sensor).** The breath effect lives here:
@@ -93,22 +87,23 @@ order.
    is rise/body HF *contrast*, not a faster attack - ref8's 10-90% rise is 33.9 ms, comparable to ours), while
    ref12's are clearly saturated (~9.0 dB).
 
-   It does **not** add audible grit at the current operating point. Grit was the original intent, but
-   with the vigor jitter live only the jitter's upper tail reaches the knee at all; the loudest beat's
-   nonlinear residual is ~-28 dB (~4% THD), and renders across `SoftClipKnee` 0.30-0.50 and
-   `ContractilityGainDb` 11-13 are indistinguishable by ear. Drive is heard as *level*, not saturation,
-   and grit is not a design goal for the **default** sound profile - a deliberately saturated profile
-   remains a coherent future option (see [additional audio realism](ROADMAP.md#additional-audio-realism)).
+   It does **not** add audible grit at the current operating point. With vigor jitter live, only the
+   jitter's upper tail reaches the knee at all; the loudest beat's nonlinear residual is ~-28 dB
+   (~4% THD), and renders across `SoftClipKnee` 0.30-0.50 and `ContractilityGainDb` 11-13 are
+   indistinguishable by ear. Drive is heard as *level*, not saturation, and grit is not a design
+   goal for the **default** sound profile - a deliberately saturated profile remains a coherent
+   future option (see [additional audio realism](ROADMAP.md#additional-audio-realism)).
 
    The operating point (`ContractilityGainDb` driving the fixed `SoftClipKnee`) is set so the loudest
    beats land in the reference crest range rather than flat-topping into a plateau. It must be re-checked
-   whenever the S1 envelope energy changes - the onset compression and the ring-down tail each raise it,
-   and a level tuned before them over-saturates (crest crushed, samples pinned near full scale). It is
-   co-calibrated with the beat-to-beat vigor jitter (coupling 12), whose upward loudness excursions need
-   room below the ceiling: at maximum drive the mean loud beat otherwise sits near full scale and clips
-   those excursions, crushing the loudness spread and skewing the beat-to-beat distribution.
-   `SourceRestLevel` sets the resting level low enough to leave that headroom. The adopted operating point
-   has passed an in-game rest-to-exercise-to-recovery capture; any envelope change must repeat that gate.
+   whenever the S1 envelope energy changes - onset compression changes its peak-to-body balance, and a
+   level tuned against a different envelope can over-saturate (crest crushed, samples pinned near full
+   scale). It is co-calibrated with the beat-to-beat vigor jitter (coupling 12), whose upward
+   loudness excursions need room below the ceiling: at maximum drive the mean loud beat otherwise
+   sits near full scale and clips those excursions, crushing the loudness spread and skewing the
+   beat-to-beat distribution. `SourceRestLevel` sets the resting level low enough to leave that
+   headroom. An in-game rest-to-exercise-to-recovery capture validates the adopted operating point;
+   any envelope change must repeat that gate.
 
    `VoiceOutputGain` is downstream engine integration rather than heart physiology: it compensates the
    game's roughly quarter-scale mix attenuation while leaving the user-facing volume default at unity.
@@ -117,10 +112,9 @@ order.
    not a retune of cardiac-source loudness.
 
 The output **soft-knee** is the current chain's only tanh stage. It is level-driven and belongs to the
-transducer stage; drive-brightening belongs to onset compression and the lobe tamer in the cardiac-source
-stage.
+transducer stage; drive-brightening belongs to onset compression in the cardiac-source stage.
 
-**Processing order:** source (loudness, brightness via onset/lobe shaping, attack) -> transmission
+**Processing order:** source (loudness, brightness via onset shaping, attack) -> transmission
 (muffle, pitch dip, breath attenuation) -> transducer (limiter, last). This ordering is why a loud
 expiration beat saturates (it reaches the transducer at full level) while a muffled inspiration beat
 does not (transmission has already attenuated it) - for free, without special-casing.
@@ -154,7 +148,8 @@ Each output feature and the factors that drive it:
 - **Spectral centroid and crispness** (S1 and S2 treated separately, since A2 is genuinely
   higher-pitched than M1): HR, contractility, and breath phase.
 - **Attack and decay envelope** (heart sounds are transients, and higher drive currently concentrates
-  and shortens the observed S1 envelope): contractility and HR. The causal split is under WI-011.
+  and shortens the observed S1 envelope): contractility and HR. Onset compression carries the
+  drive-dependent change; the post-peak source body is preserved.
 - **Extra sound events** (S3 and S4, A2-P2 split, murmurs, breath sounds): breath phase, age, and
   pathology. Mostly deferred.
 
@@ -202,7 +197,7 @@ Subtle but real effects that separate synthetic from recorded. Capture as many a
      boom-heavy (~45% of its energy is sub-40 Hz vs references' ~9-21%). The source-brightness low-cut
      (`SourceHighPassHz`) is therefore applied to S2 as well as S1: at the 40 Hz corner it
      strips S2's sub-20 Hz boom (~20% -> ~3%) while its fundamental **stays put at ~40 Hz** (the peak does
-     not move, confirming 40 Hz is S2's genuine fundamental, not buried sub-bass like S1's was) - removing
+     not move, confirming 40 Hz is S2's genuine fundamental rather than a buried sub-bass mode) - removing
      boom without shifting the fundamental, distinct from "raising" the pitch. Note S2's fundamental sits
      right at the corner, so unlike S1 (76 Hz, ~an octave of headroom) S2 has little room to push the
      corner higher; even post-cut S2 stays boomier than ref8 (20-40 Hz ~39% vs ~10%), so a possible
@@ -222,10 +217,10 @@ Subtle but real effects that separate synthetic from recorded. Capture as many a
 4. **Post-pause beat is louder and brighter.** A long diastole means more filling and a more
    forceful, sharper contraction (Frank-Starling). S1 amplitude, brightness, and attack sharpening
    share the per-beat vigor path (`contractility x preload`) described in coupling 5.
-5. **S1 attack, body, and ring are separate envelope decisions.** Forceful contraction (high
-   contractility + good filling) drives the onset and overall amplitude. The source-completion ring and
-   secondary-lobe tamer are reduced DSP stages whose physiological and perceptual premises are being
-   re-audited under [WI-011](work_items/WI-011-post-exciter-lobe-tail.md).
+5. **S1 attack and post-peak body are separate envelope decisions.** Forceful contraction (high
+   contractility + good filling) drives the onset and overall amplitude. The post-peak body preserves the
+   source's natural multi-lobe structure and decay rather than forcing a monotonic envelope or adding a
+   synthetic continuation.
    - *Faster onset.* Greater drive is modeled as a faster onset and shorter S1, compatible with a steeper
      pressure rise and more abrupt deceleration. Grounded on the within-recording drive pairs
      (ref11 -21.9 ms, ref14 -7.4 ms, level confound
@@ -233,10 +228,9 @@ Subtle but real effects that separate synthetic from recorded. Capture as many a
      references. `CompressOnsetBuild` implements it: it walks the analytic envelope
      (`HeartbeatVoice::AnalyticEnv`, pocketfft - the same transform `shrlib.env_analytic` uses) at
      `AttackBuildThreshold` = 0.10, the project's single onset definition, and compresses the ~9.7 ms
-     build. **Candidate for review:** the two band-split numbers cited below (80-200 Hz onset ~2.3 ms,
-     0-80 Hz rise ~9.8 ms) are **unaudited** - a quarter period at 140 Hz is 1.8 ms and at 25 Hz is
-     10 ms, suspiciously like the retired attack ruler's output on band-limited signals. They remain
-     excluded from tuning evidence under the
+     build. The two band-split numbers cited below (80-200 Hz onset ~2.3 ms, 0-80 Hz rise ~9.8 ms) are
+     **excluded from tuning evidence**: a quarter period at 140 Hz is 1.8 ms and at 25 Hz is 10 ms,
+     suspiciously like the invalid attack ruler's output on band-limited signals. See the
      [measurement-validity policy](MEASUREMENT_METHODS.md#validity-before-value). The slow part
      is the low-frequency **"whomp" body** (0-80 Hz), and that gradual low
      swell *is* the heart-sound character. So the onset is sped by **time-compressing only the final
@@ -250,61 +244,42 @@ Subtle but real effects that separate synthetic from recorded. Capture as many a
      mid-swing; note the source has **no silent pre-roll**, but two precursor lobes, the second reaching
      55% of peak, before the null at 47 ms where the final ascent begins). And crushing the loudest beats into
      the soft-knee flattens the very peak the onset creates (ref8 S1 crest ~3.6 vs an over-saturated
-     render ~2.1), so saturation must stay engine-faithful (no extra drive).
-   - *Source-completion ring.* Valve closure and blood deceleration excite multiple interacting blood,
-     valve, myocardial, and thoracic structures that ring and decay. The current single mode is a timbral
-     abstraction of that system, not a literal claim that S1 has one physical resonator. Our source S1 is
-     short (~95 ms vs references' 114-157 ms) with a thin 40-80 Hz body. The tail is a **2-pole modal
-     resonator driven by the S1 itself** (`HeartbeatVoice::ApplyTail`), *not* an additive sum of damped
-     sinusoids: an added sinusoid starts a fresh attack a quarter-period after the peak (a ~60 Hz mode
-     crests ~4 ms late = a second hump that re-softens the onset), whereas a resonator excited by the
-     S1's own build rings phase-continuously and decays monotonically (its centre must sit at/below the
-     ~46 Hz body frequency, or the ring itself builds a late crest that overtakes the attack). It is
-     spliced in only *after* the whomp, and scaled to a fraction of the S1 peak so the attack + HF
-     click stay dry (unmasked) and the beat peak is unchanged (soft-knee calibration untouched). The
-     current implementation splices at a fixed source-relative time. Onset compression moves the
-     peak-relative splice position, so validity across contractility has not been established; WI-011
-     compares the fixed placement with envelope-relative alternatives. Kept **subtle by ear**
-     (`TailRingLevel` 0.15): the "pop/knock"
-     it was meant to fix is already handled by the onset compression above, so this is enrichment.
-     It is applied at a fixed relative level to every sinus S1 (then the whole S1 follows its normal
-     amplitude path), not selectively lengthened by force; PVCs currently skip it.
-     The level trades directly against brightness - the ring's low energy eats into the 80-200 Hz
-     "octave", most audibly at *mid* HR (there the ring plays un-truncated *and* the onset-compression
-     brightening is only partial; at peak the systole cap truncates the ring and the brightening is
-     full, so the cost is ~nil, and rest is quiet). Judge that cost by the
-     **80-200 Hz octave, not the magnitude centroid** - the centroid *rises* with the tail because
-     the ~46 Hz ring sits above our source's 20-40 Hz boom, hiding the perceived dulling. The
-     40-80 Hz body-*fraction* gap (ours ~45% vs references' 64-70%) is not a tail-length problem but
-     a source-spectrum one - our whomp is sub-40 Hz-heavy (~33% vs references' 1-12%) - so it is
-     left to a source-brightness/EQ pass, not chased with the tail. (No prominent S3 - diastole
-     holds only 3-7% of S1 energy.)
-   - *De-humped body (secondary-lobe tamer).* The source S1 is not a clean click-then-decay: after
-     the click its own body lobe **re-swells** to ~0.65-0.87 of the click ~20 ms later, and the source
-     low-cut sharpened this into a visible double-hump (the "reversed sample" percept at high HR),
-     capping the loud-beat crest ~9 vs the references' ~11 dB. The stage was introduced as a
-     source-specific sound-design correction; it is not justified by a rule that real forceful S1 must
-     decay as one monotonic lobe. Project references usually contain multiple S1 lobes, consistent with
-     multiple valve/tissue components. The post-cut source's later maximum is roughly 18 ms after its main
-     maximum, compatible with normal M1-T1 timing but also with its roughly 50-60 Hz ring; a single monaural
-     source cannot assign that lobe to T1. We currently impose a **decaying ceiling** on an approximate S1
-     envelope and pull down only the samples that exceed it (`HeartbeatVoice::ApplyTameLobe`, time
-     constant `LobeTameDecayMs`):
-     the natural early decay is untouched, the re-swell is removed, and the crest rises to the reference
-     ~11 dB. It is the post-peak complement to the onset compression above (which shapes only the
-     *pre*-peak build and structurally cannot touch this lobe), and to the tail (spliced in past the
-     lobe). Strength scales with contractility, so rest is untouched and only forceful high-HR beats
-     de-hump. Its 2 ms box-smoothed magnitude detector has not yet demonstrated the analytic-envelope
-     invariances of the repaired onset path, which is part of WI-011. Note this is an **envelope** fix,
-     not an attack-*timing* one: the render's onset->peak is modestly slower than ref8 (about 41.6 vs
-     33.9 ms on the null-immune 10-90% rise), so the perceived softness is primarily the double-hump,
-     not a slow rise.
+     render ~2.1), so saturation must stay engine-faithful (no extra drive). The current un-tamed,
+     no-tail chain has no meaningful residual softness, reversed-like character, or truncation by ear;
+     no additional onset compression is warranted.
+   - *Natural body and decay.* The source S1 is not a clean click-then-decay: its post-cut envelope has a
+     later maximum roughly 18 ms after the main maximum. That spacing is compatible with normal M1-T1
+     separation, but a single monaural source without ECG or simultaneous valve-site channels cannot
+     assign the lobe to T1; its roughly 50-60 Hz ringing/interference pattern can produce similar spacing.
+     The engine therefore treats the complete sliced source as one mixed-component baseline.
+
+     The engine applies no post-peak tamer or synthetic tail. Preserving the source body is perceptually
+     closest to ref8 under matched vigor and respiratory state, with no regression at rest, natural
+     breathing, or recovery. This does not imply that real S1 lacks ring-down: reference late-S1 energy
+     exists, and the source already carries post-peak structure. A subtractive tamer would remove part of
+     that natural body, while a single-mode continuation would replace it with a less representative
+     decay.
+
+     A fixed source-relative tail splice is also incompatible with onset compression: compression
+     shortens the dry S1 without moving the splice, so the dry source can end before the tail ramp reaches
+     full strength at high vigor. A dry-end-relative splice restores coherent geometry but does not
+     improve the timbral match. A decaying-ceiling tamer based on box-smoothed sample magnitude is
+     unsuitable because its detector is carrier-phase/frequency sensitive and its monotonic-lobe premise
+     conflicts with the common multi-lobe reference morphology. `tools/engine_offline.py` retains these
+     alternatives only as explicit legacy controls for reproducibility; shipping synthesis performs
+     neither stage.
+
+     The 40-80 Hz body-*fraction* gap is a source-spectrum issue rather than a tail-length problem: the
+     source whomp is sub-40 Hz-heavy, so a future correction belongs to a source-brightness/EQ pass, not
+     to synthetic extension. The source slice still ends before its editing bump, and the high-rate
+     `S1SystoleFraction` cap may shorten the dry source without inventing a continuation. (No prominent
+     S3 - diastole holds only a small fraction of S1 energy.)
 6. **At high heart rate, the systole-to-diastole ratio approaches one,** so the ear loses the
    "lub versus dub" distinction and the sound becomes gallop-like. `S1SystoleFraction` caps S1 inside
    systole and `S2WindowFraction` caps S2 inside the remaining IBI, preserving ejection and diastolic
    gaps. Both caps exceed the fixed source-lobe lengths at rest, so low-rate beats remain unchanged.
-   Their current setpoints are unaudited and any tail-driven truncation is handled by
-   [WI-011](work_items/WI-011-post-exciter-lobe-tail.md), not opportunistic retuning here.
+   Their current setpoints are unaudited; if high-rate dry S1 shortening becomes audible, treat the cap
+   as its own timing decision.
 7. **S3 and S4 are low-frequency** (about 20 to 50 Hz, below S1). S3 is an early-diastole thud
    common in young or athletic hearts. S4 is a late-diastole thud in a stiff or older ventricle.
    At high heart rates they can merge into a summation gallop.
@@ -319,7 +294,7 @@ Subtle but real effects that separate synthetic from recorded. Capture as many a
 12. **Beats vary beat-to-beat, and the variation grows with drive.** A per-beat vigor jitter
     (`Constants.hpp: VigorJitterScale`, applied in `RhythmEngine`) perturbs the instantaneous
     contractility around the mean sympathetic drive, so one driver moves S1 loudness, brightness
-    (via the onset/lobe shaping), and attack together - the co-varying "liveliness" references show, not three independent
+    (via onset shaping), and attack together - the co-varying "liveliness" references show, not three independent
     random knobs. The beat-to-beat loudness variation has two separable components. The **slow** one is
     the respiratory swing: it tracks the breath cycle (a much longer period than beat-to-beat) and is
     carried by the breath amplitude/muffle modulation (coupling 1), so its depth scales with the lagged

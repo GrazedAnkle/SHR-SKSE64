@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 ## Define project
 ########################################################################################################################
 project(SHR
-    VERSION     0.5.0.0
+    VERSION     0.5.1.0
     LANGUAGES   CXX
     DESCRIPTION "Physiological heart-rate simulation with synthesized heartbeat audio."
 )

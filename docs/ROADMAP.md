@@ -1,11 +1,11 @@
 # Roadmap
 
 The current milestone is **evidence-safe audio refinement**: close or precisely characterize the remaining
-S1, S2, and breath-transmission gaps without letting an invalid ruler or mismatched physiological state
-drive another retune. The broad high-HR mush defect is closed.
+S2 and breath-transmission gaps without letting an invalid ruler or mismatched physiological state drive
+another retune. The settled S1 baseline remains fixed while those independent gaps are evaluated.
 
-The milestone succeeds when the S2 annotation convention is operational, the remaining S1/lobe/tail
-question has a verdict, breath spectral claims are either reproducible or demoted, and every changed
+The milestone succeeds when the S2 annotation convention is operational, breath spectral claims are
+either reproducible or demoted, and every changed
 coefficient has an auditable ruler, state, and provenance. Status meanings are defined in
 [DOCUMENTATION_CONVENTIONS.md](DOCUMENTATION_CONVENTIONS.md#status-tags).
 
@@ -17,8 +17,6 @@ evidence links, and decision points.
 | ID | Outcome | Status | Blocker or dependency | Next action |
 |---|---|---|---|---|
 | [WI-005](work_items/WI-005-cross-gap-audit.md) | Every distant-window reference claim classified and remeasured | `[NEXT]` | None | Rebuild ref11 comparisons on one window rule |
-| [WI-006](work_items/WI-006-s1-envelope-sharpness.md) | Verdict on the residual S1 rise-time gap | `[NEXT]` | Coordinate with WI-011 | Stage jitter-live, level-matched envelope variants |
-| [WI-011](work_items/WI-011-post-exciter-lobe-tail.md) | Lobe/tail stages re-earned on the current chain | `[NEXT]` | Coordinate with WI-006 | Plot and audition lobe/tail/ramp variants including "off" |
 | [WI-008](work_items/WI-008-spectral-breath-muffle.md) | Reproducible muffle evidence separated from suspect pitch motion | `[NEXT]` | WI-005; better reference may be needed | Validate F0 rulers on synthetic muffled signals |
 | [WI-015](work_items/WI-015-calibration-provenance.md) | No unaudited tuned-constant provenance placeholders | `[NEXT]` | State/tuning items for some constants | Audit `[[uncited]]` entries feature by feature |
 | [WI-007](work_items/WI-007-blunt-s2-attack.md) | A sharper S2 envelope with fundamental and timing intact | `[NEXT]` | None | Regenerate S2 rise targets on the settled onset convention |
@@ -29,7 +27,8 @@ evidence links, and decision points.
 
 ### Rhythm and simulation
 
-- [WI-010: PVC tuning](work_items/WI-010-pvc-tuning.md) is deferred until the baseline envelope settles.
+- [WI-010: PVC tuning](work_items/WI-010-pvc-tuning.md) is deferred behind the compensatory-pause fix and
+  PVC-parity fixture work; the baseline sinus envelope is settled.
 - [WI-019: PVC compensatory-pause scheduling](work_items/WI-019-pvc-compensatory-pause.md) removes an
   extra normal interval after single PVCs and runs; land it before WI-010 neighbor-beat tuning.
 - [WI-012: bundled simulation/dynamics](work_items/WI-012-simulation-dynamics.md) groups preload/afterload

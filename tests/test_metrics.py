@@ -76,6 +76,10 @@ class MetricAuditTests(unittest.TestCase):
         self.assertEqual(skew["window"], "complete-s1-support")
         self.assertEqual(skew["aggregation"], "group-median-for-references")
         self.assertEqual(set(skew["invalid"]), {"truncated-s1", "material-nonlinear-distortion"})
+        self.assertEqual(
+            set(shrlib.METRIC_METADATA["rise_10_90_ms"]["invalid"]),
+            {"pre-onset-component-near-10pct"},
+        )
 
     def test_rise_10_90_is_invariant_to_f0_and_level(self):
         reference = shrlib.rise_10_90_ms(synthetic_lobe(), SR)
@@ -107,6 +111,25 @@ class MetricAuditTests(unittest.TestCase):
         plain = shrlib.rise_10_90_ms(synthetic_lobe(), SR)
         nulled = shrlib.rise_10_90_ms(synthetic_lobe(null=True), SR)
         self.assertAlmostEqual(nulled, plain, delta=1.0)
+
+    def test_rise_10_90_is_invalidated_by_a_precursor_near_its_threshold(self):
+        """A tiny precursor change can move the relative-threshold anchor discontinuously.
+
+        The main lobe and its ground-truth rise are identical. Only an earlier component moves from
+        just below to just above 10% of the main peak, making the ruler start on another component.
+        This pins an invalid comparison domain rather than blessing either reported value.
+        """
+        t = np.arange(int(0.18 * SR)) / SR
+        main = np.exp(-0.5 * ((t - 0.095) / 0.018) ** 2)
+
+        def with_precursor(level: float, phase: float) -> np.ndarray:
+            precursor = level * np.exp(-0.5 * ((t - 0.032) / 0.006) ** 2)
+            return (main + precursor) * np.sin(2.0 * np.pi * 200.0 * t + phase)
+
+        for phase in (0.0, 0.7, 1.4, 2.2):
+            below = shrlib.rise_10_90_ms(with_precursor(0.095, phase), SR)
+            above = shrlib.rise_10_90_ms(with_precursor(0.100, phase), SR)
+            self.assertGreater(above - below, 20.0)
 
     def test_attack_ms_exposes_the_known_null_sensitive_ruler(self):
         plain = shrlib.attack_ms(synthetic_lobe(), SR)

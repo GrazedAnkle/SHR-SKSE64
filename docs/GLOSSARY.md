@@ -97,7 +97,7 @@ Plain-language definitions of any jargon or technical terminology used in the pr
   (see SYNTHESIS_MODEL.md), not to add audible saturation.
 - **Resampling** - playing a sample faster or slower, which shifts its pitch and changes its length.
   Used for the breath pitch-dip and PVC dulling. (Contractility brightening is done by envelope shaping
-  - onset compression and the lobe tamer - not resampling, which would shift the fundamental and sound
-  sped-up rather than forceful.)
+  - onset compression - not resampling, which would shift the fundamental and sound sped-up rather than
+  forceful.)
 - **Resample pitch-dip vs low-pass muffle** - two different ways to dull a sound: resampling lowers
   the whole pitch, while a low-pass removes only the highs and keeps the pitch.

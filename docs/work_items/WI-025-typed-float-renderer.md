@@ -30,8 +30,8 @@ path, offline scenario harness, and removal of the Python DSP implementation bel
 
 ## Dependencies
 
-- Coordinate with [WI-011](WI-011-post-exciter-lobe-tail.md) so a mechanical representation change and
-  an audible envelope decision are not reviewed in the same comparison.
+- Preserve the settled un-tamed, no-tail S1 envelope described in
+  [SYNTHESIS_MODEL.md](../SYNTHESIS_MODEL.md#second-order-couplings).
 - [WI-024](WI-024-core-runtime-boundary.md) owns the build/runtime boundary.
 - [WI-022](WI-022-audio-resource-ownership.md) owns queue and voice lifetime.
 

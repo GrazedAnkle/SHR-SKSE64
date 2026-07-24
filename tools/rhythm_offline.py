@@ -56,7 +56,8 @@ def base_ibi(hr: float, resp_phase: float, exertion: float) -> float:
 def beat_sequence(path: str | Path, hr: float, contractility: float, exertion: float,
                   n_beats: int = 24, vigor_sigma: float | None = None, seed: int = 0,
                   src_highpass: float | None = None, resp_rate: float | None = None,
-                  breath_depth: float | None = None) -> dict:
+                  breath_depth: float | None = None,
+                  synth_options: dict | None = None) -> dict:
     """Render a steady-state sinus run and return {audio, beats, ...}.
 
     Mirrors RhythmEngine fire ordering: a beat uses the IBI set by the previous
@@ -68,6 +69,7 @@ def beat_sequence(path: str | Path, hr: float, contractility: float, exertion: f
         vigor_sigma = _C["VigorJitterScale"]  # match the engine default; pass a value to override/disable
     s1, s2 = eo.prep_source(path, src_highpass)
     rng = np.random.default_rng(seed)
+    synth_options = dict(synth_options or {})
 
     target_rate, target_depth = shrlib.ventilation_targets(_C, exertion)
     resp_rate = target_rate if resp_rate is None else resp_rate
@@ -93,7 +95,7 @@ def beat_sequence(path: str | Path, hr: float, contractility: float, exertion: f
 
         audio = eo.synth_beat(
             s1, s2, hr, c_beat, frank_starling, resp_phase, exertion,
-            breath_depth=breath_depth
+            breath_depth=breath_depth, **synth_options
         )
         beats.append({"audio": audio, "ibi": effective_ibi, "frank_starling": frank_starling,
                       "contractility": c_beat, "resp_phase": resp_phase,
@@ -274,19 +276,25 @@ if __name__ == "__main__":
     ap.add_argument("--dur-ms", type=float, default=128.0, help="S1 window (match the reference group)")
     ap.add_argument("--set", action="append", metavar="NAME=VALUE", default=[],
                     help="override a Constants.hpp value for this run; repeatable")
+    ap.add_argument("--legacy-tail-mode", choices=eo.LEGACY_TAIL_MODES, default="off",
+                    help="late-S1 audit control; fixed/dry-end re-enable retired tail variants")
+    ap.add_argument("--legacy-tamer", action="store_true",
+                    help="late-S1 audit control: re-enable the retired secondary-lobe tamer")
     ap.add_argument("--out", help="optional wav of the beat run")
     a = ap.parse_args()
     eo.apply_overrides(a.set)
 
     seq = beat_sequence(
         a.source, a.hr, a.contractility, a.exertion, a.beats, a.vigor_sigma, a.seed,
-        resp_rate=a.resp_rate, breath_depth=a.breath_depth
+        resp_rate=a.resp_rate, breath_depth=a.breath_depth,
+        synth_options={"tail_mode": a.legacy_tail_mode, "tamer_enabled": a.legacy_tamer}
     )
     m = measure_sequence(seq, a.dur_ms)
     beats_per_breath = a.hr / seq["resp_rate"]
     print(f"HR{a.hr:.0f} c{a.contractility:.2f} ex{a.exertion:.2f} "
           f"vigor_sigma{seq['vigor_sigma']:.2f} respRate{seq['resp_rate']:.1f} "
           f"depth{seq['breath_depth']:.2f} beats/breath{beats_per_breath:.2f} "
+          f"tail={a.legacy_tail_mode} tamer={'on' if a.legacy_tamer else 'off'} "
           f"({a.beats} beats, {len(m['peak'])} measured)")
     # Print the live leaf and its uncertainty as context; data_citations.toml records why it is not a target.
     target = ref8_peak_cv_target()

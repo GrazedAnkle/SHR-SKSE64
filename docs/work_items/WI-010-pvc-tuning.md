@@ -15,9 +15,9 @@ literature/ear/structural rationale.
 PVC timing exists; [WI-019](WI-019-pvc-compensatory-pause.md) owns the known compensatory-pause scheduling
 defect. Amplitude and dulling do not yet convincingly match the references. PVC S1 level currently follows
 relative filling but omits the sinus contractility gain, while S2 follows a coupling-based perfusion ramp.
-`ResamplePVCRatio` lacks an audited reference binding. PVCs also skip onset compression, the secondary-lobe
-tamer, and the synthesized S1 ring as one branch; conduction can justify different activation and onset,
-but it does not by itself justify removing all subsequent passive ring-down.
+`ResamplePVCRatio` lacks an audited reference binding. PVCs also skip sinus onset compression; conduction
+can justify different activation and onset, but the bypass still needs to be tested rather than inherited
+implicitly.
 
 The current Frank-Starling input is preceding RR (or PVC coupling interval) divided by nominal IBI. It is
 a cycle-length proxy, not literal diastolic filling time: the interval includes the preceding beat's
@@ -37,14 +37,15 @@ calibrate PVC constants.
 
 ## Dependencies
 
-- Baseline S1/S2 envelope work should settle before tone comparison.
+- The settled sinus S1 envelope in
+  [SYNTHESIS_MODEL.md](../SYNTHESIS_MODEL.md#second-order-couplings) is the comparison baseline.
 - [WI-019](WI-019-pvc-compensatory-pause.md) should land before neighbor-beat and filling comparisons.
 - Measurement and provenance rules in [MEASUREMENT_METHODS.md](../MEASUREMENT_METHODS.md).
 
 ## Next action and decision points
 
 Measure each PVC against adjacent sinus beats in refs 7 and 9, add reproducible leaves, then sweep
-amplitude/resample and the onset/tamer/tail bypasses independently. Include low/high-HR and
+amplitude/resample and the onset bypass independently. Include low/high-HR and
 low/high-contractility synthetic fixtures so a fixed coupling fraction is not mistaken for fixed absolute
 filling time. Compare the current RR proxy with an explicit available-filling-time proxy, and sweep the
 PVC/sinus systole crossover. The maintainer auditions the resulting morphology families.

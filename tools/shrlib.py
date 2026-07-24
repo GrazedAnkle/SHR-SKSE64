@@ -219,7 +219,11 @@ METRIC_METADATA = {
     "env_analytic": {"anchor": "none", "valid": "within-signal"},
     "onset_peak_idx": {"anchor": "threshold", "valid": "within-signal"},
     "attack_ms": {"anchor": "threshold", "valid": "within-signal"},
-    "rise_10_90_ms": {"anchor": "threshold", "valid": "cross-signal"},
+    "rise_10_90_ms": {
+        "anchor": "threshold",
+        "valid": "cross-signal",
+        "invalid": ("pre-onset-component-near-10pct",),
+    },
     "decay_ms": {"anchor": "threshold", "valid": "within-signal"},
     "centroid": {"anchor": "none", "valid": "within-signal"},
     "rolloff": {"anchor": "threshold", "valid": "within-signal"},

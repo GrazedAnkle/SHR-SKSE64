@@ -144,14 +144,6 @@ constant = "FrankStarlingMin"
 reason = "not yet audited; provenance unknown."
 
 [[uncited]]
-constant = "LobeTameDecayMs"
-reason = "not yet audited; provenance unknown."
-
-[[uncited]]
-constant = "LobeTameEnvMs"
-reason = "not yet audited; provenance unknown."
-
-[[uncited]]
 constant = "PVCS1Amplitude"
 reason = "not yet audited; provenance unknown."
 
@@ -194,31 +186,6 @@ reason = "Chosen for headroom against SoftClipKnee and set by ear in-game. A lev
 [[uncited]]
 constant = "SystoleMax"
 reason = "not yet audited; provenance unknown."
-
-[[uncited]]
-constant = "TailDecayMs"
-reason = "not yet audited; provenance unknown."
-
-[[uncited]]
-constant = "TailExtraMs"
-reason = "not yet audited; provenance unknown."
-
-[[uncited]]
-constant = "TailRampMs"
-reason = "not yet audited; provenance unknown."
-
-[[uncited]]
-constant = "TailResonatorHz"
-reason = "not yet audited; provenance unknown."
-
-[[uncited]]
-constant = "TailRingLevel"
-reason = "not yet audited; provenance unknown."
-
-[[uncited]]
-constant = "TailSpliceMs"
-reason = "not yet audited; provenance unknown."
-
 
 [[uncited]]
 constant = "VigorJitterScale"

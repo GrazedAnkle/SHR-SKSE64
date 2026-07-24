@@ -7,10 +7,11 @@ not reproduce RhythmEngine's per-beat PVC amplitudes or systole. WI-010 owns tha
 
 Processing order from HeartbeatVoice.cpp:
   load -> ApplyHighPass(source low-cut) on S1 + S2 -> NormalizeJoint(S1, S2 -> SourceRestLevel) [load time]
-  per beat: CompressOnsetBuild(vigor) on S1 ; tame_lobe(c) on S1 (caps the post-click body lobe) ;
-            apply_tail (ring-down) on S1 only ; ApplyLowPass(breath muffle) on
-            S1 + S2 ; CopySamples(S1, amp = fs*contractility-gain) + CopySamples(S2, amp = 1.0) with
-            per-sample soft-knee LAST (source -> transmission -> transducer).
+  per beat: CompressOnsetBuild(vigor) on S1 ; ApplyLowPass(breath muffle) on S1 + S2 ;
+            CopySamples(S1, amp = fs*contractility-gain) + CopySamples(S2, amp = 1.0) with per-sample
+            soft-knee LAST (source -> transmission -> transducer).
+Retired lobe-tamer and resonator-tail stages remain available only as explicitly
+selected legacy controls so the late-S1 blind comparison is reproducible.
 Constants are parsed from src/Constants.hpp. `--set Name=Value` overrides a value
 for one run without changing the header.
 Measurement rationale and engine/reference comparison rules live in docs/MEASUREMENT_METHODS.md.
@@ -39,10 +40,6 @@ _ALIAS_MAP = {
     "S1_SYS_FRAC": ("S1SystoleFraction", float), "S2_WIN_FRAC": ("S2WindowFraction", float),
     "ATTACK_COMPRESS_MAX": ("AttackCompressMax", float),
     "ATTACK_BUILD_THR": ("AttackBuildThreshold", float),
-    "TAIL_RING_LEVEL": ("TailRingLevel", float), "TAIL_HZ": ("TailResonatorHz", float),
-    "TAIL_DECAY_MS": ("TailDecayMs", float), "TAIL_SPLICE_MS": ("TailSpliceMs", float),
-    "TAIL_RAMP_MS": ("TailRampMs", float), "TAIL_EXTRA_MS": ("TailExtraMs", float),
-    "LOBE_DECAY_MS": ("LobeTameDecayMs", float), "LOBE_ENV_MS": ("LobeTameEnvMs", float),
     "FRANK_STARLING_MIN": ("FrankStarlingMin", float), "FRANK_STARLING_MAX": ("FrankStarlingMax", float),
     "PVC_RATIO": ("ResamplePVCRatio", float),
     "BREATH_AMP_DEPTH": ("BreathAmpDepth", float), "BREATH_DEPTH_REST": ("BreathDepthRestFraction", float),
@@ -59,8 +56,6 @@ _ALIAS_MAP = {
 S1_ON = S1_END = S2_ON = S2_END = BREATH_LP_POLES = 0
 CROSSFADE_MS = SYS_INT = SYS_SLOPE = SYS_MIN = SYS_MAX = S1_SYS_FRAC = S2_WIN_FRAC = 0.0
 ATTACK_COMPRESS_MAX = ATTACK_BUILD_THR = FRANK_STARLING_MIN = FRANK_STARLING_MAX = 0.0
-TAIL_RING_LEVEL = TAIL_HZ = TAIL_DECAY_MS = TAIL_SPLICE_MS = TAIL_RAMP_MS = TAIL_EXTRA_MS = 0.0
-LOBE_DECAY_MS = LOBE_ENV_MS = 0.0
 PVC_RATIO = BREATH_AMP_DEPTH = BREATH_DEPTH_REST = BREATH_PITCH_DIP = 0.0
 BREATH_LP_OPEN = BREATH_LP_MIN = CONTRACT_GAIN_DB = SOURCE_REST_LEVEL = SOFT_KNEE = 0.0
 SRC_HIGHPASS_HZ = VIGOR_JITTER = 0.0
@@ -87,6 +82,17 @@ def apply_overrides(settings: list[str]) -> None:
 
 
 bind_constants()
+
+# Frozen values from the retired late-S1 stages. These are audit fixtures, not
+# live engine parameters and are intentionally not parsed from Constants.hpp.
+LEGACY_TAIL_RING_LEVEL = 0.15
+LEGACY_TAIL_HZ = 46.0
+LEGACY_TAIL_DECAY_MS = 45.0
+LEGACY_TAIL_SPLICE_MS = 78.0
+LEGACY_TAIL_RAMP_MS = 15.0
+LEGACY_TAIL_EXTRA_MS = 140.0
+LEGACY_LOBE_DECAY_MS = 22.0
+LEGACY_LOBE_ENV_MS = 2.0
 
 
 def read_src(path: str | Path) -> np.ndarray:
@@ -139,19 +145,18 @@ def _box_smooth(x: np.ndarray, half: int) -> np.ndarray:
     return (c[w:] - c[:-w]) / w
 
 def tame_lobe(s1: np.ndarray, strength: float) -> np.ndarray:
-    """Cap the post-click S1 envelope to a decaying ceiling.
+    """Reproduce the retired post-click S1 envelope cap for late-S1 audits.
 
     Only samples above the ceiling are reduced, preventing the source body from
-    re-swelling into a second hump. Strength scales with contractility and zero is
-    a no-op. Mirrors HeartbeatVoice::ApplyTameLobe.
+    re-swelling into a second hump. This no longer mirrors shipping C++.
     """
     if strength <= 0.0 or len(s1) < 4:
         return s1
     mag = np.abs(s1)
-    env_half = max(1, int(LOBE_ENV_MS * 1e-3 * SR * 0.5))
+    env_half = max(1, int(LEGACY_LOBE_ENV_MS * 1e-3 * SR * 0.5))
     env = _box_smooth(mag, env_half)
     pk = int(np.argmax(mag))
-    r = np.exp(-1.0 / (LOBE_DECAY_MS * 1e-3 * SR))
+    r = np.exp(-1.0 / (LEGACY_LOBE_DECAY_MS * 1e-3 * SR))
     gain = np.ones(len(s1))
     ceil = env[pk]
     for f in range(pk + 1, len(s1)):
@@ -171,26 +176,49 @@ def _resonator(x: np.ndarray, f0: float, tau_ms: float) -> np.ndarray:
         y[n] = yn; y2 = y1; y1 = yn
     return y
 
-def apply_tail(s1: np.ndarray) -> np.ndarray:
-    """Splice an S1-excited resonator ring after the dry front.
+LEGACY_TAIL_MODES = ("fixed", "off", "dry-end")
 
-    Scales the ring to TAIL_RING_LEVEL of the S1 peak and lengthens S1. Mirrors
-    HeartbeatVoice::ApplyTail.
+
+def tail_splice_frame(dry_frames: int, mode: str = "fixed") -> int:
+    """Return the legacy-tail audition splice frame.
+
+    ``fixed`` reproduces the retired C++ behavior. ``dry-end`` preserves the
+    rest-state distance between the splice and
+    the end of the uncompressed source slice, so onset compression moves the
+    handoff earlier with the shortened dry buffer.
     """
-    if TAIL_RING_LEVEL <= 0.0:
+    if mode not in LEGACY_TAIL_MODES:
+        raise ValueError(f"unknown tail mode {mode!r}; expected one of {LEGACY_TAIL_MODES}")
+    fixed = int(LEGACY_TAIL_SPLICE_MS * 1e-3 * SR)
+    if mode != "dry-end":
+        return fixed
+    baseline_dry_frames = S1_END - S1_ON
+    lead_frames = max(0, baseline_dry_frames - fixed)
+    return max(0, dry_frames - lead_frames)
+
+
+def apply_tail(s1: np.ndarray, mode: str = "off") -> np.ndarray:
+    """Reproduce the retired S1-excited resonator ring for late-S1 audits.
+
+    ``off`` is the shipping path. ``fixed`` reproduces the retired C++ behavior;
+    ``dry-end`` is the rejected splice-relative audition candidate.
+    """
+    if mode not in LEGACY_TAIL_MODES:
+        raise ValueError(f"unknown tail mode {mode!r}; expected one of {LEGACY_TAIL_MODES}")
+    if mode == "off":
         return s1
-    pad = int(TAIL_EXTRA_MS * 1e-3 * SR)
+    pad = int(LEGACY_TAIL_EXTRA_MS * 1e-3 * SR)
     x = np.concatenate([s1, np.zeros(pad)])
-    ring = _resonator(x, TAIL_HZ, TAIL_DECAY_MS)
+    ring = _resonator(x, LEGACY_TAIL_HZ, LEGACY_TAIL_DECAY_MS)
     win = np.ones(len(x))
-    s = int(TAIL_SPLICE_MS * 1e-3 * SR)
-    ramp = max(1, int(TAIL_RAMP_MS * 1e-3 * SR))
+    s = tail_splice_frame(len(s1), mode)
+    ramp = max(1, int(LEGACY_TAIL_RAMP_MS * 1e-3 * SR))
     win[:s] = 0.0
     win[s:s + ramp] = 0.5 - 0.5 * np.cos(np.pi * np.arange(ramp) / ramp)
     ring *= win
     rp = np.abs(ring).max()
     if rp > 0:
-        ring *= TAIL_RING_LEVEL * np.abs(s1).max() / rp
+        ring *= LEGACY_TAIL_RING_LEVEL * np.abs(s1).max() / rp
     return x + ring
 
 def copy_samples(dst: np.ndarray, off: int, src: np.ndarray, out_frames: int, ratio: float,
@@ -232,7 +260,8 @@ def lowpass(buf: np.ndarray, fc: float, poles: int) -> np.ndarray:
 
 def synth_beat(s1n: np.ndarray, s2n: np.ndarray, hr: float, contractility: float, fs: float,
                resp_phase: float = 0.0, exertion: float = 1.0, is_pvc: bool = False,
-               breath_depth: float | None = None) -> np.ndarray:
+               breath_depth: float | None = None, tail_mode: str = "off",
+               tamer_enabled: bool = False) -> np.ndarray:
     # Allow c > 1 so vigor jitter can create above-average-force beats. The C++
     # voice must accept the same range.
     c = np.clip(contractility, 0.0, 3.0)
@@ -261,8 +290,9 @@ def synth_beat(s1n: np.ndarray, s2n: np.ndarray, hr: float, contractility: float
         fs_norm = np.clip((fs - FRANK_STARLING_MIN) / (FRANK_STARLING_MAX - FRANK_STARLING_MIN), 0, 1)
         k = 1.0 + (ATTACK_COMPRESS_MAX - 1.0) * c * fs_norm  # per-beat vigor = contractility * preload
         s1w = compress_onset_build(s1w, k)
-        s1w = tame_lobe(s1w, min(c, 1.0))
-        s1w = apply_tail(s1w)
+        if tamer_enabled:
+            s1w = tame_lobe(s1w, min(c, 1.0))
+        s1w = apply_tail(s1w, tail_mode)
 
     # Transmission precedes the soft knee, preserving source -> transmission ->
     # transducer order. Applies to PVCs too.
@@ -328,10 +358,14 @@ def prep_source(path: str | Path, src_highpass: float | None = None) -> tuple[np
 
 def render(path: str | Path, hr: float, contractility: float, n_beats: int = 8,
            fs: float = 1.0, exertion: float = 1.0, src_highpass: float | None = None,
-           breath_depth: float | None = None) -> np.ndarray:
+           breath_depth: float | None = None, tail_mode: str = "off",
+           tamer_enabled: bool = False) -> np.ndarray:
     s1, s2 = prep_source(path, src_highpass)
     out = np.concatenate([
-        synth_beat(s1, s2, hr, contractility, fs, 0.0, exertion, breath_depth=breath_depth)
+        synth_beat(
+            s1, s2, hr, contractility, fs, 0.0, exertion,
+            breath_depth=breath_depth, tail_mode=tail_mode, tamer_enabled=tamer_enabled
+        )
         for _ in range(n_beats)
     ])
     return out
@@ -347,15 +381,24 @@ if __name__ == "__main__":
                     help="lagged normalized tidal-volume state [0,1]; defaults to exertion for compatibility")
     ap.add_argument("--beats", type=int, default=8)
     ap.add_argument("--set", action="append", metavar="NAME=VALUE", default=[],
-                    help="override a Constants.hpp value for this run (e.g. --set TailRingLevel=0.20); "
+                    help="override a Constants.hpp value for this run (e.g. --set SourceHighPassHz=35); "
                          "repeatable. The header stays the default.")
     ap.add_argument("--src-highpass", type=float, default=None, metavar="HZ",
                     help="override the source low-cut corner for this run (auditions a different corner; "
                          "0 = off). Default: the SourceHighPassHz constant from Constants.hpp.")
+    ap.add_argument("--legacy-tail-mode", choices=LEGACY_TAIL_MODES, default="off",
+                    help="late-S1 audit control; fixed/dry-end re-enable retired tail variants")
+    ap.add_argument("--legacy-tamer", action="store_true",
+                    help="late-S1 audit control: re-enable the retired secondary-lobe tamer")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
     apply_overrides(a.set)
-    y = render(a.source, a.hr, a.contractility, a.beats, a.fs, a.exertion, a.src_highpass, a.breath_depth)
+    y = render(
+        a.source, a.hr, a.contractility, a.beats, a.fs, a.exertion,
+        a.src_highpass, a.breath_depth, a.legacy_tail_mode, a.legacy_tamer
+    )
     sf.write(a.out, np.clip(y, -1, 1), SR, subtype="PCM_16")
     hp_eff = SRC_HIGHPASS_HZ if a.src_highpass is None else a.src_highpass
-    print(f"wrote {a.out}  HR{a.hr:.0f} c{a.contractility:.2f} fs{a.fs:.2f} hp{hp_eff:.0f}  {len(y)/SR:.2f}s  peak {np.abs(y).max():.3f}")
+    print(f"wrote {a.out}  HR{a.hr:.0f} c{a.contractility:.2f} fs{a.fs:.2f} hp{hp_eff:.0f} "
+          f"tail={a.legacy_tail_mode} tamer={'on' if a.legacy_tamer else 'off'}  "
+          f"{len(y)/SR:.2f}s  peak {np.abs(y).max():.3f}")
