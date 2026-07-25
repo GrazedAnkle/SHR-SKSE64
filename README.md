@@ -108,3 +108,29 @@ For testing:
 - [Catch2](https://github.com/catchorg/Catch2)
 
 Python package dependencies are listed in [requirements.txt](requirements.txt).
+
+### Building
+
+Configure and build the SKSE plugin with a CMake preset (requires `VCPKG_ROOT` set
+and clang-cl on `PATH`):
+
+```
+cmake --preset Release-Clang
+cmake --build build/release-clang
+```
+
+The offline analysis binding (`shr_pybind`) and the golden regression checks run
+from a Python virtual environment:
+
+```
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python tools/build_pybind.py
+python tools/check_pybind_golden.py
+```
+
+The remaining `tools/check_*_golden.py` tools verify the compiled core's source
+conditioning, beat rendering, rhythm, mapping, and full trajectories against the
+committed manifests under `tests/golden/`. Pass `--capture` to regenerate a
+manifest after an intentional core change.

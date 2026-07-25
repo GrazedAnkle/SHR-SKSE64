@@ -1,0 +1,3 @@
+# Golden manifests are hashed/compared byte-for-byte. Normalize to LF regardless
+# of core.autocrlf.
+tests/golden/*.json text eol=lf
