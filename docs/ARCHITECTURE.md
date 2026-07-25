@@ -82,3 +82,29 @@ legacy-field defaults.
 Core event ingress is synchronous and typed. Whether an SKSE callback can forward directly or requires a
 single-writer mailbox remains a thread-contract decision under
 [WI-026](work_items/WI-026-runtime-thread-contract.md).
+
+## Offline execution
+
+`shr_core` is the single implementation of physiology, rhythm, acoustic mapping, source conditioning, and
+beat rendering for both the plugin and offline analysis; Python reimplements none of them. The binding in
+`bindings/shr_pybind.cpp` compiles that same target into a Python extension so scenario, analysis, and
+reporting code drives the compiled core directly. It builds from the `Core-Release-Clang` preset under the
+`BUILD_PYBIND` option - against the analysis virtual environment's Python, with no CommonLib, Skyrim, or
+XAudio dependency - via `tools/build_pybind.py`, which derives the interpreter and pybind11 paths. WAV
+container parsing stays in Python because the plugin owns it in-game, so the binding accepts decoded PCM16
+and returns NumPy float audio alongside physiology snapshots, beat events, and render specifications.
+
+The binding exposes `Runtime` for scripted `StepInput` scenarios and notify events, `RhythmEngine` and
+`CreateRenderSpec` for direct-input rhythm and mapping, and the source-conditioning and `RenderBeat` path.
+Determinism comes from a seeded `RhythmRandom` that reuses production's per-call distributions, so a seed
+reproduces the plugin's draw math; `HeartRateSimulation` is otherwise deterministic.
+
+Committed golden manifests under `tests/golden/` pin core output for source conditioning, beat rendering,
+rhythm and mapping, and full trajectories. Each is captured from the compiled core and re-verified by its
+golden-check tool, which regenerates the manifest only on an intentional retune. The source and beat-render
+manifests are also produced by `shr_core`-linked test fixture executables, so those hold without Python.
+These goldens are the permanent regression anchor for offline core behavior, and deterministic offline
+scenarios are the primary acceptance gate for physiology, rhythm, and DSP changes. Python owns scenario
+construction, measurement, annotation, and reporting as independent analysis rulers, not as production
+mirrors. SKSE input mapping, XAudio ownership and scheduling, thread delivery, and game-mix behavior retain
+their own in-game gates.

@@ -68,17 +68,18 @@ evidence links, and decision points.
   submitted-buffer lifetime explicit, including failed submission and shutdown.
 - [WI-023: co-save record validation](work_items/WI-023-cosave-record-validation.md) defines malformed and
   future-version fallback before changing the persisted-state representation.
-- [WI-027: unified offline execution](work_items/WI-027-unified-offline-execution.md) makes that core the
-  only implementation of simulation, rhythm, acoustic mapping, and rendering, with Python retained as the
-  scenario, analysis, UI, and reporting layer.
+- [WI-028: retire remaining offline Python mirrors](work_items/WI-028-retire-offline-mirrors.md) reduces
+  `rhythm_offline.py` and `sim_offline.py` to thin clients over the compiled binding once their
+  audition-audio and coefficient-override dependencies are settled.
+- [WI-029: offline binding CI gate](work_items/WI-029-offline-binding-ci-gate.md) runs the binding build
+  and golden checks in CI so a core regression fails automatically.
 - [WI-026: runtime thread contract](work_items/WI-026-runtime-thread-contract.md) determines whether event
   callbacks can forward directly or require a single-writer mailbox.
 
-The single-implementation maintenance path continues through WI-027 on the established
-[core/runtime and float-renderer boundary](ARCHITECTURE.md). Its end state makes deterministic offline
-scenarios the primary system/acceptance gate for core behavior. In-game checks remain useful for SKSE
-input mapping, XAudio ownership and scheduling, thread delivery, and game-mix integration rather than as
-the routine way to prove physiology, rhythm, or DSP changes.
+Offline execution now runs on the compiled core through the Python binding, with deterministic golden
+scenarios as the primary acceptance gate for physiology, rhythm, and DSP changes;
+[ARCHITECTURE.md](ARCHITECTURE.md#offline-execution) owns that boundary. WI-028 and WI-029 close the
+remaining offline threads.
 
 ## Untriaged ideas
 

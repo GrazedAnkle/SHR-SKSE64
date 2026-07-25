@@ -477,18 +477,15 @@ brightening the engine produces through onset compression (see
 Measuring the engine - to compare against the references above - reuses the same metric battery
 (`tools/shrlib.py`), plus the offline mirror and two caveats.
 
-**Offline mirror.** `tools/engine_offline.py` is the working NumPy mirror of the sinus path through
-`CreateRenderSpec` and the core renderer (same mapping and DSP stages, constants parsed straight from
-`Constants.hpp`). Its established audition path uses one mono channel, so it is not the exact golden
-renderer for the active normalized-stereo float playback path. Its normalized-stereo reference path is
-checked against C++ through source conditioning and the source, transmission, transducer-input, and output
-domains of rest, peak, recovery, inspiration, and PVC renders. The largest observed sample delta is below
-`5e-7`; C++ performs the sole output PCM conversion at XAudio submission. Callers supply beat state; the
-legacy audition path's PVC option previews voice shaping but does not
-reproduce PVC amplitudes or systole. It remains the canonical way to audition a synthesis change or
-measure the engine without a game build until callers move to the compiled core under
-[WI-027](work_items/WI-027-unified-offline-execution.md). Any intervening DSP/logic change must still be
-mirrored here (constant-value retunes propagate automatically).
+**Offline mirror.** The compiled core drives offline analysis directly through the Python binding (see
+[ARCHITECTURE.md](ARCHITECTURE.md#offline-execution)), so measuring the engine reuses the same
+`CreateRenderSpec`, rhythm, and DSP the plugin ships rather than a reimplementation, and its output is
+pinned against regression by the golden manifests under `tests/golden/`. `tools/engine_offline.py` now
+provides only the legacy mono audition path: a one-channel preview for auditioning a synthesis change or
+measuring the engine by ear without a game build. Being mono, it is not the active normalized-stereo float
+playback path, and its PVC option previews voice shaping without reproducing PVC amplitudes or systole.
+Moving that remaining audition path onto the compiled core is tracked by
+[WI-028](work_items/WI-028-retire-offline-mirrors.md).
 
 **In-game captures** (a recording of the running mod) confirm the shipped DLL matches the mirror.
 Extract the audio with `ffmpeg -map 0:a:0 -ac 2 -ar 48000`. The heartbeat voice is centred (mono), so a

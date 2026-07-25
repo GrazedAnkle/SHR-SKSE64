@@ -1,0 +1,273 @@
+{
+  "_comment": "Golden beat-renderer output from the compiled shr_core (Release-Clang, deterministic). Regenerate with: python tools/check_beat_renderer_golden.py --capture",
+  "sample_rate": 48000,
+  "channel_count": 2,
+  "fixtures": {
+    "rest": {
+      "source_s1": {
+        "frames": 4560,
+        "sha256": "8e5cc90426a3426a53a8c56ad7ad93a95500da362ae0f784b950df6c6753a94a",
+        "peak_abs": 0.1700000018,
+        "rms": 0.0528309856
+      },
+      "source_s2": {
+        "frames": 6096,
+        "sha256": "9f29741016cb9eb79e0552caef1de9ddc27fcbee355e5f316d9cb3a243f5253c",
+        "peak_abs": 0.0586819164,
+        "rms": 0.0165020881
+      },
+      "transmitted_s1": {
+        "frames": 4560,
+        "sha256": "c5beacc4a4b7f7aa64d51019597747f5888c132c261ee49f79d504bdeb60f44d",
+        "peak_abs": 0.1650723815,
+        "rms": 0.0516006508
+      },
+      "transmitted_s2": {
+        "frames": 6096,
+        "sha256": "5f620edf6fe70fce360fc5a485a0cef2ba0dd1db32a0b0bed6dd5db23c8b5982",
+        "peak_abs": 0.0577752441,
+        "rms": 0.016298956
+      },
+      "transducer_input": {
+        "frames": 36455,
+        "sha256": "5af12aaebeae740f5767954fd79e43cc326b3687fe6fb381305ade76182bf96d",
+        "peak_abs": 0.1650723815,
+        "rms": 0.0194198983
+      },
+      "output": {
+        "frames": 36455,
+        "sha256": "5af12aaebeae740f5767954fd79e43cc326b3687fe6fb381305ade76182bf96d",
+        "peak_abs": 0.1650723815,
+        "rms": 0.0194198983
+      }
+    },
+    "peak": {
+      "source_s1": {
+        "frames": 4281,
+        "sha256": "c20a3b32b6231f141e0f96da8fecaff1ca4a285548bc7a74db83b237c129849f",
+        "peak_abs": 0.1699612588,
+        "rms": 0.0490304314
+      },
+      "source_s2": {
+        "frames": 6096,
+        "sha256": "9f29741016cb9eb79e0552caef1de9ddc27fcbee355e5f316d9cb3a243f5253c",
+        "peak_abs": 0.0586819164,
+        "rms": 0.0165020881
+      },
+      "transmitted_s1": {
+        "frames": 4281,
+        "sha256": "babffe8194ab8d65854e4656a800ab86ba49f526be4e5da8e4e834ef7768c2d8",
+        "peak_abs": 0.1460099667,
+        "rms": 0.0473571606
+      },
+      "transmitted_s2": {
+        "frames": 6096,
+        "sha256": "5f620edf6fe70fce360fc5a485a0cef2ba0dd1db32a0b0bed6dd5db23c8b5982",
+        "peak_abs": 0.0577752441,
+        "rms": 0.016298956
+      },
+      "transducer_input": {
+        "frames": 16271,
+        "sha256": "2a5b1614e5ad19b55ad18576786a18a8a17558ac4145c8919e3d41dd68133e98",
+        "peak_abs": 0.5180628896,
+        "rms": 0.0866919085
+      },
+      "output": {
+        "frames": 16271,
+        "sha256": "9fee59aceb5c99d057167df12703af3af019a925a84488cafd8febd6646821fa",
+        "peak_abs": 0.5180550218,
+        "rms": 0.0866918736
+      }
+    },
+    "recovery": {
+      "source_s1": {
+        "frames": 4353,
+        "sha256": "d0d79d1484c71d2adcc974896a623ff7dfa5126fec62927eff1882f0c994c761",
+        "peak_abs": 0.1699815243,
+        "rms": 0.050086221
+      },
+      "source_s2": {
+        "frames": 6096,
+        "sha256": "9f29741016cb9eb79e0552caef1de9ddc27fcbee355e5f316d9cb3a243f5253c",
+        "peak_abs": 0.0586819164,
+        "rms": 0.0165020881
+      },
+      "transmitted_s1": {
+        "frames": 4353,
+        "sha256": "38797878da081b003bd1918bb9498ce3bc2aa1499f0500eff694d003ecb0e61c",
+        "peak_abs": 0.1557700485,
+        "rms": 0.0485648291
+      },
+      "transmitted_s2": {
+        "frames": 6096,
+        "sha256": "5f620edf6fe70fce360fc5a485a0cef2ba0dd1db32a0b0bed6dd5db23c8b5982",
+        "peak_abs": 0.0577752441,
+        "rms": 0.016298956
+      },
+      "transducer_input": {
+        "frames": 28800,
+        "sha256": "7284f1f98c8762149539fe17e5807c5a878919124b9ca8e0a43c85a89372e380",
+        "peak_abs": 0.3504826128,
+        "rms": 0.043114958
+      },
+      "output": {
+        "frames": 28800,
+        "sha256": "7284f1f98c8762149539fe17e5807c5a878919124b9ca8e0a43c85a89372e380",
+        "peak_abs": 0.3504826128,
+        "rms": 0.043114958
+      }
+    },
+    "inspiration": {
+      "source_s1": {
+        "frames": 4560,
+        "sha256": "8e5cc90426a3426a53a8c56ad7ad93a95500da362ae0f784b950df6c6753a94a",
+        "peak_abs": 0.1700000018,
+        "rms": 0.0528309856
+      },
+      "source_s2": {
+        "frames": 6096,
+        "sha256": "9f29741016cb9eb79e0552caef1de9ddc27fcbee355e5f316d9cb3a243f5253c",
+        "peak_abs": 0.0586819164,
+        "rms": 0.0165020881
+      },
+      "transmitted_s1": {
+        "frames": 4560,
+        "sha256": "5db304b622d684cf6ec06d78e2f7ffa30443d33fa59f74c4827b376583a9cb41",
+        "peak_abs": 0.1229173169,
+        "rms": 0.0395700076
+      },
+      "transmitted_s2": {
+        "frames": 6096,
+        "sha256": "7ad323dc81918d16463af7540022a4937c71ad5422a2d2bcdd62677391dbe38f",
+        "peak_abs": 0.0482037961,
+        "rms": 0.0141847164
+      },
+      "transducer_input": {
+        "frames": 36455,
+        "sha256": "4cdc3624b65e2a42631848db304aa73d41f9381c8c321f5bca20d7502f496a65",
+        "peak_abs": 0.0651459843,
+        "rms": 0.0086494615
+      },
+      "output": {
+        "frames": 36455,
+        "sha256": "4cdc3624b65e2a42631848db304aa73d41f9381c8c321f5bca20d7502f496a65",
+        "peak_abs": 0.0651459843,
+        "rms": 0.0086494615
+      }
+    },
+    "pvc": {
+      "source_s1": {
+        "frames": 4560,
+        "sha256": "8e5cc90426a3426a53a8c56ad7ad93a95500da362ae0f784b950df6c6753a94a",
+        "peak_abs": 0.1700000018,
+        "rms": 0.0528309856
+      },
+      "source_s2": {
+        "frames": 6096,
+        "sha256": "9f29741016cb9eb79e0552caef1de9ddc27fcbee355e5f316d9cb3a243f5253c",
+        "peak_abs": 0.0586819164,
+        "rms": 0.0165020881
+      },
+      "transmitted_s1": {
+        "frames": 4560,
+        "sha256": "c5beacc4a4b7f7aa64d51019597747f5888c132c261ee49f79d504bdeb60f44d",
+        "peak_abs": 0.1650723815,
+        "rms": 0.0516006508
+      },
+      "transmitted_s2": {
+        "frames": 6096,
+        "sha256": "5f620edf6fe70fce360fc5a485a0cef2ba0dd1db32a0b0bed6dd5db23c8b5982",
+        "peak_abs": 0.0577752441,
+        "rms": 0.016298956
+      },
+      "transducer_input": {
+        "frames": 35280,
+        "sha256": "7292ee4291d0afc8e223f6a21a2d9822ffde784c7f6ad4bae2a66b1fd042dba4",
+        "peak_abs": 0.0909950659,
+        "rms": 0.0115157661
+      },
+      "output": {
+        "frames": 35280,
+        "sha256": "7292ee4291d0afc8e223f6a21a2d9822ffde784c7f6ad4bae2a66b1fd042dba4",
+        "peak_abs": 0.0909950659,
+        "rms": 0.0115157661
+      }
+    },
+    "extreme-vigor": {
+      "source_s1": {
+        "frames": 4281,
+        "sha256": "c20a3b32b6231f141e0f96da8fecaff1ca4a285548bc7a74db83b237c129849f",
+        "peak_abs": 0.1699612588,
+        "rms": 0.0490304314
+      },
+      "source_s2": {
+        "frames": 6096,
+        "sha256": "9f29741016cb9eb79e0552caef1de9ddc27fcbee355e5f316d9cb3a243f5253c",
+        "peak_abs": 0.0586819164,
+        "rms": 0.0165020881
+      },
+      "transmitted_s1": {
+        "frames": 4281,
+        "sha256": "babffe8194ab8d65854e4656a800ab86ba49f526be4e5da8e4e834ef7768c2d8",
+        "peak_abs": 0.1460099667,
+        "rms": 0.0473571606
+      },
+      "transmitted_s2": {
+        "frames": 6096,
+        "sha256": "5f620edf6fe70fce360fc5a485a0cef2ba0dd1db32a0b0bed6dd5db23c8b5982",
+        "peak_abs": 0.0577752441,
+        "rms": 0.016298956
+      },
+      "transducer_input": {
+        "frames": 16271,
+        "sha256": "fa26b344a8c2ec96d3811fef9b1480e88471cd9dd013258f3e6e4b9115184955",
+        "peak_abs": 0.8875945807,
+        "rms": 0.1479040301
+      },
+      "output": {
+        "frames": 16271,
+        "sha256": "84954e31d5994165f923b9aad9d5d9fe1c61c8623fece8e2895b681da2a44cfb",
+        "peak_abs": 0.824968338,
+        "rms": 0.1465542965
+      }
+    },
+    "truncation": {
+      "source_s1": {
+        "frames": 4560,
+        "sha256": "8e5cc90426a3426a53a8c56ad7ad93a95500da362ae0f784b950df6c6753a94a",
+        "peak_abs": 0.1700000018,
+        "rms": 0.0528309856
+      },
+      "source_s2": {
+        "frames": 6096,
+        "sha256": "9f29741016cb9eb79e0552caef1de9ddc27fcbee355e5f316d9cb3a243f5253c",
+        "peak_abs": 0.0586819164,
+        "rms": 0.0165020881
+      },
+      "transmitted_s1": {
+        "frames": 4560,
+        "sha256": "c5beacc4a4b7f7aa64d51019597747f5888c132c261ee49f79d504bdeb60f44d",
+        "peak_abs": 0.1650723815,
+        "rms": 0.0516006508
+      },
+      "transmitted_s2": {
+        "frames": 6096,
+        "sha256": "5f620edf6fe70fce360fc5a485a0cef2ba0dd1db32a0b0bed6dd5db23c8b5982",
+        "peak_abs": 0.0577752441,
+        "rms": 0.016298956
+      },
+      "transducer_input": {
+        "frames": 5760,
+        "sha256": "675634d6ac70478dfbab87ed76833ef02c22623aa4a3bd6b7a4e67a5d84b1749",
+        "peak_abs": 0.1650723815,
+        "rms": 0.0457869705
+      },
+      "output": {
+        "frames": 5760,
+        "sha256": "675634d6ac70478dfbab87ed76833ef02c22623aa4a3bd6b7a4e67a5d84b1749",
+        "peak_abs": 0.1650723815,
+        "rms": 0.0457869705
+      }
+    }
+  }
+}

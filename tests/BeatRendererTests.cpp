@@ -64,6 +64,14 @@ namespace
             .EncodedHash = 1611752449497654940ULL,
             .OutputFrames = 35280,
         },
+        ExpectedCharacterization{
+            .EncodedHash = 11450323163084132425ULL,
+            .OutputFrames = 16271,
+        },
+        ExpectedCharacterization{
+            .EncodedHash = 11268318462466358683ULL,
+            .OutputFrames = 5760,
+        },
     };
 
     SHR::HeartbeatSource LoadSource()

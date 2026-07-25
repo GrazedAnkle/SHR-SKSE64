@@ -4,3 +4,5 @@ scipy>=1.10        # signal.fftconvolve for fast whole-file filtering in auto_an
 soundfile>=0.12    # WAV I/O (shrlib.load)
 matplotlib>=3.7    # used only for the breath modulation-adjudication view (auto_annotate --breath --view)
                    # imported lazily
+pybind11>=3.0      # build-time only: offline core binding (BUILD_PYBIND); provides the CMake config
+                   # and headers to build shr_pybind against the venv's Python

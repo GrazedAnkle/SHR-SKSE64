@@ -1,0 +1,702 @@
+{
+  "_comment": "Golden rhythm and acoustic-mapping output from the compiled shr_core via shr_pybind (Release-Clang, deterministic). Regenerate: python tools/check_rhythm_mapping_golden.py --capture",
+  "rhythm": {
+    "rest": [
+      {
+        "frame": 28,
+        "ibi": 0.9375,
+        "filling_interval": 0.9375,
+        "coupling_fraction": 0.0,
+        "vigor": 0.2138286,
+        "kind": "sinus"
+      },
+      {
+        "frame": 54,
+        "ibi": 0.8942876,
+        "filling_interval": 0.9375,
+        "coupling_fraction": 0.0,
+        "vigor": 0.2098057,
+        "kind": "sinus"
+      },
+      {
+        "frame": 81,
+        "ibi": 0.9013822,
+        "filling_interval": 0.8942876,
+        "coupling_fraction": 0.0,
+        "vigor": 0.1149043,
+        "kind": "sinus"
+      },
+      {
+        "frame": 110,
+        "ibi": 0.9491574,
+        "filling_interval": 0.9013822,
+        "coupling_fraction": 0.0,
+        "vigor": 0.2320654,
+        "kind": "sinus"
+      },
+      {
+        "frame": 139,
+        "ibi": 0.9841182,
+        "filling_interval": 0.9491574,
+        "coupling_fraction": 0.0,
+        "vigor": 0.2211143,
+        "kind": "sinus"
+      },
+      {
+        "frame": 168,
+        "ibi": 0.9583422,
+        "filling_interval": 0.9841182,
+        "coupling_fraction": 0.0,
+        "vigor": 0.1755898,
+        "kind": "sinus"
+      },
+      {
+        "frame": 195,
+        "ibi": 0.9054118,
+        "filling_interval": 0.9583422,
+        "coupling_fraction": 0.0,
+        "vigor": 0.263259,
+        "kind": "sinus"
+      },
+      {
+        "frame": 222,
+        "ibi": 0.8929192,
+        "filling_interval": 0.9054118,
+        "coupling_fraction": 0.0,
+        "vigor": 0.2021617,
+        "kind": "sinus"
+      },
+      {
+        "frame": 250,
+        "ibi": 0.931625,
+        "filling_interval": 0.8929192,
+        "coupling_fraction": 0.0,
+        "vigor": 0.1926722,
+        "kind": "sinus"
+      },
+      {
+        "frame": 279,
+        "ibi": 0.9780949,
+        "filling_interval": 0.931625,
+        "coupling_fraction": 0.0,
+        "vigor": 0.1843347,
+        "kind": "sinus"
+      },
+      {
+        "frame": 309,
+        "ibi": 0.9736179,
+        "filling_interval": 0.9780949,
+        "coupling_fraction": 0.0,
+        "vigor": 0.1332731,
+        "kind": "sinus"
+      },
+      {
+        "frame": 336,
+        "ibi": 0.9202442,
+        "filling_interval": 0.9736179,
+        "coupling_fraction": 0.0,
+        "vigor": 0.1872522,
+        "kind": "sinus"
+      }
+    ],
+    "exercise": [
+      {
+        "frame": 10,
+        "ibi": 0.3571429,
+        "filling_interval": 0.3571429,
+        "coupling_fraction": 0.0,
+        "vigor": 0.7822115,
+        "kind": "sinus"
+      },
+      {
+        "frame": 21,
+        "ibi": 0.3562636,
+        "filling_interval": 0.3571429,
+        "coupling_fraction": 0.0,
+        "vigor": 0.6881735,
+        "kind": "sinus"
+      },
+      {
+        "frame": 32,
+        "ibi": 0.3569572,
+        "filling_interval": 0.3562636,
+        "coupling_fraction": 0.0,
+        "vigor": 0.9223007,
+        "kind": "sinus"
+      },
+      {
+        "frame": 42,
+        "ibi": 0.3580092,
+        "filling_interval": 0.3569572,
+        "coupling_fraction": 0.0,
+        "vigor": 0.9010823,
+        "kind": "sinus"
+      },
+      {
+        "frame": 53,
+        "ibi": 0.357506,
+        "filling_interval": 0.3580092,
+        "coupling_fraction": 0.0,
+        "vigor": 1.0318816,
+        "kind": "sinus"
+      },
+      {
+        "frame": 64,
+        "ibi": 0.3563404,
+        "filling_interval": 0.357506,
+        "coupling_fraction": 0.0,
+        "vigor": 0.7346256,
+        "kind": "sinus"
+      },
+      {
+        "frame": 74,
+        "ibi": 0.3567237,
+        "filling_interval": 0.3563404,
+        "coupling_fraction": 0.0,
+        "vigor": 0.620828,
+        "kind": "sinus"
+      },
+      {
+        "frame": 85,
+        "ibi": 0.3578465,
+        "filling_interval": 0.3567237,
+        "coupling_fraction": 0.0,
+        "vigor": 0.7838419,
+        "kind": "sinus"
+      },
+      {
+        "frame": 96,
+        "ibi": 0.3577168,
+        "filling_interval": 0.3578465,
+        "coupling_fraction": 0.0,
+        "vigor": 0.8520703,
+        "kind": "sinus"
+      },
+      {
+        "frame": 107,
+        "ibi": 0.3564793,
+        "filling_interval": 0.3577168,
+        "coupling_fraction": 0.0,
+        "vigor": 0.75037,
+        "kind": "sinus"
+      },
+      {
+        "frame": 117,
+        "ibi": 0.3565226,
+        "filling_interval": 0.3564793,
+        "coupling_fraction": 0.0,
+        "vigor": 0.6208104,
+        "kind": "sinus"
+      },
+      {
+        "frame": 128,
+        "ibi": 0.3576677,
+        "filling_interval": 0.3565226,
+        "coupling_fraction": 0.0,
+        "vigor": 0.725385,
+        "kind": "sinus"
+      },
+      {
+        "frame": 139,
+        "ibi": 0.3578831,
+        "filling_interval": 0.3576677,
+        "coupling_fraction": 0.0,
+        "vigor": 0.8042501,
+        "kind": "sinus"
+      },
+      {
+        "frame": 149,
+        "ibi": 0.3566697,
+        "filling_interval": 0.3578831,
+        "coupling_fraction": 0.0,
+        "vigor": 0.7961419,
+        "kind": "sinus"
+      },
+      {
+        "frame": 160,
+        "ibi": 0.356315,
+        "filling_interval": 0.3566697,
+        "coupling_fraction": 0.0,
+        "vigor": 0.9198718,
+        "kind": "sinus"
+      },
+      {
+        "frame": 171,
+        "ibi": 0.3574483,
+        "filling_interval": 0.356315,
+        "coupling_fraction": 0.0,
+        "vigor": 0.8693548,
+        "kind": "sinus"
+      },
+      {
+        "frame": 182,
+        "ibi": 0.357992,
+        "filling_interval": 0.3574483,
+        "coupling_fraction": 0.0,
+        "vigor": 0.9546199,
+        "kind": "sinus"
+      },
+      {
+        "frame": 192,
+        "ibi": 0.3568968,
+        "filling_interval": 0.357992,
+        "coupling_fraction": 0.0,
+        "vigor": 1.0166658,
+        "kind": "sinus"
+      },
+      {
+        "frame": 203,
+        "ibi": 0.3562549,
+        "filling_interval": 0.3568968,
+        "coupling_fraction": 0.0,
+        "vigor": 0.7499594,
+        "kind": "sinus"
+      },
+      {
+        "frame": 214,
+        "ibi": 0.3572052,
+        "filling_interval": 0.3562549,
+        "coupling_fraction": 0.0,
+        "vigor": 0.9448789,
+        "kind": "sinus"
+      },
+      {
+        "frame": 224,
+        "ibi": 0.3580352,
+        "filling_interval": 0.3572052,
+        "coupling_fraction": 0.0,
+        "vigor": 0.8546104,
+        "kind": "sinus"
+      },
+      {
+        "frame": 235,
+        "ibi": 0.3572671,
+        "filling_interval": 0.3580352,
+        "coupling_fraction": 0.0,
+        "vigor": 1.0674973,
+        "kind": "sinus"
+      }
+    ],
+    "recovery": [
+      {
+        "frame": 14,
+        "ibi": 0.5,
+        "filling_interval": 0.5,
+        "coupling_fraction": 0.0,
+        "vigor": 0.4679384,
+        "kind": "sinus"
+      },
+      {
+        "frame": 29,
+        "ibi": 0.4861721,
+        "filling_interval": 0.5,
+        "coupling_fraction": 0.0,
+        "vigor": 0.5549714,
+        "kind": "sinus"
+      },
+      {
+        "frame": 44,
+        "ibi": 0.4901987,
+        "filling_interval": 0.4861721,
+        "coupling_fraction": 0.0,
+        "vigor": 0.636843,
+        "kind": "sinus"
+      },
+      {
+        "frame": 59,
+        "ibi": 0.5077704,
+        "filling_interval": 0.4901987,
+        "coupling_fraction": 0.0,
+        "vigor": 0.3721428,
+        "kind": "sinus"
+      },
+      {
+        "frame": 74,
+        "ibi": 0.5146037,
+        "filling_interval": 0.5077704,
+        "coupling_fraction": 0.0,
+        "vigor": 0.6256357,
+        "kind": "sinus"
+      },
+      {
+        "frame": 89,
+        "ibi": 0.5012552,
+        "filling_interval": 0.5146037,
+        "coupling_fraction": 0.0,
+        "vigor": 0.5547509,
+        "kind": "sinus"
+      },
+      {
+        "frame": 104,
+        "ibi": 0.4861721,
+        "filling_interval": 0.5012552,
+        "coupling_fraction": 0.0,
+        "vigor": 0.6368601,
+        "kind": "sinus"
+      },
+      {
+        "frame": 119,
+        "ibi": 0.4901987,
+        "filling_interval": 0.4861721,
+        "coupling_fraction": 0.0,
+        "vigor": 0.7320431,
+        "kind": "sinus"
+      },
+      {
+        "frame": 134,
+        "ibi": 0.5077704,
+        "filling_interval": 0.4901987,
+        "coupling_fraction": 0.0,
+        "vigor": 0.5865507,
+        "kind": "sinus"
+      },
+      {
+        "frame": 149,
+        "ibi": 0.5146037,
+        "filling_interval": 0.5077704,
+        "coupling_fraction": 0.0,
+        "vigor": 0.6607775,
+        "kind": "sinus"
+      },
+      {
+        "frame": 164,
+        "ibi": 0.5012552,
+        "filling_interval": 0.5146037,
+        "coupling_fraction": 0.0,
+        "vigor": 0.6444417,
+        "kind": "sinus"
+      },
+      {
+        "frame": 179,
+        "ibi": 0.4861721,
+        "filling_interval": 0.5012552,
+        "coupling_fraction": 0.0,
+        "vigor": 0.4668083,
+        "kind": "sinus"
+      },
+      {
+        "frame": 194,
+        "ibi": 0.4901987,
+        "filling_interval": 0.4861721,
+        "coupling_fraction": 0.0,
+        "vigor": 0.572772,
+        "kind": "sinus"
+      },
+      {
+        "frame": 209,
+        "ibi": 0.5077704,
+        "filling_interval": 0.4901987,
+        "coupling_fraction": 0.0,
+        "vigor": 0.542619,
+        "kind": "sinus"
+      },
+      {
+        "frame": 224,
+        "ibi": 0.5146037,
+        "filling_interval": 0.5077704,
+        "coupling_fraction": 0.0,
+        "vigor": 0.411043,
+        "kind": "sinus"
+      },
+      {
+        "frame": 239,
+        "ibi": 0.5012552,
+        "filling_interval": 0.5146037,
+        "coupling_fraction": 0.0,
+        "vigor": 0.6048458,
+        "kind": "sinus"
+      },
+      {
+        "frame": 254,
+        "ibi": 0.4861721,
+        "filling_interval": 0.5012552,
+        "coupling_fraction": 0.0,
+        "vigor": 0.5243901,
+        "kind": "sinus"
+      },
+      {
+        "frame": 269,
+        "ibi": 0.4901987,
+        "filling_interval": 0.4861721,
+        "coupling_fraction": 0.0,
+        "vigor": 0.5104266,
+        "kind": "sinus"
+      },
+      {
+        "frame": 284,
+        "ibi": 0.5077704,
+        "filling_interval": 0.4901987,
+        "coupling_fraction": 0.0,
+        "vigor": 0.5089217,
+        "kind": "sinus"
+      },
+      {
+        "frame": 299,
+        "ibi": 0.5146037,
+        "filling_interval": 0.5077704,
+        "coupling_fraction": 0.0,
+        "vigor": 0.6118309,
+        "kind": "sinus"
+      }
+    ],
+    "pvc": [
+      {
+        "frame": 16,
+        "ibi": 0.5409527,
+        "filling_interval": 0.5409527,
+        "coupling_fraction": 0.7933972,
+        "vigor": 0.35,
+        "kind": "pvc"
+      },
+      {
+        "frame": 28,
+        "ibi": 0.4227273,
+        "filling_interval": 0.4227273,
+        "coupling_fraction": 0.62,
+        "vigor": 0.35,
+        "kind": "pvc"
+      },
+      {
+        "frame": 60,
+        "ibi": 0.6589838,
+        "filling_interval": 0.3973484,
+        "coupling_fraction": 0.0,
+        "vigor": 0.3854274,
+        "kind": "sinus"
+      },
+      {
+        "frame": 76,
+        "ibi": 0.5242129,
+        "filling_interval": 0.5242129,
+        "coupling_fraction": 0.7621114,
+        "vigor": 0.35,
+        "kind": "pvc"
+      },
+      {
+        "frame": 123,
+        "ibi": 0.697854,
+        "filling_interval": 0.8823807,
+        "coupling_fraction": 0.0,
+        "vigor": 0.3708678,
+        "kind": "sinus"
+      },
+      {
+        "frame": 139,
+        "ibi": 0.5246569,
+        "filling_interval": 0.5246569,
+        "coupling_fraction": 0.7880306,
+        "vigor": 0.35,
+        "kind": "pvc"
+      },
+      {
+        "frame": 183,
+        "ibi": 0.6726716,
+        "filling_interval": 0.7880645,
+        "coupling_fraction": 0.0,
+        "vigor": 0.3259384,
+        "kind": "sinus"
+      },
+      {
+        "frame": 200,
+        "ibi": 0.5683766,
+        "filling_interval": 0.5683766,
+        "coupling_fraction": 0.8090521,
+        "vigor": 0.35,
+        "kind": "pvc"
+      },
+      {
+        "frame": 213,
+        "ibi": 0.4355634,
+        "filling_interval": 0.4355634,
+        "coupling_fraction": 0.6388264,
+        "vigor": 0.35,
+        "kind": "pvc"
+      },
+      {
+        "frame": 246,
+        "ibi": 0.6818182,
+        "filling_interval": 0.4189526,
+        "coupling_fraction": 0.0,
+        "vigor": 0.4145522,
+        "kind": "sinus"
+      },
+      {
+        "frame": 266,
+        "ibi": 0.6551051,
+        "filling_interval": 0.6818182,
+        "coupling_fraction": 0.0,
+        "vigor": 0.3155973,
+        "kind": "sinus"
+      },
+      {
+        "frame": 285,
+        "ibi": 0.6600152,
+        "filling_interval": 0.6551051,
+        "coupling_fraction": 0.0,
+        "vigor": 0.2188464,
+        "kind": "sinus"
+      },
+      {
+        "frame": 306,
+        "ibi": 0.6878429,
+        "filling_interval": 0.6600152,
+        "coupling_fraction": 0.0,
+        "vigor": 0.3101082,
+        "kind": "sinus"
+      },
+      {
+        "frame": 327,
+        "ibi": 0.7102822,
+        "filling_interval": 0.6878429,
+        "coupling_fraction": 0.0,
+        "vigor": 0.3229823,
+        "kind": "sinus"
+      },
+      {
+        "frame": 348,
+        "ibi": 0.697854,
+        "filling_interval": 0.7102822,
+        "coupling_fraction": 0.0,
+        "vigor": 0.3102932,
+        "kind": "sinus"
+      },
+      {
+        "frame": 368,
+        "ibi": 0.6657824,
+        "filling_interval": 0.697854,
+        "coupling_fraction": 0.0,
+        "vigor": 0.3381302,
+        "kind": "sinus"
+      },
+      {
+        "frame": 388,
+        "ibi": 0.6530955,
+        "filling_interval": 0.6657824,
+        "coupling_fraction": 0.0,
+        "vigor": 0.3678551,
+        "kind": "sinus"
+      },
+      {
+        "frame": 403,
+        "ibi": 0.5068169,
+        "filling_interval": 0.5068169,
+        "coupling_fraction": 0.7534388,
+        "vigor": 0.35,
+        "kind": "pvc"
+      },
+      {
+        "frame": 450,
+        "ibi": 0.7091164,
+        "filling_interval": 0.8479028,
+        "coupling_fraction": 0.0,
+        "vigor": 0.3032359,
+        "kind": "sinus"
+      },
+      {
+        "frame": 466,
+        "ibi": 0.5432701,
+        "filling_interval": 0.5432701,
+        "coupling_fraction": 0.7967961,
+        "vigor": 0.35,
+        "kind": "pvc"
+      },
+      {
+        "frame": 479,
+        "ibi": 0.4227273,
+        "filling_interval": 0.4227273,
+        "coupling_fraction": 0.62,
+        "vigor": 0.35,
+        "kind": "pvc"
+      },
+      {
+        "frame": 510,
+        "ibi": 0.6589838,
+        "filling_interval": 0.3792228,
+        "coupling_fraction": 0.0,
+        "vigor": 0.3322949,
+        "kind": "sinus"
+      },
+      {
+        "frame": 526,
+        "ibi": 0.5407957,
+        "filling_interval": 0.5407957,
+        "coupling_fraction": 0.7862198,
+        "vigor": 0.35,
+        "kind": "pvc"
+      },
+      {
+        "frame": 573,
+        "ibi": 0.697854,
+        "filling_interval": 0.8538306,
+        "coupling_fraction": 0.0,
+        "vigor": 0.3549757,
+        "kind": "sinus"
+      },
+      {
+        "frame": 588,
+        "ibi": 0.5196344,
+        "filling_interval": 0.5196344,
+        "coupling_fraction": 0.7804869,
+        "vigor": 0.35,
+        "kind": "pvc"
+      }
+    ]
+  },
+  "mapping": {
+    "rest": {
+      "ibi": 0.9375,
+      "systole_duration": 0.35556,
+      "s1_amplitude": 1.0,
+      "s2_amplitude": 1.0,
+      "s1_resample_ratio": 1.0,
+      "s2_resample_ratio": 1.0,
+      "lowpass_cutoff_hz": 450.0,
+      "onset_compression": 1.0,
+      "kind": "sinus"
+    },
+    "peak": {
+      "ibi": 0.3389831,
+      "systole_duration": 0.13,
+      "s1_amplitude": 3.5481341,
+      "s2_amplitude": 1.0,
+      "s1_resample_ratio": 1.0,
+      "s2_resample_ratio": 1.0,
+      "lowpass_cutoff_hz": 450.0,
+      "onset_compression": 1.75,
+      "kind": "sinus"
+    },
+    "recovery": {
+      "ibi": 0.6,
+      "systole_duration": 0.2469,
+      "s1_amplitude": 2.0720141,
+      "s2_amplitude": 1.0,
+      "s1_resample_ratio": 1.0,
+      "s2_resample_ratio": 1.0,
+      "lowpass_cutoff_hz": 450.0,
+      "onset_compression": 1.45,
+      "kind": "sinus"
+    },
+    "inspiration": {
+      "ibi": 0.7594936,
+      "systole_duration": 0.32991,
+      "s1_amplitude": 0.6827723,
+      "s2_amplitude": 0.53,
+      "s1_resample_ratio": 0.86,
+      "s2_resample_ratio": 0.86,
+      "lowpass_cutoff_hz": 112.0,
+      "onset_compression": 1.15,
+      "kind": "sinus"
+    },
+    "pvc": {
+      "ibi": 0.42,
+      "systole_duration": 0.172986,
+      "s1_amplitude": 0.4005836,
+      "s2_amplitude": 0.2601193,
+      "s1_resample_ratio": 0.8643618,
+      "s2_resample_ratio": 0.960402,
+      "lowpass_cutoff_hz": 354.3991699,
+      "onset_compression": 1.0609,
+      "kind": "pvc"
+    }
+  }
+}

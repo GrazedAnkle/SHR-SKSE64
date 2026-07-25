@@ -1,0 +1,45 @@
+{
+  "_comment": "Golden source-conditioning output from the compiled shr_core (Release-Clang, deterministic). Regenerate with: python tools/check_source_conditioning_golden.py --capture",
+  "sample_rate": 48000,
+  "channel_count": 2,
+  "attack_start": 2314,
+  "attack_peak": 2779,
+  "stages": {
+    "sliced_s1": {
+      "frames": 4560,
+      "sha256": "63f27dec22116b21c03e63077608b4f239784afe2cf589b5e59b8181fbef2259",
+      "peak_abs": 0.9658508301,
+      "rms": 0.3560823531
+    },
+    "sliced_s2": {
+      "frames": 6096,
+      "sha256": "a73e9f0dc0f17efd8ccd2f1062ad60a31e0fa7d2c092c7f66ff6c450a35c34d1",
+      "peak_abs": 0.4202575684,
+      "rms": 0.1360907252
+    },
+    "highpass_s1": {
+      "frames": 4560,
+      "sha256": "68635a05bc9220f186536f2b2e32f826edb0a259729e20534499b8e58dfa7ab3",
+      "peak_abs": 0.7612463236,
+      "rms": 0.2365728989
+    },
+    "highpass_s2": {
+      "frames": 6096,
+      "sha256": "1e3a67cfad145637b13a793c0c8ead3cd638600f9396ec820177297826eea7cc",
+      "peak_abs": 0.2627728879,
+      "rms": 0.0738950216
+    },
+    "normalized_s1": {
+      "frames": 4560,
+      "sha256": "8e5cc90426a3426a53a8c56ad7ad93a95500da362ae0f784b950df6c6753a94a",
+      "peak_abs": 0.1700000018,
+      "rms": 0.0528309856
+    },
+    "normalized_s2": {
+      "frames": 6096,
+      "sha256": "9f29741016cb9eb79e0552caef1de9ddc27fcbee355e5f316d9cb3a243f5253c",
+      "peak_abs": 0.0586819164,
+      "rms": 0.0165020881
+    }
+  }
+}

@@ -11,9 +11,11 @@ project(SHR
 
 option(BUILD_PLUGIN "Build the Skyrim plugin." ON)
 option(BUILD_TESTS "Build unit tests." OFF)
+option(BUILD_PYBIND "Build the offline Python binding." OFF)
 message("Options:")
 message("    Plugin: ${BUILD_PLUGIN}")
 message("    Tests: ${BUILD_TESTS}")
+message("    Pybind: ${BUILD_PYBIND}")
 
 string(TIMESTAMP PROJECT_CONFIGURE_YEAR "%Y" UTC)
 set(PROJECT_AUTHOR        "GrazedAnkle")
@@ -429,4 +431,30 @@ if(BUILD_TESTS)
         PRIVATE
             shr_core
     )
+endif()
+
+########################################################################################################################
+## Configure offline Python binding
+########################################################################################################################
+if(BUILD_PYBIND)
+    # Build against the interpreter that will import the module (the analysis venv), so the extension
+    # ABI and CRT match. Pass -DPython_EXECUTABLE=<venv python> and -Dpybind11_DIR=<venv pybind11 cmakedir>.
+    find_package(Python 3 COMPONENTS Interpreter Development.Module REQUIRED)
+    find_package(pybind11 CONFIG REQUIRED)
+
+    pybind11_add_module(shr_pybind bindings/shr_pybind.cpp)
+
+    target_include_directories(shr_pybind
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
+    )
+
+    target_link_libraries(shr_pybind
+        PRIVATE
+            shr_core
+    )
+
+    # LTO across the pybind11 extension boundary buys little here and risks clang-cl bitcode mismatches;
+    # shr_core itself keeps its optimization settings.
+    set_target_properties(shr_pybind PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
 endif()
