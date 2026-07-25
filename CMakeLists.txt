@@ -236,135 +236,135 @@ target_compile_features(shr_core PUBLIC cxx_std_23)
 ## Configure target DLL
 ########################################################################################################################
 if(BUILD_PLUGIN)
-add_commonlibsse_plugin(${PROJECT_NAME} SOURCES ${headers} ${sources})
+    add_commonlibsse_plugin(${PROJECT_NAME} SOURCES ${headers} ${sources})
 
-add_library("${PROJECT_NAME}::${PROJECT_NAME}" ALIAS "${PROJECT_NAME}")
+    add_library("${PROJECT_NAME}::${PROJECT_NAME}" ALIAS "${PROJECT_NAME}")
 
-target_include_directories(${PROJECT_NAME}
-    PRIVATE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
-        $<INSTALL_INTERFACE:src>
-)
-
-target_include_directories(${PROJECT_NAME}
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-)
-
-target_link_libraries(${PROJECT_NAME}
-    PRIVATE
-        shr_core
-        toml11::toml11
-)
-
-target_precompile_headers(${PROJECT_NAME}
-    PRIVATE
-        src/pch.hpp
-)
-
-# CMake flags for Release builds are suboptimal.
-# See: https://gitlab.kitware.com/cmake/cmake/-/issues/20812.
-# See: https://stackoverflow.com/questions/28178978/how-to-generate-pdb-files-for-release-build-with-cmake-flags.
-if(MSVC)
-    target_compile_options(${PROJECT_NAME}
+    target_include_directories(${PROJECT_NAME}
         PRIVATE
-            $<$<CONFIG:Release>:/Zc:inline>
-            $<$<CONFIG:Release>:/Zi>
-            $<$<CONFIG:Release>:/Gy>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
+            $<INSTALL_INTERFACE:src>
     )
-    target_link_options(${PROJECT_NAME}
+
+    target_include_directories(${PROJECT_NAME}
+        PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    )
+
+    target_link_libraries(${PROJECT_NAME}
         PRIVATE
-            $<$<CONFIG:Release>:/DEBUG>
-            $<$<CONFIG:Release>:/INCREMENTAL:NO>
-            $<$<CONFIG:Release>:/OPT:REF>
-            $<$<CONFIG:Release>:/OPT:ICF>
+            shr_core
+            toml11::toml11
     )
-elseif((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR (CMAKE_CXX_COMPILER_ID MATCHES ".*Clang"))
-    target_compile_options(${PROJECT_NAME}
+
+    target_precompile_headers(${PROJECT_NAME}
         PRIVATE
-            $<$<CONFIG:Release>:-g>
+            src/pch.hpp
     )
-    target_link_options(${PROJECT_NAME}
-        PRIVATE
-            $<$<CONFIG:Release>:-g>
-    )
-    if(WIN32)
+
+    # CMake flags for Release builds are suboptimal.
+    # See: https://gitlab.kitware.com/cmake/cmake/-/issues/20812.
+    # See: https://stackoverflow.com/questions/28178978/how-to-generate-pdb-files-for-release-build-with-cmake-flags.
+    if(MSVC)
         target_compile_options(${PROJECT_NAME}
             PRIVATE
-                $<$<CONFIG:Release>:-gcodeview>
+                $<$<CONFIG:Release>:/Zc:inline>
+                $<$<CONFIG:Release>:/Zi>
+                $<$<CONFIG:Release>:/Gy>
+        )
+        target_link_options(${PROJECT_NAME}
+            PRIVATE
+                $<$<CONFIG:Release>:/DEBUG>
+                $<$<CONFIG:Release>:/INCREMENTAL:NO>
+                $<$<CONFIG:Release>:/OPT:REF>
+                $<$<CONFIG:Release>:/OPT:ICF>
+        )
+    elseif((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR (CMAKE_CXX_COMPILER_ID MATCHES ".*Clang"))
+        target_compile_options(${PROJECT_NAME}
+            PRIVATE
+                $<$<CONFIG:Release>:-g>
+        )
+        target_link_options(${PROJECT_NAME}
+            PRIVATE
+                $<$<CONFIG:Release>:-g>
+        )
+        if(WIN32)
+            target_compile_options(${PROJECT_NAME}
+                PRIVATE
+                    $<$<CONFIG:Release>:-gcodeview>
+            )
+        endif()
+    endif()
+
+    install(
+        DIRECTORY "${PUBLIC_HEADER_DIR}"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+    )
+
+    install(
+        TARGETS ${PROJECT_NAME}
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    )
+
+    # Automatic deployment to FOMOD directory.
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(BUILD_NAME "Debug")
+    else()
+        set(BUILD_NAME "Release")
+    endif()
+    install(DIRECTORY DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Distribution/Papyrus${BUILD_NAME}/")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/Distribution/Plugin${BUILD_NAME}/"
+    )
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> "${CMAKE_CURRENT_BINARY_DIR}/Distribution/Plugin${BUILD_NAME}/"
+    )
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_PDB_FILE:${PROJECT_NAME}> "${CMAKE_CURRENT_BINARY_DIR}/Distribution/Plugin${BUILD_NAME}/"
         )
     endif()
-endif()
-
-install(
-    DIRECTORY "${PUBLIC_HEADER_DIR}"
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
-)
-
-install(
-    TARGETS ${PROJECT_NAME}
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-)
-
-# Automatic deployment to FOMOD directory.
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(BUILD_NAME "Debug")
-else()
-    set(BUILD_NAME "Release")
-endif()
-install(DIRECTORY DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Distribution/Papyrus${BUILD_NAME}/")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/Distribution/Plugin${BUILD_NAME}/"
-)
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> "${CMAKE_CURRENT_BINARY_DIR}/Distribution/Plugin${BUILD_NAME}/"
-)
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_PDB_FILE:${PROJECT_NAME}> "${CMAKE_CURRENT_BINARY_DIR}/Distribution/Plugin${BUILD_NAME}/"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/contrib/Distribution "${CMAKE_CURRENT_BINARY_DIR}/Distribution"
     )
-endif()
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/contrib/Distribution "${CMAKE_CURRENT_BINARY_DIR}/Distribution"
-)
-file(GLOB_RECURSE OUTPUT_DLLS "${CMAKE_CURRENT_BINARY_DIR}/Distribution/**/*.dll")
-file(GLOB_RECURSE OUTPUT_PDBS "${CMAKE_CURRENT_BINARY_DIR}/Distribution/**/*.pdb")
-file(GLOB_RECURSE OUTPUT_SCRIPTS "${CMAKE_CURRENT_BINARY_DIR}/Distribution/**/*.pex")
-set_property(TARGET ${PROJECT_NAME}
-    APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${OUTPUT_DLLS}"
-)
-set_property(TARGET ${PROJECT_NAME}
-    APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${OUTPUT_PDBS}"
-)
-set_property(TARGET ${PROJECT_NAME}
-    APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${OUTPUT_SCRIPTS}"
-)
-
-set(DISTRIBUTION_ARCHIVE_NAME "${PROJECT_NAME}-SKSE64-${PROJECT_VERSION}")
-add_custom_target(Distribution ALL
-    COMMAND ${CMAKE_COMMAND} -E tar "cvf" "${CMAKE_CURRENT_BINARY_DIR}/${DISTRIBUTION_ARCHIVE_NAME}.zip" --format=zip -- .
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Distribution"
-)
-
-set_property(TARGET ${PROJECT_NAME}
-    APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_BINARY_DIR}/${DISTRIBUTION_ARCHIVE_NAME}.zip"
-)
-
-add_dependencies(Distribution
-    ${PROJECT_NAME}
-)
-
-# Automatic deployment to Mod Organizer 2 mod directory.
-foreach(DEPLOY_TARGET $ENV{${PROJECT_NAME}Targets})
-    message("Adding deployment target ${DEPLOY_TARGET}.")
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> "${DEPLOY_TARGET}/SKSE/Plugins/"
+    file(GLOB_RECURSE OUTPUT_DLLS "${CMAKE_CURRENT_BINARY_DIR}/Distribution/**/*.dll")
+    file(GLOB_RECURSE OUTPUT_PDBS "${CMAKE_CURRENT_BINARY_DIR}/Distribution/**/*.pdb")
+    file(GLOB_RECURSE OUTPUT_SCRIPTS "${CMAKE_CURRENT_BINARY_DIR}/Distribution/**/*.pex")
+    set_property(TARGET ${PROJECT_NAME}
+        APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${OUTPUT_DLLS}"
     )
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_PDB_FILE:${PROJECT_NAME}> "${DEPLOY_TARGET}/SKSE/Plugins/"
+    set_property(TARGET ${PROJECT_NAME}
+        APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${OUTPUT_PDBS}"
     )
-endforeach()
+    set_property(TARGET ${PROJECT_NAME}
+        APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${OUTPUT_SCRIPTS}"
+    )
+
+    set(DISTRIBUTION_ARCHIVE_NAME "${PROJECT_NAME}-SKSE64-${PROJECT_VERSION}")
+    add_custom_target(Distribution ALL
+        COMMAND ${CMAKE_COMMAND} -E tar "cvf" "${CMAKE_CURRENT_BINARY_DIR}/${DISTRIBUTION_ARCHIVE_NAME}.zip" --format=zip -- .
+        WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Distribution"
+    )
+
+    set_property(TARGET ${PROJECT_NAME}
+        APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_BINARY_DIR}/${DISTRIBUTION_ARCHIVE_NAME}.zip"
+    )
+
+    add_dependencies(Distribution
+        ${PROJECT_NAME}
+    )
+
+    # Automatic deployment to Mod Organizer 2 mod directory.
+    foreach(DEPLOY_TARGET $ENV{${PROJECT_NAME}Targets})
+        message("Adding deployment target ${DEPLOY_TARGET}.")
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> "${DEPLOY_TARGET}/SKSE/Plugins/"
+        )
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_PDB_FILE:${PROJECT_NAME}> "${DEPLOY_TARGET}/SKSE/Plugins/"
+        )
+    endforeach()
 endif()
 
 ########################################################################################################################

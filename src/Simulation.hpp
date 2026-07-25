@@ -62,6 +62,27 @@ namespace SHR
     private:
         static constexpr float Sentinel = -1.0F;
 
+        static float ComputeTargetRespRate(float normalizedExertion);
+        static float ComputeTargetRespDepth(float normalizedExertion);
+
+        float EffectiveRestingHR() const;
+        float CurrentHeartRate() const;
+        float EffectiveFitness() const;
+        float ContractilityExcess() const;
+        float NormalizedExertion(float exertion) const;
+
+        void UpdateExertion(PlayerState state, float delta);
+        void UpdateContractility(float delta);
+        float ContractilityTarget() const;
+        void UpdateAcuteFatigue(float exertion, float delta);
+        void UpdateLongTermFatigue(float gameHoursDelta);
+        void UpdateFitness(float exertion, float gameHoursDelta);
+        void UpdateCurrentHeartRate(float delta);
+        void UpdateRespiration(float delta);
+        void UpdateRespDepth(float delta, float target);
+        float ComputeTargetHeartRate(float exertion) const;
+
+    private:
         const SimulationSettings m_Settings;
 
         float m_TargetHeartRate = 0.0F;
@@ -82,24 +103,5 @@ namespace SHR
         std::atomic_bool m_DidJump = false;
         std::atomic<float> m_SleepDuration = Sentinel;
         std::atomic<float> m_FastTravelDuration = Sentinel;
-
-        float EffectiveRestingHR() const;
-        float CurrentHeartRate() const;
-        float EffectiveFitness() const;
-        float ContractilityExcess() const;
-        float NormalizedExertion(float exertion) const;
-
-        void UpdateExertion(PlayerState state, float delta);
-        void UpdateContractility(float delta);
-        float ContractilityTarget() const;
-        void UpdateAcuteFatigue(float exertion, float delta);
-        void UpdateLongTermFatigue(float gameHoursDelta);
-        void UpdateFitness(float exertion, float gameHoursDelta);
-        void UpdateCurrentHeartRate(float delta);
-        void UpdateRespiration(float delta);
-        void UpdateRespDepth(float delta, float target);
-        static float ComputeTargetRespRate(float normalizedExertion);
-        static float ComputeTargetRespDepth(float normalizedExertion);
-        float ComputeTargetHeartRate(float exertion) const;
     };
 }
