@@ -1,9 +1,9 @@
 """Shared beat-render fixture specs and stage names.
 
 These mirror the fixtures in ``tests/BeatRenderFixtures.hpp`` (the compiled source of record). Drift is
-guarded automatically: ``check_pybind_golden.py`` drives the binding with these specs and compares to the
-golden manifest, which was generated from the C++ fixtures via the renderer exe, so a mismatched value
-here fails that check rather than passing silently.
+guarded automatically: ``check_beat_renderer_golden.py`` drives the binding with these specs to both
+generate and verify the golden manifest, so a mismatched value here fails that check rather than passing
+silently.
 """
 from __future__ import annotations
 

@@ -160,6 +160,17 @@
           "value": "Release"
         }
       }
+    },
+    {
+      "name": "Dev-Clang",
+      "inherits": "Release-Clang",
+      "displayName": "Developer (Clang, all targets)",
+      "description": "All targets configured together (plugin + tests + offline binding) so one compile database serves IDE IntelliSense. Uses the project's .venv interpreter, so it configures from an IDE with no activated venv; override -DPython_EXECUTABLE for a venv elsewhere.",
+      "binaryDir": "${sourceDir}/build/dev-clang",
+      "cacheVariables": {
+        "BUILD_PYBIND": "ON",
+        "Python_EXECUTABLE": "${sourceDir}/.venv/Scripts/python.exe"
+      }
     }
   ],
   "testPresets": [

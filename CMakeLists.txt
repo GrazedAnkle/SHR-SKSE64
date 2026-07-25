@@ -398,48 +398,34 @@ if(BUILD_TESTS)
     )
 
     catch_discover_tests(${PROJECT_NAME}Tests)
-
-    add_executable(${PROJECT_NAME}SourceConditioningFixture
-        tests/SourceConditioningFixture.cpp
-        tests/TestWav.hpp
-    )
-
-    target_include_directories(${PROJECT_NAME}SourceConditioningFixture
-        PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/src
-            ${CMAKE_CURRENT_SOURCE_DIR}/tests
-    )
-
-    target_link_libraries(${PROJECT_NAME}SourceConditioningFixture
-        PRIVATE
-            shr_core
-    )
-
-    add_executable(${PROJECT_NAME}BeatRendererFixture
-        tests/BeatRendererFixture.cpp
-        tests/BeatRenderFixtures.hpp
-        tests/TestWav.hpp
-    )
-
-    target_include_directories(${PROJECT_NAME}BeatRendererFixture
-        PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/src
-            ${CMAKE_CURRENT_SOURCE_DIR}/tests
-    )
-
-    target_link_libraries(${PROJECT_NAME}BeatRendererFixture
-        PRIVATE
-            shr_core
-    )
 endif()
 
 ########################################################################################################################
 ## Configure offline Python binding
 ########################################################################################################################
 if(BUILD_PYBIND)
-    # Build against the interpreter that will import the module (the analysis venv), so the extension
-    # ABI and CRT match. Pass -DPython_EXECUTABLE=<venv python> and -Dpybind11_DIR=<venv pybind11 cmakedir>.
+    # The extension must build against the interpreter that will import it so its ABI and CRT match.
+    # Callers pass -DPython_EXECUTABLE (presets pin the .venv interpreter; build_pybind.py passes whichever
+    # interpreter runs it).
     find_package(Python 3 COMPONENTS Interpreter Development.Module REQUIRED)
+
+    # Derive pybind11's CMake package from that interpreter so `cmake --preset` needs no -Dpybind11_DIR.
+    # An explicit -Dpybind11_DIR still wins.
+    if(NOT pybind11_DIR)
+        execute_process(
+            COMMAND "${Python_EXECUTABLE}" -m pybind11 --cmakedir
+            OUTPUT_VARIABLE  SHR_PYBIND11_CMAKEDIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            RESULT_VARIABLE  SHR_PYBIND11_CMAKEDIR_RESULT
+        )
+        if(NOT SHR_PYBIND11_CMAKEDIR_RESULT EQUAL 0)
+            message(FATAL_ERROR
+                "Could not derive pybind11's CMake dir from ${Python_EXECUTABLE}. Install the analysis "
+                "requirements into that interpreter (pip install -r requirements.txt) or pass -Dpybind11_DIR."
+            )
+        endif()
+        list(APPEND CMAKE_PREFIX_PATH "${SHR_PYBIND11_CMAKEDIR}")
+    endif()
     find_package(pybind11 CONFIG REQUIRED)
 
     pybind11_add_module(shr_pybind bindings/shr_pybind.cpp)

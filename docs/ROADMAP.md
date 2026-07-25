@@ -73,9 +73,9 @@ evidence links, and decision points.
   audition-audio and coefficient-override dependencies are settled.
 - [WI-029: offline binding CI gate](work_items/WI-029-offline-binding-ci-gate.md) runs the binding build
   and golden checks in CI so a core regression fails automatically.
-- [WI-030: developer ergonomics](work_items/WI-030-developer-ergonomics.md) consolidates golden generation
-  onto one path, adds a unified developer build preset and a single golden runner, and reduces the binding's
-  manual build steps; coordinate with WI-028 and WI-029.
+- [WI-031: pytest migration of the golden checkers](work_items/WI-031-pytest-golden-checkers.md) runs the
+  golden verifications as pytest cases under one invocation while keeping each checker's `--capture` CLI;
+  coordinate with WI-029.
 - [WI-026: runtime thread contract](work_items/WI-026-runtime-thread-contract.md) determines whether event
   callbacks can forward directly or require a single-writer mailbox.
 

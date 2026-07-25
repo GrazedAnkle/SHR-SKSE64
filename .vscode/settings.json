@@ -1,0 +1,6 @@
+{
+  "python.analysis.extraPaths": [
+    // Resolve the compiled offline binding (shr_pybind) for Pylance/Pyright.
+    "build/pybind"
+  ]
+}

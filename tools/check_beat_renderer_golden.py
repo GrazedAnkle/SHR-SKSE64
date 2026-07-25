@@ -1,13 +1,16 @@
 """Capture and verify the compiled core's golden beat-renderer output.
 
-This tool freezes the compiled core's own beat-renderer output (from the SHRBeatRendererFixture exe)
-as a committed manifest, then re-verifies a fresh core run against it. The manifest is the regression
-oracle for offline beat rendering: it detects any unintended change to core beat-render output. Its
-sibling ``check_pybind_golden.py`` holds the shr_pybind binding to the same manifest.
+Drives the offline core binding (shr_pybind) over the committed fixture specs and freezes every
+beat-render stage as a committed manifest, then re-verifies a fresh core run against it. The manifest
+is the regression oracle for offline beat rendering: it detects any unintended change to core
+beat-render output, and proves the Python access path returns exactly what the plugin's renderer
+produces. WAV parsing stays in Python (soundfile), mirroring the plugin's decode-then-render split.
 
 The Release-Clang build is deterministic (bit-identical across runs), so the per-stage SHA-256 of the
 raw float bytes is the authoritative gate. ``peak_abs`` and ``rms`` are stored alongside as
 human-readable review aids and are compared at a loose tolerance.
+
+Build the module first with tools/build_pybind.py.
 
     python tools/check_beat_renderer_golden.py            # verify against the committed manifest
     python tools/check_beat_renderer_golden.py --capture  # (re)generate the manifest after a change
@@ -17,82 +20,68 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import numpy as np
+import soundfile as sf
 
 ROOT = Path(__file__).resolve().parent.parent
 GOLDEN = ROOT / "tests" / "golden" / "beat_render.json"
+SOURCE = ROOT / "contrib/Distribution/Sound/fx/SHR_HeartBeat/HeartBeat_Shortened.wav"
 
 sys.path.insert(0, str(ROOT / "tools"))
-# Stage names are fixed by BeatRenderTrace; fixture names are derived from the emitted metadata so
-# this tool never duplicates the fixture list defined in tests/BeatRenderFixtures.hpp.
-from beat_render_fixtures import STAGES
+from beat_render_fixtures import FIXTURES, STAGES  # committed fixture specs + stage names
 
 # peak_abs / rms are informational; sha256 is the real gate. Tolerate float-repr drift on recompute.
 STAT_ATOL = 1.0e-9
 
 
-def _metadata(path: Path) -> dict[str, int]:
-    return {
-        name: int(value)
-        for name, value in (line.split() for line in path.read_text(encoding="utf-8").splitlines())
-    }
-
-
-def _fixture_names(metadata: dict[str, int]) -> list[str]:
-    names: list[str] = []
-    for key in metadata:
-        for stage in STAGES:
-            suffix = f"_{stage}_frames"
-            if key.endswith(suffix):
-                name = key[: -len(suffix)]
-                if name not in names:
-                    names.append(name)
-    return names
-
-
-def _stage_entry(path: Path, frames: int, channels: int) -> dict[str, object]:
-    raw = path.read_bytes()
+def _stage_entry(array: np.ndarray) -> dict[str, object]:
+    # Match the raw little-endian float32 byte order the golden was hashed from.
+    raw = np.ascontiguousarray(array, dtype="<f4").tobytes()
     samples = np.frombuffer(raw, dtype="<f4")
-    if samples.size != frames * channels:
-        raise AssertionError(
-            f"{path.name}: expected {frames * channels} samples, found {samples.size}"
-        )
     peak_abs = float(np.max(np.abs(samples), initial=0.0))
     rms = float(np.sqrt(np.mean(np.square(samples, dtype=np.float64)))) if samples.size else 0.0
     return {
-        "frames": frames,
+        "frames": int(array.shape[0]),
         "sha256": hashlib.sha256(raw).hexdigest(),
         "peak_abs": round(peak_abs, 10),
         "rms": round(rms, 10),
     }
 
 
-def _render(fixture: Path, source: Path, output: Path) -> dict[str, object]:
-    subprocess.run([str(fixture), str(source), str(output)], check=True)
-    metadata = _metadata(output / "metadata.txt")
-    manifest: dict[str, object] = {
+def _render(module) -> dict[str, object]:
+    samples, rate = sf.read(SOURCE, dtype="int16", always_2d=True)
+    source = module.prepare_source(np.ascontiguousarray(samples), rate)
+
+    fixtures: dict[str, object] = {}
+    channels = 0
+    for name, spec in FIXTURES.items():
+        stages = module.trace_beat_render(
+            source,
+            ibi=spec.ibi,
+            systole_duration=spec.systole_duration,
+            s1_amplitude=spec.s1_amplitude,
+            s2_amplitude=spec.s2_amplitude,
+            s1_resample_ratio=spec.s1_resample_ratio,
+            s2_resample_ratio=spec.s2_resample_ratio,
+            lowpass_cutoff_hz=spec.lowpass_cutoff_hz,
+            onset_compression=spec.onset_compression,
+            kind=spec.kind,
+        )
+        fixtures[name] = {stage: _stage_entry(stages[stage]) for stage in STAGES}
+        channels = int(stages[STAGES[0]].shape[1])
+
+    return {
         "_comment": (
             "Golden beat-renderer output from the compiled shr_core (Release-Clang, deterministic). "
             "Regenerate with: python tools/check_beat_renderer_golden.py --capture"
         ),
-        "sample_rate": metadata["sample_rate"],
-        "channel_count": metadata["channel_count"],
-        "fixtures": {},
+        "sample_rate": int(rate),
+        "channel_count": channels,
+        "fixtures": fixtures,
     }
-    channels = metadata["channel_count"]
-    fixtures: dict[str, object] = manifest["fixtures"]  # type: ignore[assignment]
-    for name in _fixture_names(metadata):
-        stages: dict[str, object] = {}
-        for stage in STAGES:
-            frames = metadata[f"{name}_{stage}_frames"]
-            stages[stage] = _stage_entry(output / f"{name}_{stage}.f32", frames, channels)
-        fixtures[name] = stages
-    return manifest
 
 
 def _diff(expected: dict, actual: dict) -> list[str]:
@@ -138,16 +127,10 @@ def _diff(expected: dict, actual: dict) -> list[str]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--fixture",
+        "--module-dir",
         type=Path,
-        default=ROOT / "build" / "release-clang" / "SHRBeatRendererFixture.exe",
-    )
-    parser.add_argument(
-        "--source",
-        type=Path,
-        default=(
-            ROOT / "contrib/Distribution/Sound/fx/SHR_HeartBeat/HeartBeat_Shortened.wav"
-        ),
+        default=ROOT / "build" / "pybind",
+        help="Directory containing the built shr_pybind*.pyd (default: build/pybind).",
     )
     parser.add_argument(
         "--capture",
@@ -156,8 +139,16 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    with tempfile.TemporaryDirectory(prefix="shr-renderer-golden-") as tmp:
-        manifest = _render(args.fixture.resolve(), args.source.resolve(), Path(tmp))
+    sys.path.insert(0, str(args.module_dir.resolve()))
+    try:
+        import shr_pybind
+    except ImportError as error:
+        sys.exit(
+            f"cannot import shr_pybind from {args.module_dir} ({error}); "
+            f"build it with: python tools/build_pybind.py"
+        )
+
+    manifest = _render(shr_pybind)
 
     if args.capture:
         GOLDEN.parent.mkdir(parents=True, exist_ok=True)

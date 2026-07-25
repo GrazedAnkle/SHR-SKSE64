@@ -127,10 +127,33 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 python tools/build_pybind.py
-python tools/check_pybind_golden.py
+python tools/check_goldens.py
 ```
 
-The remaining `tools/check_*_golden.py` tools verify the compiled core's source
-conditioning, beat rendering, rhythm, mapping, and full trajectories against the
-committed manifests under `tests/golden/`. Pass `--capture` to regenerate a
-manifest after an intentional core change.
+`tools/check_goldens.py` runs every golden check in one command (pass `--build`
+to build the binding first). It drives the binding to verify the compiled core's
+source conditioning, beat rendering, rhythm, mapping, and full trajectories
+against the committed manifests under `tests/golden/`. The individual
+`tools/check_*_golden.py` tools are runnable on their own for a focused check;
+pass `--capture` to regenerate a manifest after an intentional core change.
+
+`build_pybind.py` also writes a type stub (`build/pybind/shr_pybind.pyi`) so an
+editor resolves the binding's API. For Pylance, add `build/pybind` to
+`python.analysis.extraPaths`. `.vscode/settings.json` handles this already.
+
+#### One preset for editing across all paths
+
+`Release-Clang` (plugin + tests) and the binding build are separate configures,
+so C++ IntelliSense only resolves includes for whichever one was configured last.
+To edit the plugin, tests, and binding together with one compile database,
+configure the `Dev-Clang` preset (it turns `BUILD_PYBIND` on and uses the `.venv`
+interpreter, so it also configures straight from an IDE with no activated venv):
+
+```
+cmake --preset Dev-Clang
+```
+
+Point the IDE at `build/dev-clang/compile_commands.json`. This preset is for
+development and IntelliSense; the plugin release still ships from `Release-Clang`
+and the golden binding from `build_pybind.py`. Create `.venv` first (see above);
+for a venv elsewhere, override `-DPython_EXECUTABLE`.

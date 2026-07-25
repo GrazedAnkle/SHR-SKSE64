@@ -539,3 +539,5 @@ FodyWeavers.xsd
 /.venv/
 /docs/references/candidates
 /docs/references/audacity
+
+!.vscode/settings.json

@@ -23,6 +23,7 @@
 #include <BeatEvent.hpp>
 #include <BeatKind.hpp>
 #include <BeatRenderer.hpp>
+#include <Constants.hpp>
 #include <HeartbeatSource.hpp>
 #include <Pcm16.hpp>
 #include <PhysiologySnapshot.hpp>
@@ -163,6 +164,56 @@ PYBIND11_MODULE(shr_pybind, m)
         py::arg("samples"),
         py::arg("sample_rate"),
         "Condition interleaved PCM16 (frames, channels) into a renderable HeartbeatSource."
+    );
+
+    m.def(
+        "trace_source_conditioning",
+        [](
+            py::array_t<std::int16_t, py::array::c_style | py::array::forcecast> samples,
+            std::uint32_t                                                        sampleRate
+        ) {
+            if (samples.ndim() != 2)
+            {
+                throw std::invalid_argument("samples must be a 2-D (frames, channels) int16 array");
+            }
+            const auto channels = static_cast<std::uint32_t>(samples.shape(1));
+            const SHR::AudioFormat format{ .SampleRate = sampleRate, .ChannelCount = channels };
+            const std::span<const std::int16_t> flat(
+                samples.data(),
+                static_cast<std::size_t>(samples.size())
+            );
+            const SHR::AudioBuffer decoded = SHR::DecodePcm16(flat, format);
+
+            // The conditioning steps mutate `stages` in place, so copy each stage out before the next runs.
+            SHR::HeartbeatSourceSlices stages = SHR::SliceHeartbeatSource(decoded.ConstView());
+            py::dict out;
+            out["sliced_s1"] = ToArray(stages.S1.ConstView());
+            out["sliced_s2"] = ToArray(stages.S2.ConstView());
+            SHR::ApplyHeartbeatSourceHighPass(stages, SHR::Constants::SourceHighPassHz);
+            out["highpass_s1"] = ToArray(stages.S1.ConstView());
+            out["highpass_s2"] = ToArray(stages.S2.ConstView());
+            SHR::NormalizeHeartbeatSourceJoint(stages, SHR::Constants::SourceRestLevel);
+            out["normalized_s1"] = ToArray(stages.S1.ConstView());
+            out["normalized_s2"] = ToArray(stages.S2.ConstView());
+
+            const auto attack = SHR::FindBaselineAttackRegion(
+                stages.S1.ConstView(),
+                SHR::Constants::AttackBuildThreshold
+            );
+            if (!attack)
+            {
+                throw std::runtime_error("conditioned source has no baseline S1 attack region");
+            }
+            out["sample_rate"]   = sampleRate;
+            out["channel_count"] = channels;
+            out["attack_start"]  = attack->StartFrame;
+            out["attack_peak"]   = attack->PeakFrame;
+            return out;
+        },
+        py::arg("samples"),
+        py::arg("sample_rate"),
+        "Condition PCM16 (frames, channels) and return each conditioning stage as a (frames, channels) "
+        "float32 array plus the baseline S1 attack landmarks."
     );
 
     m.def(

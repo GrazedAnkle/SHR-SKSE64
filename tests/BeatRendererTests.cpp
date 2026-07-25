@@ -24,56 +24,11 @@
 
 #include <algorithm>
 #include <array>
-#include <cstddef>
-#include <cstdint>
 #include <filesystem>
-#include <span>
 #include <vector>
 
 namespace
 {
-    constexpr std::uint64_t FnvOffset = 14695981039346656037ULL;
-    constexpr std::uint64_t FnvPrime  = 1099511628211ULL;
-
-    struct ExpectedCharacterization
-    {
-        std::uint64_t EncodedHash;
-        std::size_t   OutputFrames;
-    };
-
-    // Ordered with BeatRenderFixtures. These Release-Clang sink fingerprints protect the active float
-    // path; they are not perceptual or physiological acceptance thresholds.
-    constexpr std::array ExpectedCharacterizations{
-        ExpectedCharacterization{
-            .EncodedHash = 11899605166484377139ULL,
-            .OutputFrames = 36455,
-        },
-        ExpectedCharacterization{
-            .EncodedHash = 18175886974645804018ULL,
-            .OutputFrames = 16271,
-        },
-        ExpectedCharacterization{
-            .EncodedHash = 14680510422433007825ULL,
-            .OutputFrames = 28800,
-        },
-        ExpectedCharacterization{
-            .EncodedHash = 16446691624329344176ULL,
-            .OutputFrames = 36455,
-        },
-        ExpectedCharacterization{
-            .EncodedHash = 1611752449497654940ULL,
-            .OutputFrames = 35280,
-        },
-        ExpectedCharacterization{
-            .EncodedHash = 11450323163084132425ULL,
-            .OutputFrames = 16271,
-        },
-        ExpectedCharacterization{
-            .EncodedHash = 11268318462466358683ULL,
-            .OutputFrames = 5760,
-        },
-    };
-
     SHR::HeartbeatSource LoadSource()
     {
         const std::filesystem::path path =
@@ -83,21 +38,6 @@ namespace
         const SHR::AudioBuffer decoded = SHR::DecodePcm16(wav.Samples, wav.Format);
         return SHR::PrepareHeartbeatSource(decoded.ConstView());
     }
-
-    std::uint64_t HashPcm16(std::span<const std::int16_t> samples)
-    {
-        std::uint64_t hash = FnvOffset;
-        for (const std::int16_t sample : samples)
-        {
-            const std::uint16_t bits = static_cast<std::uint16_t>(sample);
-            hash ^= bits & 0xFFU;
-            hash *= FnvPrime;
-            hash ^= bits >> 8;
-            hash *= FnvPrime;
-        }
-        return hash;
-    }
-
 }
 
 TEST_CASE("Float beat trace exposes source transmission and transducer domains", "[audio][renderer]")
@@ -227,35 +167,25 @@ TEST_CASE("Float beat renderer bounds or rejects unsafe public inputs", "[audio]
     }
 }
 
-TEST_CASE("Float beat fixtures retain active sink fingerprints",
+TEST_CASE("Float beat fixtures render consistently through RenderBeat and the trace",
     "[audio][renderer][characterization]")
 {
     const SHR::HeartbeatSource source = LoadSource();
 
-    // RenderBeat -> EncodePcm16 is the live HeartbeatVoice sink composition.
-    for (std::size_t i = 0; i < SHR::Tests::BeatRenderFixtures.size(); ++i)
+    // Guards that RenderBeat and TraceBeatRender agree over the real source; the committed beat-render
+    // golden fingerprints the output samples, and Pcm16Tests covers EncodePcm16.
+    for (const SHR::Tests::NamedBeatRenderFixture &fixture : SHR::Tests::BeatRenderFixtures)
     {
-        const SHR::Tests::NamedBeatRenderFixture &fixture =
-            SHR::Tests::BeatRenderFixtures[i];
-        const ExpectedCharacterization &expected = ExpectedCharacterizations[i];
         DYNAMIC_SECTION(fixture.Name)
         {
-            const SHR::BeatRenderTrace trace = SHR::TraceBeatRender(
-                source,
-                fixture.Render
-            );
+            const SHR::BeatRenderTrace trace = SHR::TraceBeatRender(source, fixture.Render);
             const SHR::AudioBuffer output = SHR::RenderBeat(source, fixture.Render);
-            const std::vector<std::int16_t> encoded = SHR::EncodePcm16(output.ConstView());
 
             CHECK(output.GetFormat() == source.S1.GetFormat());
-            CHECK(output.FrameCount() == expected.OutputFrames);
             CHECK(std::ranges::equal(
                 output.ConstView().Samples(),
                 trace.Output.ConstView().Samples()
             ));
-            CHECK(encoded.size() == expected.OutputFrames * source.S1.ChannelCount());
-
-            CHECK(HashPcm16(encoded) == expected.EncodedHash);
         }
     }
 }
