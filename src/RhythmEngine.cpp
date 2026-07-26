@@ -15,7 +15,6 @@
  */
 #include "RhythmEngine.hpp"
 
-#include "Constants.hpp"
 #include "Random.hpp"
 
 #include <algorithm>
@@ -25,20 +24,33 @@
 
 namespace
 {
-    namespace C = SHR::Constants;
-
-    float BaseIBI(float heartRate, float respPhase, float exertionFraction)
+    float BaseIBI(
+        float                               heartRate,
+        float                               respPhase,
+        float                               exertionFraction,
+        const SHR::RhythmModelCoefficients &coefficients
+    )
     {
         const float nominalIBI = 60.0F / heartRate;
         // Apply RSA around the nominal interval, fading its amplitude with exertion.
-        const float rsaAmplitude = C::RSAAmplitudeRest * (1.0F - exertionFraction);
+        const float rsaAmplitude = coefficients.RSAAmplitudeRest * (1.0F - exertionFraction);
         const float jitter = rsaAmplitude * std::sin(2.0F * std::numbers::pi_v<float> * respPhase);
         return std::max(0.1F, nominalIBI * (1.0F - jitter));
     }
 }
 
 SHR::RhythmEngine::RhythmEngine()
-    : RhythmEngine({
+    : RhythmEngine(DefaultModelCoefficients().Rhythm)
+{
+}
+
+SHR::RhythmEngine::RhythmEngine(RhythmRandom random)
+    : RhythmEngine(DefaultModelCoefficients().Rhythm, std::move(random))
+{
+}
+
+SHR::RhythmEngine::RhythmEngine(RhythmModelCoefficients coefficients)
+    : RhythmEngine(coefficients, {
         .Uniform = [](float min, float max) {
             return Random(min, max);
         },
@@ -49,8 +61,12 @@ SHR::RhythmEngine::RhythmEngine()
 {
 }
 
-SHR::RhythmEngine::RhythmEngine(RhythmRandom random)
-    : m_Random(std::move(random))
+SHR::RhythmEngine::RhythmEngine(
+    RhythmModelCoefficients coefficients,
+    RhythmRandom            random
+)
+    : m_Coefficients(std::move(coefficients))
+    , m_Random(std::move(random))
 {
 }
 
@@ -91,7 +107,7 @@ std::optional<SHR::BeatEvent> SHR::RhythmEngine::Advance(const RhythmInput &inpu
         m_InPause = false;
         m_ElapsedSinceBeat -= m_PauseDuration;
         // WI-019: seeding a full IBI here delays the next sinus beat beyond the completed pause.
-        m_NextIBI = BaseIBI(heartRate, respPhase, exertionFraction);
+        m_NextIBI = BaseIBI(heartRate, respPhase, exertionFraction, m_Coefficients);
     }
 
     // Fire the next in-run PVC at the inter-ectopic interval.
@@ -123,7 +139,7 @@ std::optional<SHR::BeatEvent> SHR::RhythmEngine::Advance(const RhythmInput &inpu
     // First call: seed the interval now that we know the expected rhythm.
     if (m_NextIBI == 0.0F)
     {
-        m_NextIBI = BaseIBI(heartRate, respPhase, exertionFraction);
+        m_NextIBI = BaseIBI(heartRate, respPhase, exertionFraction, m_Coefficients);
     }
 
     // Sample until a PVC is pending; after a PVC, require one sinus beat before sampling again.
@@ -134,13 +150,17 @@ std::optional<SHR::BeatEvent> SHR::RhythmEngine::Advance(const RhythmInput &inpu
             m_PVCPending  = true;
             // Sample coupling once so the firing target and later pause use the same value.
             m_PVCCoupling = std::clamp(
-                std::lerp(C::PVCCouplingMax, C::PVCCouplingMin, riskFactor)
+                std::lerp(
+                    m_Coefficients.PVCCouplingMax,
+                    m_Coefficients.PVCCouplingMin,
+                    riskFactor
+                )
                     * m_Random.Uniform(
-                        1.0F - C::PVCCouplingVariation,
-                        1.0F + C::PVCCouplingVariation
+                        1.0F - m_Coefficients.PVCCouplingVariation,
+                        1.0F + m_Coefficients.PVCCouplingVariation
                     ),
-                C::PVCCouplingMin,
-                C::PVCCouplingMax
+                m_Coefficients.PVCCouplingMin,
+                m_Coefficients.PVCCouplingMax
             );
         }
     }
@@ -169,18 +189,18 @@ std::optional<SHR::BeatEvent> SHR::RhythmEngine::Advance(const RhythmInput &inpu
     // Apply bounded Gaussian jitter to sinus beats; PVCs retain mean contractility.
     const float vigor = isPVC
         ? contractility
-        : std::max(0.0F, contractility * (1.0F + C::VigorJitterScale
-            * std::min(C::VigorJitterMaxSigma, m_Random.StandardNormal())));
+        : std::max(0.0F, contractility * (1.0F + m_Coefficients.VigorJitterScale
+            * std::min(m_Coefficients.VigorJitterMaxSigma, m_Random.StandardNormal())));
 
     if (isPVC)
     {
         // Target the next sinus impulse at two nominal cycles after the preceding sinus beat.
         const float fullPause  = (2.0F - coupling) * m_NextIBI;
-        const float pendingIBI = C::PVCCouplingMin * m_NextIBI;
+        const float pendingIBI = m_Coefficients.PVCCouplingMin * m_NextIBI;
 
         // Hand-rolled geometric sampling supports runExtensionChance == 1.
         int runExtensions = 0;
-        while (runExtensions < C::PVCRunMaxLength - 1 &&
+        while (runExtensions < m_Coefficients.PVCRunMaxLength - 1 &&
                m_Random.Uniform(0.0F, 1.0F) < runExtensionChance)
         {
             ++runExtensions;
@@ -197,8 +217,8 @@ std::optional<SHR::BeatEvent> SHR::RhythmEngine::Advance(const RhythmInput &inpu
             );
             m_PauseDuration = remaining *
                 m_Random.Uniform(
-                    1.0F - C::PVCPauseVariation,
-                    1.0F + C::PVCPauseVariation
+                    1.0F - m_Coefficients.PVCPauseVariation,
+                    1.0F + m_Coefficients.PVCPauseVariation
                 );
         }
         else
@@ -206,8 +226,8 @@ std::optional<SHR::BeatEvent> SHR::RhythmEngine::Advance(const RhythmInput &inpu
             m_InPause = true;
             m_PauseDuration = fullPause *
                 m_Random.Uniform(
-                    1.0F - C::PVCPauseVariation,
-                    1.0F + C::PVCPauseVariation
+                    1.0F - m_Coefficients.PVCPauseVariation,
+                    1.0F + m_Coefficients.PVCPauseVariation
                 );
         }
 
@@ -216,7 +236,12 @@ std::optional<SHR::BeatEvent> SHR::RhythmEngine::Advance(const RhythmInput &inpu
     else
     {
         m_DidJustPVC  = false;
-        m_NextIBI     = BaseIBI(heartRate, respPhase, exertionFraction);
+        m_NextIBI     = BaseIBI(
+            heartRate,
+            respPhase,
+            exertionFraction,
+            m_Coefficients
+        );
         m_PrecedingRR = effectiveIBI;
     }
 

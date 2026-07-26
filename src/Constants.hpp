@@ -104,6 +104,10 @@ namespace SHR::Constants
     // [0, 1] per-additional-beat probability at unit susceptibility; 0 = disabled pending WI-010.
     constexpr float PVCRunExtensionChance = 0.0F;
     constexpr int   PVCRunMaxLength       = 5; // beats; maximum geometric-run length
+    // --- Arrhythmia risk calibration ---
+    constexpr float DeathRiskRampSeconds          = 4.0F * 60.0F; // [game] s; dying-state ramp to maximum risk
+    constexpr float ExtremeHeartRateRiskThreshold = 170.0F;       // [game] bpm; lower knot of extreme-HR risk; TODO: can this be anchored to physio?
+    constexpr float AdrenalineRunRiskScale        = 5.0F;         // [game] adrenaline units producing run-risk = 1
 
     // --- Acute fatigue [physio] ---
     constexpr float AcuteFatigueMax      = 0.25F * FitnessMaxMets; // MET; subtracted from fitness

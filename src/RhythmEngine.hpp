@@ -16,6 +16,7 @@
 #pragma once
 
 #include "BeatEvent.hpp"
+#include "ModelCoefficients.hpp"
 #include "RhythmInput.hpp"
 #include "RhythmRandom.hpp"
 
@@ -28,6 +29,8 @@ namespace SHR
     public:
         RhythmEngine();
         explicit RhythmEngine(RhythmRandom random);
+        explicit RhythmEngine(RhythmModelCoefficients coefficients);
+        RhythmEngine(RhythmModelCoefficients coefficients, RhythmRandom random);
 
         void Init();
 
@@ -35,6 +38,7 @@ namespace SHR
         std::optional<BeatEvent> Advance(const RhythmInput &input);
 
     private:
+        const RhythmModelCoefficients m_Coefficients;
         RhythmRandom m_Random;
 
         float m_ElapsedSinceBeat = 0.0F;

@@ -15,8 +15,6 @@
  */
 #include "BeatRenderer.hpp"
 
-#include "Constants.hpp"
-
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -30,8 +28,6 @@
 
 namespace
 {
-    namespace C = SHR::Constants;
-
     SHR::AudioBuffer CopyBuffer(SHR::ConstAudioBufferView input)
     {
         return SHR::AudioBuffer(
@@ -216,13 +212,14 @@ namespace
     }
 
     void ApplyTransmission(
-        SHR::AudioBuffer &s1,
-        SHR::AudioBuffer &s2,
-        float             cutoffHz
+        SHR::AudioBuffer                     &s1,
+        SHR::AudioBuffer                     &s2,
+        float                                 cutoffHz,
+        const SHR::BeatRenderingCoefficients &coefficients
     )
     {
         // Filtering in source time means resampling shifts the realized output-domain corner. See WI-008.
-        for (int pole = 0; pole < C::BreathLowPassPoles; ++pole)
+        for (int pole = 0; pole < coefficients.BreathLowPassPoles; ++pole)
         {
             ApplyLowPass(s1.View(), cutoffHz);
             ApplyLowPass(s2.View(), cutoffHz);
@@ -277,9 +274,10 @@ namespace
     }
 
     SHR::AudioBuffer MixTransducerInput(
-        SHR::ConstAudioBufferView s1,
-        SHR::ConstAudioBufferView s2,
-        const SHR::RenderSpec    &render
+        SHR::ConstAudioBufferView             s1,
+        SHR::ConstAudioBufferView             s2,
+        const SHR::RenderSpec                &render,
+        const SHR::BeatRenderingCoefficients &coefficients
     )
     {
         const std::uint32_t sampleRate = s1.SampleRate();
@@ -288,8 +286,9 @@ namespace
             render.SystoleDuration,
             sampleRate
         );
-        const std::uint32_t crossfadeFrames = static_cast<std::uint32_t>(
-            C::CrossfadeMs * 0.001F * static_cast<float>(sampleRate)
+        const std::uint32_t crossfadeFrames = FrameCountFromSeconds(
+            coefficients.CrossfadeMs * 0.001F,
+            sampleRate
         );
 
         const std::uint32_t s1Resampled = ResampledFrameCount(
@@ -301,7 +300,7 @@ namespace
             render.S2ResampleRatio
         );
         const std::uint32_t s1Cap = static_cast<std::uint32_t>(
-            C::S1SystoleFraction * static_cast<float>(systoleFrames)
+            coefficients.S1SystoleFraction * static_cast<float>(systoleFrames)
         );
         const std::uint32_t s1Frames = std::min({ s1Resampled, s1Cap, totalFrames });
         const std::uint32_t s2StartFrame = systoleFrames;
@@ -309,7 +308,7 @@ namespace
             ? totalFrames - s2StartFrame
             : 0U;
         const std::uint32_t s2Cap = static_cast<std::uint32_t>(
-            C::S2WindowFraction * static_cast<float>(s2Window)
+            coefficients.S2WindowFraction * static_cast<float>(s2Window)
         );
         const std::uint32_t s2Frames = std::min({ s2Resampled, s2Cap, s2Window });
 
@@ -339,18 +338,21 @@ namespace
         return output;
     }
 
-    void ApplySoftKnee(SHR::AudioBufferView input)
+    void ApplySoftKnee(
+        SHR::AudioBufferView                  input,
+        const SHR::BeatRenderingCoefficients &coefficients
+    )
     {
         for (float &sample : input.Samples())
         {
             const float magnitude = std::abs(sample);
-            if (magnitude <= C::SoftClipKnee) continue;
+            if (magnitude <= coefficients.SoftClipKnee) continue;
 
-            const float over = (magnitude - C::SoftClipKnee) /
-                (1.0F - C::SoftClipKnee);
+            const float over = (magnitude - coefficients.SoftClipKnee) /
+                (1.0F - coefficients.SoftClipKnee);
             sample = std::copysign(
-                C::SoftClipKnee +
-                    (1.0F - C::SoftClipKnee) * std::tanh(over),
+                coefficients.SoftClipKnee +
+                    (1.0F - coefficients.SoftClipKnee) * std::tanh(over),
                 sample
             );
         }
@@ -362,24 +364,43 @@ SHR::AudioBuffer SHR::RenderBeat(
     const RenderSpec      &render
 )
 {
+    return RenderBeat(source, render, DefaultModelCoefficients().BeatRendering);
+}
+
+SHR::AudioBuffer SHR::RenderBeat(
+    const HeartbeatSource           &source,
+    const RenderSpec                &render,
+    const BeatRenderingCoefficients &coefficients
+)
+{
     ValidateSource(source);
     ValidateRender(render);
 
     AudioBuffer sourceS1 = PrepareS1SourceStage(source, render);
     AudioBuffer sourceS2 = CopyBuffer(source.S2.ConstView());
-    ApplyTransmission(sourceS1, sourceS2, render.LowPassCutoffHz);
+    ApplyTransmission(sourceS1, sourceS2, render.LowPassCutoffHz, coefficients);
     AudioBuffer output = MixTransducerInput(
         sourceS1.ConstView(),
         sourceS2.ConstView(),
-        render
+        render,
+        coefficients
     );
-    ApplySoftKnee(output.View());
+    ApplySoftKnee(output.View(), coefficients);
     return output;
 }
 
 SHR::BeatRenderTrace SHR::TraceBeatRender(
     const HeartbeatSource &source,
     const RenderSpec      &render
+)
+{
+    return TraceBeatRender(source, render, DefaultModelCoefficients().BeatRendering);
+}
+
+SHR::BeatRenderTrace SHR::TraceBeatRender(
+    const HeartbeatSource           &source,
+    const RenderSpec                &render,
+    const BeatRenderingCoefficients &coefficients
 )
 {
     ValidateSource(source);
@@ -389,14 +410,20 @@ SHR::BeatRenderTrace SHR::TraceBeatRender(
     AudioBuffer sourceS2 = CopyBuffer(source.S2.ConstView());
     AudioBuffer transmittedS1 = sourceS1;
     AudioBuffer transmittedS2 = sourceS2;
-    ApplyTransmission(transmittedS1, transmittedS2, render.LowPassCutoffHz);
+    ApplyTransmission(
+        transmittedS1,
+        transmittedS2,
+        render.LowPassCutoffHz,
+        coefficients
+    );
     AudioBuffer transducerInput = MixTransducerInput(
         transmittedS1.ConstView(),
         transmittedS2.ConstView(),
-        render
+        render,
+        coefficients
     );
     AudioBuffer output = transducerInput;
-    ApplySoftKnee(output.View());
+    ApplySoftKnee(output.View(), coefficients);
     return {
         .SourceS1 = std::move(sourceS1),
         .SourceS2 = std::move(sourceS2),

@@ -485,8 +485,7 @@ the compiled renderer's native stereo output for listening; engine measurements 
 zero before using the mono rulers in `shrlib`. `tools/engine_offline.py` is a legacy reproduction and
 counterfactual tool, not an engine oracle. Retiring its active mirror behavior while preserving coefficient
 sweeps and retired tail/tamer reproduction is tracked by
-[WI-028](work_items/WI-028-retire-offline-mirrors.md) and
-[WI-033](work_items/WI-033-offline-coefficient-overrides.md).
+[WI-028](work_items/WI-028-retire-offline-mirrors.md).
 
 **In-game captures** (a recording of the running mod) confirm the shipped DLL matches the compiled
 offline render.

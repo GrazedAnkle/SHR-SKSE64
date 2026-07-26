@@ -8,9 +8,10 @@ to sound; this one owns how the state itself moves. Pairs with
 definitions see [GLOSSARY.md](GLOSSARY.md).
 
 All physiological state and its update loop live in `HeartRateSimulation` (`Simulation.hpp`).
-`Runtime::Step` advances it once per frame before coordinating rhythm and acoustic mapping. Tuned values
-live in `Constants.hpp`; this document names each constant and explains the model and its grounding
-rather than repeating values - the code is the single source of truth for as-built behavior.
+`Runtime::Step` advances it once per frame before coordinating rhythm and acoustic mapping. Tuned
+production defaults live in `Constants.hpp` and populate the immutable `ModelCoefficients::Simulation`
+group carried by each simulation. This document names each constant and explains the model and its
+grounding rather than repeating values - the code is the single source of truth for as-built behavior.
 
 ## State variables
 

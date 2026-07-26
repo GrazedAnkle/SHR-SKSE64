@@ -1,6 +1,6 @@
 # WI-028: Retire Remaining Offline Python Mirrors
 
-Status: `[BLOCKED]`
+Status: `[NEXT]`
 
 ## Outcome and acceptance criteria
 
@@ -26,9 +26,8 @@ cutover for reasons unrelated to offline execution:
 The binding already exposes the behavioral replacements: `RhythmEngine` for rhythm, `Runtime.step` for the
 full trajectory, and the complete source/mapping/render path for audio. The audition channel policy is
 native stereo for written audition files and explicit channel zero for numerical rulers, as owned by
-[ARCHITECTURE.md](../ARCHITECTURE.md#offline-execution). The remaining blocker is preserving coefficient
-sweeps through the immutable core-owned surface in
-[WI-033](WI-033-offline-coefficient-overrides.md).
+[ARCHITECTURE.md](../ARCHITECTURE.md#offline-execution). Its immutable `ModelCoefficients` value now
+provides the bound replacement for `--set Constant=value` without expanding `RuntimeSettings`.
 
 ## Scope and non-goals
 
@@ -44,16 +43,13 @@ Do not port measurement/plotting/annotation to C++ or retune physiology, rhythm,
 
 ## Dependencies
 
-- [WI-033](WI-033-offline-coefficient-overrides.md) must provide the bound replacement for
-  `--set Constant=value`; coefficients remain separate from `RuntimeSettings`.
+None.
 
 ## Next action and decision points
 
-After WI-033, migrate both clients without changing their analysis rulers: write native-layout stereo
-audition files, select channel zero explicitly for mono metrics, and route `--set` through the immutable
-binding value.
+Migrate both clients without changing their analysis rulers: write native-layout stereo audition files,
+select channel zero explicitly for mono metrics, and route `--set` through the immutable binding value.
 
 ## Newly observed work to split out
 
-- [WI-033](WI-033-offline-coefficient-overrides.md) owns the immutable override value and its binding
-  surface.
+None.

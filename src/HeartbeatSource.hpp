@@ -16,6 +16,7 @@
 #pragma once
 
 #include "AudioBuffer.hpp"
+#include "ModelCoefficients.hpp"
 
 #include <cstddef>
 #include <optional>
@@ -65,4 +66,8 @@ namespace SHR
     );
 
     HeartbeatSource PrepareHeartbeatSource(ConstAudioBufferView decoded);
+    HeartbeatSource PrepareHeartbeatSource(
+        ConstAudioBufferView                  decoded,
+        const SourceConditioningCoefficients &coefficients
+    );
 }

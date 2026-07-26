@@ -37,9 +37,19 @@ namespace SHR
         const HeartbeatSource &source,
         const RenderSpec      &render
     );
+    AudioBuffer RenderBeat(
+        const HeartbeatSource           &source,
+        const RenderSpec                &render,
+        const BeatRenderingCoefficients &coefficients
+    );
 
     BeatRenderTrace TraceBeatRender(
         const HeartbeatSource &source,
         const RenderSpec      &render
+    );
+    BeatRenderTrace TraceBeatRender(
+        const HeartbeatSource           &source,
+        const RenderSpec                &render,
+        const BeatRenderingCoefficients &coefficients
     );
 }

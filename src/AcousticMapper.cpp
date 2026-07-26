@@ -15,20 +15,20 @@
  */
 #include "AcousticMapper.hpp"
 
-#include "Constants.hpp"
-
 #include <algorithm>
 #include <cmath>
 #include <numbers>
 
 namespace
 {
-    namespace C = SHR::Constants;
-
-    float PVCS2Fraction(float coupling)
+    float PVCS2Fraction(
+        float                                    coupling,
+        const SHR::AcousticMappingCoefficients  &coefficients
+    )
     {
         return std::clamp(
-            (coupling - C::PVCS2FailCoupling) / (C::PVCS2FullCoupling - C::PVCS2FailCoupling),
+            (coupling - coefficients.PVCS2FailCoupling) /
+                (coefficients.PVCS2FullCoupling - coefficients.PVCS2FailCoupling),
             0.0F,
             1.0F
         );
@@ -40,73 +40,85 @@ SHR::RenderSpec SHR::CreateRenderSpec(
     const PhysiologySnapshot &physiology
 )
 {
+    return CreateRenderSpec(event, physiology, DefaultModelCoefficients().AcousticMapping);
+}
+
+SHR::RenderSpec SHR::CreateRenderSpec(
+    const BeatEvent                   &event,
+    const PhysiologySnapshot          &physiology,
+    const AcousticMappingCoefficients &coefficients
+)
+{
     const bool isPVC = event.Kind == BeatKind::PVC;
     const float nominalIBI = 60.0F / physiology.HeartRate;
     const float frankStarling = std::clamp(
         event.FillingInterval / nominalIBI,
-        C::FrankStarlingMin,
-        C::FrankStarlingMax
+        coefficients.FrankStarlingMin,
+        coefficients.FrankStarlingMax
     );
 
     const float contractilityGain = std::pow(
         10.0F,
-        (C::ContractilityGainDb / 20.0F) * event.Vigor
+        (coefficients.ContractilityGainDb / 20.0F) * event.Vigor
     );
     const float sourceS1Amplitude = isPVC
-        ? C::PVCS1Amplitude * frankStarling
+        ? coefficients.PVCS1Amplitude * frankStarling
         : frankStarling * contractilityGain;
     const float sourceS2Amplitude = isPVC
-        ? C::PVCS2Amplitude * PVCS2Fraction(event.CouplingFraction)
+        ? coefficients.PVCS2Amplitude * PVCS2Fraction(event.CouplingFraction, coefficients)
         : 1.0F;
 
     const float nominalSystole = std::clamp(
-        C::SystoleIntercept - physiology.HeartRate * C::SystoleSlope,
-        C::SystoleMin,
-        C::SystoleMax
+        coefficients.SystoleIntercept - physiology.HeartRate * coefficients.SystoleSlope,
+        coefficients.SystoleMin,
+        coefficients.SystoleMax
     );
     const float sinusSystole = std::max(
-        nominalSystole - C::SystolePEPShortening * physiology.ContractilityExcess,
-        C::SystoleMin
+        nominalSystole - coefficients.SystolePEPShortening * physiology.ContractilityExcess,
+        coefficients.SystoleMin
     );
     const float systoleDuration = isPVC
-        ? std::max(nominalSystole * C::PVCSystoleScale, C::PVCSystoleMin)
+        ? std::max(
+            nominalSystole * coefficients.PVCSystoleScale,
+            coefficients.PVCSystoleMin
+        )
         : sinusSystole;
 
     const float lungInflation = std::sin(
         std::numbers::pi_v<float> * std::clamp(physiology.RespirationPhase, 0.0F, 1.0F)
     );
-    const float breathDepthFactor = C::BreathDepthRestFraction +
-        (1.0F - C::BreathDepthRestFraction) *
+    const float breathDepthFactor = coefficients.BreathDepthRestFraction +
+        (1.0F - coefficients.BreathDepthRestFraction) *
         std::clamp(physiology.RespirationDepth, 0.0F, 1.0F);
     const float breathAmplitude = 1.0F -
-        C::BreathAmpDepth * breathDepthFactor * lungInflation;
+        coefficients.BreathAmpDepth * breathDepthFactor * lungInflation;
     const float breathMuffle = std::clamp(
         breathDepthFactor * lungInflation,
         0.0F,
         1.0F
     );
-    const float pitchDip = 1.0F - C::BreathPitchDipDepth * breathMuffle;
+    const float pitchDip = 1.0F - coefficients.BreathPitchDipDepth * breathMuffle;
 
     const float normalizedFilling = std::clamp(
-        (frankStarling - C::FrankStarlingMin) /
-            (C::FrankStarlingMax - C::FrankStarlingMin),
+        (frankStarling - coefficients.FrankStarlingMin) /
+            (coefficients.FrankStarlingMax - coefficients.FrankStarlingMin),
         0.0F,
         1.0F
     );
     const float vigor = std::clamp(event.Vigor, 0.0F, 3.0F);
     const float onsetCompression = 1.0F +
-        (C::AttackCompressMax - 1.0F) * vigor * normalizedFilling;
+        (coefficients.AttackCompressMax - 1.0F) * vigor * normalizedFilling;
 
     return {
         .IBI              = event.IBI,
         .SystoleDuration  = systoleDuration,
         .S1Amplitude      = sourceS1Amplitude * breathAmplitude,
         .S2Amplitude      = sourceS2Amplitude * breathAmplitude,
-        .S1ResampleRatio  = (isPVC ? C::ResamplePVCRatio : 1.0F) * pitchDip,
+        .S1ResampleRatio  = (isPVC ? coefficients.ResamplePVCRatio : 1.0F) * pitchDip,
         .S2ResampleRatio  = pitchDip,
         .LowPassCutoffHz  = std::lerp(
-            C::BreathLowPassOpenHz,
-            C::BreathLowPassMinHz,
+            coefficients.BreathLowPassOpenHz,
+            coefficients.BreathLowPassMinHz,
             breathMuffle
         ),
         .OnsetCompression = onsetCompression,

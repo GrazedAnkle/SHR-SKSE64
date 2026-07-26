@@ -38,7 +38,15 @@ def generate_stub() -> None:
     """
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join(p for p in (str(BUILD_DIR), env.get("PYTHONPATH", "")) if p)
-    stub = [sys.executable, "-m", "pybind11_stubgen", "shr_pybind", "-o", str(BUILD_DIR)]
+    stub = [
+        sys.executable,
+        "-m",
+        "pybind11_stubgen",
+        "shr_pybind",
+        "-o",
+        str(BUILD_DIR),
+        "--exit-code",
+    ]
     print("$", " ".join(stub))
     if subprocess.run(stub, env=env).returncode != 0:
         print(

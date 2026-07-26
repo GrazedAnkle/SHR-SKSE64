@@ -69,15 +69,16 @@ evidence links, and decision points.
 - [WI-023: co-save record validation](work_items/WI-023-cosave-record-validation.md) defines malformed and
   future-version fallback before changing the persisted-state representation.
 - [WI-028: retire remaining offline Python mirrors](work_items/WI-028-retire-offline-mirrors.md) reduces
-  `rhythm_offline.py` and `sim_offline.py` to thin clients over the compiled binding once the immutable
-  coefficient-override dependency is settled.
-- [WI-033: immutable offline coefficient overrides](work_items/WI-033-offline-coefficient-overrides.md)
-  preserves the useful `--set` sweep surface without putting model formulas back into Python.
+  `rhythm_offline.py` and `sim_offline.py` to thin clients over the compiled binding while preserving
+  their analysis and immutable coefficient-sweep surfaces.
 - [WI-029: offline binding CI gate](work_items/WI-029-offline-binding-ci-gate.md) runs the binding build
   and golden checks in CI so a core regression fails automatically.
 - [WI-031: pytest migration of the golden checkers](work_items/WI-031-pytest-golden-checkers.md) runs the
   golden verifications as pytest cases under one invocation while keeping each checker's `--capture` CLI;
   coordinate with WI-029.
+- [WI-035: model-coefficient registry deduplication and drift guards](work_items/WI-035-model-coefficient-registry.md)
+  consolidates typed and bound field metadata while retaining `Constants.hpp` as the auditable default
+  index, and adds an exact coverage gate before the surface grows.
 - [WI-026: runtime thread contract](work_items/WI-026-runtime-thread-contract.md) determines whether event
   callbacks can forward directly or require a single-writer mailbox.
 - [WI-034: MCM capability](work_items/WI-034-mcm-capability.md) adds in-game editing for selected
@@ -87,8 +88,8 @@ evidence links, and decision points.
 Offline execution now runs on the compiled core through the Python binding, with deterministic golden
 scenarios as the primary acceptance gate for physiology, rhythm, and DSP changes;
 [ARCHITECTURE.md](ARCHITECTURE.md#offline-execution) owns that boundary, including native-layout audition
-audio and explicit channel-zero analysis. WI-033 supplies immutable coefficient sweeps, and WI-028 plus
-WI-029 close the remaining offline threads.
+audio, explicit channel-zero analysis, and immutable coefficient sweeps. WI-028 plus WI-029 close the
+remaining offline threads.
 
 ## Untriaged ideas
 

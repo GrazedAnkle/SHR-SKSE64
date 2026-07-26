@@ -28,6 +28,12 @@ namespace SHR
     public:
         explicit Runtime(RuntimeSettings settings);
         Runtime(RuntimeSettings settings, RhythmRandom random);
+        Runtime(RuntimeSettings settings, ModelCoefficients coefficients);
+        Runtime(
+            RuntimeSettings   settings,
+            RhythmRandom      random,
+            ModelCoefficients coefficients
+        );
 
         // Resets simulation and rhythm as one owned unit.
         void Init();
@@ -47,8 +53,9 @@ namespace SHR
         void Restore(const SimulationState &state);
 
     private:
-        const RuntimeSettings m_Settings;
-        HeartRateSimulation   m_Simulation;
-        RhythmEngine          m_Rhythm;
+        const RuntimeSettings   m_Settings;
+        const ModelCoefficients m_Coefficients;
+        HeartRateSimulation     m_Simulation;
+        RhythmEngine            m_Rhythm;
     };
 }

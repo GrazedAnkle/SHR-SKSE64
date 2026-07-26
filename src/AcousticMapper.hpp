@@ -16,10 +16,16 @@
 #pragma once
 
 #include "BeatEvent.hpp"
+#include "ModelCoefficients.hpp"
 #include "PhysiologySnapshot.hpp"
 #include "RenderSpec.hpp"
 
 namespace SHR
 {
     RenderSpec CreateRenderSpec(const BeatEvent &event, const PhysiologySnapshot &physiology);
+    RenderSpec CreateRenderSpec(
+        const BeatEvent                   &event,
+        const PhysiologySnapshot          &physiology,
+        const AcousticMappingCoefficients &coefficients
+    );
 }

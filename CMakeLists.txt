@@ -61,6 +61,7 @@ set(headers
     src/HeartRate.hpp
     src/InputHandler.hpp
     src/Logging.hpp
+    src/ModelCoefficients.hpp
     src/NotificationPolicy.hpp
     src/Pcm16.hpp
     src/pch.hpp
@@ -84,6 +85,7 @@ set(core_sources
     src/AcousticMapper.cpp
     src/BeatRenderer.cpp
     src/HeartbeatSource.cpp
+    src/ModelCoefficients.cpp
     src/Pcm16.cpp
     src/RhythmEngine.cpp
     src/Runtime.cpp
@@ -115,6 +117,7 @@ set(tests
     tests/ConfigTests.cpp
     tests/HeartbeatSourceTests.cpp
     tests/LoggingTests.cpp
+    tests/ModelCoefficientsTests.cpp
     tests/NotificationPolicyTests.cpp
     tests/Pcm16Tests.cpp
     tests/TestWav.hpp
@@ -204,6 +207,7 @@ add_library(shr_core STATIC
     src/Constants.hpp
     src/HeartRate.hpp
     src/HeartbeatSource.hpp
+    src/ModelCoefficients.hpp
     src/PhysiologySnapshot.hpp
     src/Pcm16.hpp
     src/Random.hpp

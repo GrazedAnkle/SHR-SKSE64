@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include "ModelCoefficients.hpp"
 #include "PhysiologySnapshot.hpp"
 #include "SimulationSettings.hpp"
 #include "SimulationState.hpp"
@@ -38,7 +39,16 @@ namespace SHR
     {
     public:
         explicit HeartRateSimulation(SimulationSettings settings)
+            : HeartRateSimulation(settings, DefaultModelCoefficients().Simulation)
+        {
+        }
+
+        HeartRateSimulation(
+            SimulationSettings          settings,
+            SimulationModelCoefficients coefficients
+        )
             : m_Settings(settings)
+            , m_Coefficients(coefficients)
         {
         }
 
@@ -62,8 +72,8 @@ namespace SHR
     private:
         static constexpr float Sentinel = -1.0F;
 
-        static float ComputeTargetRespRate(float normalizedExertion);
-        static float ComputeTargetRespDepth(float normalizedExertion);
+        float ComputeTargetRespRate(float normalizedExertion) const;
+        float ComputeTargetRespDepth(float normalizedExertion) const;
 
         float EffectiveRestingHR() const;
         float CurrentHeartRate() const;
@@ -83,7 +93,8 @@ namespace SHR
         float ComputeTargetHeartRate(float exertion) const;
 
     private:
-        const SimulationSettings m_Settings;
+        const SimulationSettings          m_Settings;
+        const SimulationModelCoefficients m_Coefficients;
 
         float m_TargetHeartRate = 0.0F;
         float m_FastHR = 0.0F;

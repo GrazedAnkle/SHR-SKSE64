@@ -23,8 +23,8 @@
 #include <BeatEvent.hpp>
 #include <BeatKind.hpp>
 #include <BeatRenderer.hpp>
-#include <Constants.hpp>
 #include <HeartbeatSource.hpp>
+#include <ModelCoefficients.hpp>
 #include <Pcm16.hpp>
 #include <PhysiologySnapshot.hpp>
 #include <RenderSpec.hpp>
@@ -41,6 +41,7 @@
 #include <pybind11/stl.h>
 
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <random>
@@ -53,6 +54,351 @@ namespace py = pybind11;
 
 namespace
 {
+    py::arg_v DefaultModelCoefficientsArg()
+    {
+        return py::arg_v(
+            "coefficients",
+            SHR::DefaultModelCoefficients(),
+            "default_model_coefficients"
+        );
+    }
+
+    float FloatOverride(std::string_view name, py::handle value)
+    {
+        if (
+            py::isinstance<py::bool_>(value) ||
+            (!py::isinstance<py::float_>(value) &&
+                !py::isinstance<py::int_>(value))
+        )
+        {
+            throw std::invalid_argument(
+                "model coefficient " + std::string(name) + " requires a real number"
+            );
+        }
+        return py::cast<float>(value);
+    }
+
+    int IntegerOverride(std::string_view name, py::handle value)
+    {
+        if (
+            py::isinstance<py::bool_>(value) ||
+            !py::isinstance<py::int_>(value)
+        )
+        {
+            throw std::invalid_argument(
+                "model coefficient " + std::string(name) + " requires an integer");
+        }
+        const long long converted = py::cast<long long>(value);
+        if (
+            converted < std::numeric_limits<int>::min() ||
+            converted > std::numeric_limits<int>::max()
+        )
+        {
+            throw std::invalid_argument(
+                "model coefficient " + std::string(name) + " is outside the C++ int range"
+            );
+        }
+        return static_cast<int>(converted);
+    }
+
+    [[noreturn]] void UnsupportedOverride(std::string_view name)
+    {
+        std::string_view reason;
+        if (
+            name == "S1OnsetFrames" ||
+            name == "S1EndFrames" ||
+            name == "S2OnsetFrames" ||
+            name == "S2EndFrames"
+        )
+        {
+            reason = "is fixed by the heartbeat source asset";
+        }
+        else if (name == "FitnessAbsoluteMin")
+        {
+            reason =
+                "is derived from FitnessBaseMets, BaseRestingHR, MaxRestingHR, and RestingHRSlope";
+        }
+        else if (name == "SecondsPerHour")
+        {
+            reason = "is a unit conversion rather than a model coefficient";
+        }
+        else if (name == "VoiceOutputGain")
+        {
+            reason = "belongs to downstream game-mix integration";
+        }
+        else if (name == "InspirationFraction")
+        {
+            reason = "is dormant pending the state-dependent breath-curve work";
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "unknown model coefficient '" + std::string(name) + "'");
+        }
+        throw std::invalid_argument(
+            "model coefficient " + std::string(name) + " cannot be overridden because it " +
+            std::string(reason)
+        );
+    }
+
+    SHR::ModelCoefficients WithOverrides(
+        const SHR::ModelCoefficients &base,
+        const py::dict               &overrides
+    )
+    {
+        SHR::SimulationModelCoefficients    simulation = base.Simulation;
+        SHR::RhythmModelCoefficients        rhythm = base.Rhythm;
+        SHR::AcousticMappingCoefficients    acoustic = base.AcousticMapping;
+        SHR::SourceConditioningCoefficients source = base.SourceConditioning;
+        SHR::BeatRenderingCoefficients      rendering = base.BeatRendering;
+
+        for (const auto &[key, value] : overrides)
+        {
+            if (!py::isinstance<py::str>(key))
+            {
+                throw std::invalid_argument("model coefficient override names must be strings");
+            }
+            const std::string name = py::cast<std::string>(key);
+
+#define SHR_FLOAT_OVERRIDE(group, field)          \
+    if (name == #field)                           \
+    {                                             \
+        group.field = FloatOverride(name, value); \
+        continue;                                 \
+    }
+#define SHR_INT_OVERRIDE(group, field)              \
+    if (name == #field)                             \
+    {                                               \
+        group.field = IntegerOverride(name, value); \
+        continue;                                   \
+    }
+
+            SHR_FLOAT_OVERRIDE(simulation, BaseRestingHR)
+            SHR_FLOAT_OVERRIDE(simulation, SleepFraction)
+            SHR_FLOAT_OVERRIDE(simulation, HRFormulaCeiling)
+            SHR_FLOAT_OVERRIDE(simulation, HRFastFraction)
+            SHR_FLOAT_OVERRIDE(simulation, FastOnsetTauSedentary)
+            SHR_FLOAT_OVERRIDE(simulation, FastOnsetTauElite)
+            SHR_FLOAT_OVERRIDE(simulation, SlowOnsetTau)
+            SHR_FLOAT_OVERRIDE(simulation, FastRecoveryTauSedentary)
+            SHR_FLOAT_OVERRIDE(simulation, FastRecoveryTauElite)
+            SHR_FLOAT_OVERRIDE(simulation, SlowRecoveryTau)
+            SHR_FLOAT_OVERRIDE(simulation, IdleMets)
+            SHR_FLOAT_OVERRIDE(simulation, WalkingMets)
+            SHR_FLOAT_OVERRIDE(simulation, RunningMets)
+            SHR_FLOAT_OVERRIDE(simulation, SprintingMets)
+            SHR_FLOAT_OVERRIDE(simulation, SwimmingMets)
+            SHR_FLOAT_OVERRIDE(simulation, JumpMets)
+            SHR_FLOAT_OVERRIDE(simulation, CrouchMovementMultiplier)
+            SHR_FLOAT_OVERRIDE(simulation, MountedMultiplier)
+            SHR_FLOAT_OVERRIDE(simulation, ExertionAccumulationRate)
+            SHR_FLOAT_OVERRIDE(simulation, ExertionRecoveryRate)
+            SHR_FLOAT_OVERRIDE(simulation, AdrenalineHalfLife)
+            SHR_FLOAT_OVERRIDE(simulation, AdrenalineCombatEntry)
+            SHR_FLOAT_OVERRIDE(simulation, AdrenalineTakeHit)
+            SHR_FLOAT_OVERRIDE(simulation, ContractilityOnsetTau)
+            SHR_FLOAT_OVERRIDE(simulation, ContractilityDecayTau)
+            SHR_FLOAT_OVERRIDE(simulation, AdrenalineContractilityScale)
+            SHR_FLOAT_OVERRIDE(simulation, FitnessGainTau)
+            SHR_FLOAT_OVERRIDE(simulation, FitnessDecayTau)
+            SHR_FLOAT_OVERRIDE(simulation, FitnessBaseMets)
+            SHR_FLOAT_OVERRIDE(simulation, FitnessMaxMets)
+            SHR_FLOAT_OVERRIDE(simulation, RestingHRSlope)
+            SHR_FLOAT_OVERRIDE(simulation, MaxRestingHR)
+            SHR_FLOAT_OVERRIDE(simulation, RestingRespRate)
+            SHR_FLOAT_OVERRIDE(simulation, VentilationVT1Fraction)
+            SHR_FLOAT_OVERRIDE(simulation, VentilationRCPFraction)
+            SHR_FLOAT_OVERRIDE(simulation, RespRateAtVT1)
+            SHR_FLOAT_OVERRIDE(simulation, RespRateAtRCP)
+            SHR_FLOAT_OVERRIDE(simulation, RespDepthAtVT1)
+            SHR_FLOAT_OVERRIDE(simulation, RespDepthAtRCP)
+            SHR_FLOAT_OVERRIDE(simulation, MaxRespRate)
+            SHR_FLOAT_OVERRIDE(simulation, SleepRespRate)
+            SHR_FLOAT_OVERRIDE(simulation, RespOnsetTau)
+            SHR_FLOAT_OVERRIDE(simulation, RespRecoveryTau)
+            SHR_FLOAT_OVERRIDE(simulation, BreathDepthOnsetTau)
+            SHR_FLOAT_OVERRIDE(simulation, BreathDepthRecoveryTau)
+            SHR_FLOAT_OVERRIDE(simulation, AcuteFatigueMax)
+            SHR_FLOAT_OVERRIDE(simulation, AcuteFatigueGainTau)
+            SHR_FLOAT_OVERRIDE(simulation, AcuteFatigueDecayTau)
+            SHR_FLOAT_OVERRIDE(simulation, LongTermFatigueMax)
+            SHR_FLOAT_OVERRIDE(simulation, LongTermFatigueGainTau)
+            SHR_FLOAT_OVERRIDE(simulation, LongTermFatigueDecayTau)
+            SHR_FLOAT_OVERRIDE(simulation, SleepRecoveryRate)
+
+            SHR_FLOAT_OVERRIDE(rhythm, RSAAmplitudeRest)
+            SHR_FLOAT_OVERRIDE(rhythm, PVCCouplingMax)
+            SHR_FLOAT_OVERRIDE(rhythm, PVCCouplingMin)
+            SHR_FLOAT_OVERRIDE(rhythm, PVCCouplingVariation)
+            SHR_FLOAT_OVERRIDE(rhythm, PVCPauseVariation)
+            SHR_FLOAT_OVERRIDE(rhythm, PVCChanceNormal)
+            SHR_FLOAT_OVERRIDE(rhythm, PVCChanceMax)
+            SHR_FLOAT_OVERRIDE(rhythm, PVCRunExtensionChance)
+            SHR_INT_OVERRIDE(rhythm, PVCRunMaxLength)
+            SHR_FLOAT_OVERRIDE(rhythm, VigorJitterScale)
+            SHR_FLOAT_OVERRIDE(rhythm, VigorJitterMaxSigma)
+            SHR_FLOAT_OVERRIDE(rhythm, DeathRiskRampSeconds)
+            SHR_FLOAT_OVERRIDE(rhythm, ExtremeHeartRateRiskThreshold)
+            SHR_FLOAT_OVERRIDE(rhythm, AdrenalineRunRiskScale)
+
+            SHR_FLOAT_OVERRIDE(acoustic, AttackCompressMax)
+            SHR_FLOAT_OVERRIDE(acoustic, ResamplePVCRatio)
+            SHR_FLOAT_OVERRIDE(acoustic, BreathAmpDepth)
+            SHR_FLOAT_OVERRIDE(acoustic, BreathDepthRestFraction)
+            SHR_FLOAT_OVERRIDE(acoustic, BreathPitchDipDepth)
+            SHR_FLOAT_OVERRIDE(acoustic, BreathLowPassOpenHz)
+            SHR_FLOAT_OVERRIDE(acoustic, BreathLowPassMinHz)
+            SHR_FLOAT_OVERRIDE(acoustic, SystoleIntercept)
+            SHR_FLOAT_OVERRIDE(acoustic, SystoleSlope)
+            SHR_FLOAT_OVERRIDE(acoustic, SystoleMin)
+            SHR_FLOAT_OVERRIDE(acoustic, SystoleMax)
+            SHR_FLOAT_OVERRIDE(acoustic, SystolePEPShortening)
+            SHR_FLOAT_OVERRIDE(acoustic, PVCSystoleScale)
+            SHR_FLOAT_OVERRIDE(acoustic, PVCSystoleMin)
+            SHR_FLOAT_OVERRIDE(acoustic, ContractilityGainDb)
+            SHR_FLOAT_OVERRIDE(acoustic, FrankStarlingMin)
+            SHR_FLOAT_OVERRIDE(acoustic, FrankStarlingMax)
+            SHR_FLOAT_OVERRIDE(acoustic, PVCS1Amplitude)
+            SHR_FLOAT_OVERRIDE(acoustic, PVCS2Amplitude)
+            SHR_FLOAT_OVERRIDE(acoustic, PVCS2FailCoupling)
+            SHR_FLOAT_OVERRIDE(acoustic, PVCS2FullCoupling)
+
+            SHR_FLOAT_OVERRIDE(source, SourceHighPassHz)
+            SHR_FLOAT_OVERRIDE(source, SourceRestLevel)
+            SHR_FLOAT_OVERRIDE(source, AttackBuildThreshold)
+
+            SHR_FLOAT_OVERRIDE(rendering, CrossfadeMs)
+            SHR_FLOAT_OVERRIDE(rendering, S1SystoleFraction)
+            SHR_FLOAT_OVERRIDE(rendering, S2WindowFraction)
+            SHR_INT_OVERRIDE(rendering, BreathLowPassPoles)
+            SHR_FLOAT_OVERRIDE(rendering, SoftClipKnee)
+
+#undef SHR_INT_OVERRIDE
+#undef SHR_FLOAT_OVERRIDE
+
+            UnsupportedOverride(name);
+        }
+
+        // Validate only the final batch so coordinated bound/knot changes do not fail midway.
+        return SHR::ModelCoefficients(
+            simulation,
+            rhythm,
+            acoustic,
+            source,
+            rendering
+        );
+    }
+
+    py::dict CoefficientValues(const SHR::ModelCoefficients &coefficients)
+    {
+        py::dict out;
+#define SHR_REPORT(group, field) out[#field] = coefficients.group.field
+
+        SHR_REPORT(Simulation, BaseRestingHR);
+        SHR_REPORT(Simulation, SleepFraction);
+        SHR_REPORT(Simulation, HRFormulaCeiling);
+        SHR_REPORT(Simulation, HRFastFraction);
+        SHR_REPORT(Simulation, FastOnsetTauSedentary);
+        SHR_REPORT(Simulation, FastOnsetTauElite);
+        SHR_REPORT(Simulation, SlowOnsetTau);
+        SHR_REPORT(Simulation, FastRecoveryTauSedentary);
+        SHR_REPORT(Simulation, FastRecoveryTauElite);
+        SHR_REPORT(Simulation, SlowRecoveryTau);
+        SHR_REPORT(Simulation, IdleMets);
+        SHR_REPORT(Simulation, WalkingMets);
+        SHR_REPORT(Simulation, RunningMets);
+        SHR_REPORT(Simulation, SprintingMets);
+        SHR_REPORT(Simulation, SwimmingMets);
+        SHR_REPORT(Simulation, JumpMets);
+        SHR_REPORT(Simulation, CrouchMovementMultiplier);
+        SHR_REPORT(Simulation, MountedMultiplier);
+        SHR_REPORT(Simulation, ExertionAccumulationRate);
+        SHR_REPORT(Simulation, ExertionRecoveryRate);
+        SHR_REPORT(Simulation, AdrenalineHalfLife);
+        SHR_REPORT(Simulation, AdrenalineCombatEntry);
+        SHR_REPORT(Simulation, AdrenalineTakeHit);
+        SHR_REPORT(Simulation, ContractilityOnsetTau);
+        SHR_REPORT(Simulation, ContractilityDecayTau);
+        SHR_REPORT(Simulation, AdrenalineContractilityScale);
+        SHR_REPORT(Simulation, FitnessGainTau);
+        SHR_REPORT(Simulation, FitnessDecayTau);
+        SHR_REPORT(Simulation, FitnessBaseMets);
+        SHR_REPORT(Simulation, FitnessMaxMets);
+        SHR_REPORT(Simulation, RestingHRSlope);
+        SHR_REPORT(Simulation, MaxRestingHR);
+        out["FitnessAbsoluteMin"] = coefficients.Simulation.FitnessAbsoluteMin();
+        SHR_REPORT(Simulation, RestingRespRate);
+        SHR_REPORT(Simulation, VentilationVT1Fraction);
+        SHR_REPORT(Simulation, VentilationRCPFraction);
+        SHR_REPORT(Simulation, RespRateAtVT1);
+        SHR_REPORT(Simulation, RespRateAtRCP);
+        SHR_REPORT(Simulation, RespDepthAtVT1);
+        SHR_REPORT(Simulation, RespDepthAtRCP);
+        SHR_REPORT(Simulation, MaxRespRate);
+        SHR_REPORT(Simulation, SleepRespRate);
+        SHR_REPORT(Simulation, RespOnsetTau);
+        SHR_REPORT(Simulation, RespRecoveryTau);
+        SHR_REPORT(Simulation, BreathDepthOnsetTau);
+        SHR_REPORT(Simulation, BreathDepthRecoveryTau);
+        SHR_REPORT(Simulation, AcuteFatigueMax);
+        SHR_REPORT(Simulation, AcuteFatigueGainTau);
+        SHR_REPORT(Simulation, AcuteFatigueDecayTau);
+        SHR_REPORT(Simulation, LongTermFatigueMax);
+        SHR_REPORT(Simulation, LongTermFatigueGainTau);
+        SHR_REPORT(Simulation, LongTermFatigueDecayTau);
+        SHR_REPORT(Simulation, SleepRecoveryRate);
+
+        SHR_REPORT(Rhythm, RSAAmplitudeRest);
+        SHR_REPORT(Rhythm, PVCCouplingMax);
+        SHR_REPORT(Rhythm, PVCCouplingMin);
+        SHR_REPORT(Rhythm, PVCCouplingVariation);
+        SHR_REPORT(Rhythm, PVCPauseVariation);
+        SHR_REPORT(Rhythm, PVCChanceNormal);
+        SHR_REPORT(Rhythm, PVCChanceMax);
+        SHR_REPORT(Rhythm, PVCRunExtensionChance);
+        SHR_REPORT(Rhythm, PVCRunMaxLength);
+        SHR_REPORT(Rhythm, VigorJitterScale);
+        SHR_REPORT(Rhythm, VigorJitterMaxSigma);
+        SHR_REPORT(Rhythm, DeathRiskRampSeconds);
+        SHR_REPORT(Rhythm, ExtremeHeartRateRiskThreshold);
+        SHR_REPORT(Rhythm, AdrenalineRunRiskScale);
+
+        SHR_REPORT(AcousticMapping, AttackCompressMax);
+        SHR_REPORT(AcousticMapping, ResamplePVCRatio);
+        SHR_REPORT(AcousticMapping, BreathAmpDepth);
+        SHR_REPORT(AcousticMapping, BreathDepthRestFraction);
+        SHR_REPORT(AcousticMapping, BreathPitchDipDepth);
+        SHR_REPORT(AcousticMapping, BreathLowPassOpenHz);
+        SHR_REPORT(AcousticMapping, BreathLowPassMinHz);
+        SHR_REPORT(AcousticMapping, SystoleIntercept);
+        SHR_REPORT(AcousticMapping, SystoleSlope);
+        SHR_REPORT(AcousticMapping, SystoleMin);
+        SHR_REPORT(AcousticMapping, SystoleMax);
+        SHR_REPORT(AcousticMapping, SystolePEPShortening);
+        SHR_REPORT(AcousticMapping, PVCSystoleScale);
+        SHR_REPORT(AcousticMapping, PVCSystoleMin);
+        SHR_REPORT(AcousticMapping, ContractilityGainDb);
+        SHR_REPORT(AcousticMapping, FrankStarlingMin);
+        SHR_REPORT(AcousticMapping, FrankStarlingMax);
+        SHR_REPORT(AcousticMapping, PVCS1Amplitude);
+        SHR_REPORT(AcousticMapping, PVCS2Amplitude);
+        SHR_REPORT(AcousticMapping, PVCS2FailCoupling);
+        SHR_REPORT(AcousticMapping, PVCS2FullCoupling);
+
+        SHR_REPORT(SourceConditioning, SourceHighPassHz);
+        SHR_REPORT(SourceConditioning, SourceRestLevel);
+        SHR_REPORT(SourceConditioning, AttackBuildThreshold);
+
+        SHR_REPORT(BeatRendering, CrossfadeMs);
+        SHR_REPORT(BeatRendering, S1SystoleFraction);
+        SHR_REPORT(BeatRendering, S2WindowFraction);
+        SHR_REPORT(BeatRendering, BreathLowPassPoles);
+        SHR_REPORT(BeatRendering, SoftClipKnee);
+
+#undef SHR_REPORT
+        return out;
+    }
+
     SHR::BeatKind ParseKind(std::string_view kind)
     {
         if (kind == "sinus") return SHR::BeatKind::Sinus;
@@ -88,8 +434,9 @@ namespace
     // Interleaved PCM16 frames (frames, channels) -> conditioned source, mirroring the plugin's
     // DecodePcm16 -> PrepareHeartbeatSource path exactly.
     SHR::HeartbeatSource PrepareSource(
-        py::array_t<std::int16_t, py::array::c_style | py::array::forcecast> samples,
-        std::uint32_t                                                        sampleRate
+        py::array_t<std::int16_t, py::array::c_style | py::array::forcecast>  samples,
+        std::uint32_t                                                         sampleRate,
+        const SHR::ModelCoefficients                                         &coefficients
     )
     {
         if (samples.ndim() != 2)
@@ -100,7 +447,10 @@ namespace
         const SHR::AudioFormat format{ .SampleRate = sampleRate, .ChannelCount = channels };
         const std::span<const std::int16_t> flat(samples.data(), static_cast<std::size_t>(samples.size()));
         const SHR::AudioBuffer decoded = SHR::DecodePcm16(flat, format);
-        return SHR::PrepareHeartbeatSource(decoded.ConstView());
+        return SHR::PrepareHeartbeatSource(
+            decoded.ConstView(),
+            coefficients.SourceConditioning
+        );
     }
 
     py::array_t<float> ToArray(SHR::ConstAudioBufferView view)
@@ -144,6 +494,21 @@ PYBIND11_MODULE(shr_pybind, m)
 {
     m.doc() = "Offline binding to the shr_core physiology, rhythm, mapping, and rendering surfaces.";
 
+    py::class_<SHR::ModelCoefficients>(m, "ModelCoefficients")
+        .def(py::init<>(), "Construct the immutable production-default coefficient value.")
+        .def_property_readonly(
+            "values",
+            &CoefficientValues,
+            "Return a new dict containing every selected value plus derived FitnessAbsoluteMin."
+        )
+        .def(
+            "with_overrides",
+            &WithOverrides,
+            py::arg("overrides"),
+            "Apply a validated batch of named overrides and return a new immutable value."
+        );
+    m.attr("default_model_coefficients") = SHR::DefaultModelCoefficients();
+
     py::class_<SHR::HeartbeatSource>(m, "HeartbeatSource")
         .def_property_readonly(
             "s1_frames",
@@ -163,15 +528,18 @@ PYBIND11_MODULE(shr_pybind, m)
         &PrepareSource,
         py::arg("samples"),
         py::arg("sample_rate"),
+        DefaultModelCoefficientsArg(),
         "Condition interleaved PCM16 (frames, channels) into a renderable HeartbeatSource."
     );
 
     m.def(
         "trace_source_conditioning",
         [](
-            py::array_t<std::int16_t, py::array::c_style | py::array::forcecast> samples,
-            std::uint32_t                                                        sampleRate
-        ) {
+            py::array_t<std::int16_t, py::array::c_style | py::array::forcecast>  samples,
+            std::uint32_t                                                         sampleRate,
+            const SHR::ModelCoefficients                                         &coefficients
+        )
+        {
             if (samples.ndim() != 2)
             {
                 throw std::invalid_argument("samples must be a 2-D (frames, channels) int16 array");
@@ -189,16 +557,22 @@ PYBIND11_MODULE(shr_pybind, m)
             py::dict out;
             out["sliced_s1"] = ToArray(stages.S1.ConstView());
             out["sliced_s2"] = ToArray(stages.S2.ConstView());
-            SHR::ApplyHeartbeatSourceHighPass(stages, SHR::Constants::SourceHighPassHz);
+            SHR::ApplyHeartbeatSourceHighPass(
+                stages,
+                coefficients.SourceConditioning.SourceHighPassHz
+            );
             out["highpass_s1"] = ToArray(stages.S1.ConstView());
             out["highpass_s2"] = ToArray(stages.S2.ConstView());
-            SHR::NormalizeHeartbeatSourceJoint(stages, SHR::Constants::SourceRestLevel);
+            SHR::NormalizeHeartbeatSourceJoint(
+                stages,
+                coefficients.SourceConditioning.SourceRestLevel
+            );
             out["normalized_s1"] = ToArray(stages.S1.ConstView());
             out["normalized_s2"] = ToArray(stages.S2.ConstView());
 
             const auto attack = SHR::FindBaselineAttackRegion(
                 stages.S1.ConstView(),
-                SHR::Constants::AttackBuildThreshold
+                coefficients.SourceConditioning.AttackBuildThreshold
             );
             if (!attack)
             {
@@ -212,6 +586,7 @@ PYBIND11_MODULE(shr_pybind, m)
         },
         py::arg("samples"),
         py::arg("sample_rate"),
+        DefaultModelCoefficientsArg(),
         "Condition PCM16 (frames, channels) and return each conditioning stage as a (frames, channels) "
         "float32 array plus the baseline S1 attack landmarks."
     );
@@ -228,7 +603,8 @@ PYBIND11_MODULE(shr_pybind, m)
             float s2ResampleRatio,
             float lowPassCutoffHz,
             float onsetCompression,
-            const std::string &kind
+            const std::string &kind,
+            const SHR::ModelCoefficients &coefficients
         )
         {
             return ToArray(
@@ -244,7 +620,8 @@ PYBIND11_MODULE(shr_pybind, m)
                         lowPassCutoffHz,
                         onsetCompression,
                         kind
-                    )
+                    ),
+                    coefficients.BeatRendering
                 ).ConstView()
             );
         },
@@ -258,6 +635,7 @@ PYBIND11_MODULE(shr_pybind, m)
         py::arg("lowpass_cutoff_hz"),
         py::arg("onset_compression"),
         py::arg("kind") = "sinus",
+        DefaultModelCoefficientsArg(),
         "Render one beat to a (frames, channels) float32 array."
     );
 
@@ -273,7 +651,8 @@ PYBIND11_MODULE(shr_pybind, m)
             float s2ResampleRatio,
             float lowPassCutoffHz,
             float onsetCompression,
-            const std::string &kind
+            const std::string &kind,
+            const SHR::ModelCoefficients &coefficients
         )
         {
             const SHR::BeatRenderTrace trace = SHR::TraceBeatRender(
@@ -288,7 +667,8 @@ PYBIND11_MODULE(shr_pybind, m)
                     lowPassCutoffHz,
                     onsetCompression,
                     kind
-                )
+                ),
+                coefficients.BeatRendering
             );
             py::dict stages;
             stages["source_s1"] = ToArray(trace.SourceS1.ConstView());
@@ -309,6 +689,7 @@ PYBIND11_MODULE(shr_pybind, m)
         py::arg("lowpass_cutoff_hz"),
         py::arg("onset_compression"),
         py::arg("kind") = "sinus",
+        DefaultModelCoefficientsArg(),
         "Render one beat and return every stage as a dict of (frames, channels) float32 arrays."
     );
 
@@ -430,8 +811,14 @@ PYBIND11_MODULE(shr_pybind, m)
 
     py::class_<SHR::RhythmEngine>(m, "RhythmEngine")
         .def(
-            py::init([](std::uint64_t seed) { return SHR::RhythmEngine(SeededRandom(seed)); }),
+            py::init([](
+                std::uint64_t                 seed,
+                const SHR::ModelCoefficients &coefficients
+            ) {
+                return SHR::RhythmEngine(coefficients.Rhythm, SeededRandom(seed));
+            }),
             py::arg("seed"),
+            DefaultModelCoefficientsArg(),
             "Construct a rhythm engine driven by a seeded deterministic RNG."
         )
         .def("init", &SHR::RhythmEngine::Init)
@@ -472,11 +859,20 @@ PYBIND11_MODULE(shr_pybind, m)
 
     m.def(
         "create_render_spec",
-        [](const SHR::BeatEvent &event, const SHR::PhysiologySnapshot &physiology) {
-            return SHR::CreateRenderSpec(event, physiology);
+        [](
+            const SHR::BeatEvent          &event,
+            const SHR::PhysiologySnapshot &physiology,
+            const SHR::ModelCoefficients  &coefficients
+        ) {
+            return SHR::CreateRenderSpec(
+                event,
+                physiology,
+                coefficients.AcousticMapping
+            );
         },
         py::arg("event"),
         py::arg("physiology"),
+        DefaultModelCoefficientsArg(),
         "Map a beat event and physiology snapshot to a RenderSpec (acoustic mapping)."
     );
 
@@ -526,7 +922,8 @@ PYBIND11_MODULE(shr_pybind, m)
                 float resting_heart_rate,
                 float maximum_heart_rate,
                 float arrhythmia_susceptibility,
-                std::uint64_t seed
+                std::uint64_t seed,
+                const SHR::ModelCoefficients &coefficients
             ) {
                 const SHR::RuntimeSettings settings{
                     .Simulation = {
@@ -535,12 +932,17 @@ PYBIND11_MODULE(shr_pybind, m)
                     },
                     .ArrhythmiaSusceptibility = arrhythmia_susceptibility,
                 };
-                return std::make_unique<SHR::Runtime>(settings, SeededRandom(seed));
+                return std::make_unique<SHR::Runtime>(
+                    settings,
+                    SeededRandom(seed),
+                    coefficients
+                );
             }),
             py::arg("resting_heart_rate")        = 55.0F,
             py::arg("maximum_heart_rate")        = 200.0F,
             py::arg("arrhythmia_susceptibility") = 1.0F,
             py::arg("seed")                      = 0,
+            DefaultModelCoefficientsArg(),
             "Construct a runtime from overridable settings and a seeded deterministic rhythm RNG."
         )
         .def("init", &SHR::Runtime::Init, "Reset simulation and rhythm to their initial state.")

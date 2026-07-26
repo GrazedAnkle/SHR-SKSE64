@@ -195,8 +195,7 @@ must select channel zero explicitly before calling the mono analysis functions i
 averaging or flattening channels changes the estimand.
 
 `tools/engine_offline.py` remains only as a legacy mono reproduction and counterfactual-audition tool
-pending WI-028 and the immutable coefficient surface in
-[WI-033](work_items/WI-033-offline-coefficient-overrides.md). It is not a golden implementation and must
+pending [WI-028](work_items/WI-028-retire-offline-mirrors.md). It is not a golden implementation and must
 not establish current engine behavior. Its `is_pvc` option covers shaping bypasses and resample, not
 `CreateRenderSpec`-assigned PVC amplitudes or systole, and must not be used as a PVC calibration fixture
 until WI-010 closes that gap.

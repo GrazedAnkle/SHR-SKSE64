@@ -16,31 +16,64 @@
 #include "Runtime.hpp"
 
 #include "AcousticMapper.hpp"
-#include "Constants.hpp"
-#include "HeartRate.hpp"
 
 #include <algorithm>
+#include <stdexcept>
 #include <utility>
 
 namespace
 {
-    namespace C = SHR::Constants;
-
-    // Preserve the adapter's two-times-two-minute death-risk ramp.
-    constexpr float DeathRiskRampSeconds = 4.0F * 60.0F;
+    void ValidateRuntimeCoefficientContext(
+        const SHR::RuntimeSettings   &settings,
+        const SHR::ModelCoefficients &coefficients
+    )
+    {
+        if (
+            settings.Simulation.MaximumHeartRate <=
+            coefficients.Rhythm.ExtremeHeartRateRiskThreshold
+        )
+        {
+            throw std::invalid_argument(
+                "runtime maximum heart rate must be greater than "
+                "ExtremeHeartRateRiskThreshold"
+            );
+        }
+    }
 }
 
 SHR::Runtime::Runtime(RuntimeSettings settings)
-    : m_Settings(settings)
-    , m_Simulation(settings.Simulation)
+    : Runtime(settings, DefaultModelCoefficients())
 {
 }
 
 SHR::Runtime::Runtime(RuntimeSettings settings, RhythmRandom random)
-    : m_Settings(settings)
-    , m_Simulation(settings.Simulation)
-    , m_Rhythm(std::move(random))
+    : Runtime(settings, std::move(random), DefaultModelCoefficients())
 {
+}
+
+SHR::Runtime::Runtime(
+    RuntimeSettings   settings,
+    ModelCoefficients coefficients
+)
+    : m_Settings(settings)
+    , m_Coefficients(std::move(coefficients))
+    , m_Simulation(settings.Simulation, m_Coefficients.Simulation)
+    , m_Rhythm(m_Coefficients.Rhythm)
+{
+    ValidateRuntimeCoefficientContext(m_Settings, m_Coefficients);
+}
+
+SHR::Runtime::Runtime(
+    RuntimeSettings   settings,
+    RhythmRandom      random,
+    ModelCoefficients coefficients
+)
+    : m_Settings(settings)
+    , m_Coefficients(std::move(coefficients))
+    , m_Simulation(settings.Simulation, m_Coefficients.Simulation)
+    , m_Rhythm(m_Coefficients.Rhythm, std::move(random))
+{
+    ValidateRuntimeCoefficientContext(m_Settings, m_Coefficients);
 }
 
 void SHR::Runtime::Init()
@@ -64,18 +97,21 @@ SHR::StepResult SHR::Runtime::Step(const StepInput &input)
     }
 
     const float deathFactor = physiology.DeathSeconds
-        .transform([](float seconds) {
-            return std::min(seconds, DeathRiskRampSeconds) / DeathRiskRampSeconds;
+        .transform([riskRamp = m_Coefficients.Rhythm.DeathRiskRampSeconds](float seconds) {
+            return std::min(seconds, riskRamp) / riskRamp;
         })
         .value_or(0.0F);
+    const float extremeRiskThreshold =
+        m_Coefficients.Rhythm.ExtremeHeartRateRiskThreshold;
     const float heartRateRange =
-        m_Settings.Simulation.MaximumHeartRate - VeryHighHeartRateThreshold;
+        m_Settings.Simulation.MaximumHeartRate - extremeRiskThreshold;
     const float extremeHeartRateFactor = std::clamp(
-        (physiology.HeartRate - VeryHighHeartRateThreshold) / heartRateRange,
+        (physiology.HeartRate - extremeRiskThreshold) / heartRateRange,
         0.0F,
         1.0F
     );
-    const float fatigueFactor = physiology.LongTermFatigue / C::LongTermFatigueMax;
+    const float fatigueFactor =
+        physiology.LongTermFatigue / m_Coefficients.Simulation.LongTermFatigueMax;
     const float riskFactor = std::max({
         deathFactor,
         extremeHeartRateFactor,
@@ -83,19 +119,27 @@ SHR::StepResult SHR::Runtime::Step(const StepInput &input)
     });
 
     const float exertionFraction = std::clamp(
-        (physiology.Exertion - C::IdleMets) /
-            (physiology.EffectiveFitness - C::IdleMets),
+        (physiology.Exertion - m_Coefficients.Simulation.IdleMets) /
+            (physiology.EffectiveFitness - m_Coefficients.Simulation.IdleMets),
         0.0F,
         1.0F
     );
     const float pvcChance = m_Settings.ArrhythmiaSusceptibility *
-        std::lerp(C::PVCChanceNormal, C::PVCChanceMax, riskFactor);
+        std::lerp(
+            m_Coefficients.Rhythm.PVCChanceNormal,
+            m_Coefficients.Rhythm.PVCChanceMax,
+            riskFactor
+        );
 
-    const float adrenalineFactor = std::min(physiology.Adrenaline / 5.0F, 1.0F);
-    const float acuteFatigueFactor = physiology.AcuteFatigue / C::AcuteFatigueMax;
+    const float adrenalineFactor = std::min(
+        physiology.Adrenaline / m_Coefficients.Rhythm.AdrenalineRunRiskScale,
+        1.0F
+    );
+    const float acuteFatigueFactor =
+        physiology.AcuteFatigue / m_Coefficients.Simulation.AcuteFatigueMax;
     const float runExtensionChance = std::min(
         m_Settings.ArrhythmiaSusceptibility *
-            C::PVCRunExtensionChance *
+            m_Coefficients.Rhythm.PVCRunExtensionChance *
             (1.0F + adrenalineFactor + acuteFatigueFactor + extremeHeartRateFactor),
         1.0F
     );
@@ -114,7 +158,11 @@ SHR::StepResult SHR::Runtime::Step(const StepInput &input)
     {
         result.Beat = RuntimeBeat{
             .Event  = *event,
-            .Render = CreateRenderSpec(*event, physiology),
+            .Render = CreateRenderSpec(
+                *event,
+                physiology,
+                m_Coefficients.AcousticMapping
+            ),
         };
     }
     return result;

@@ -260,12 +260,20 @@ std::optional<SHR::BaselineAttackRegion> SHR::FindBaselineAttackRegion(
 
 SHR::HeartbeatSource SHR::PrepareHeartbeatSource(ConstAudioBufferView decoded)
 {
+    return PrepareHeartbeatSource(decoded, DefaultModelCoefficients().SourceConditioning);
+}
+
+SHR::HeartbeatSource SHR::PrepareHeartbeatSource(
+    ConstAudioBufferView                  decoded,
+    const SourceConditioningCoefficients &coefficients
+)
+{
     HeartbeatSourceSlices source = SliceHeartbeatSource(decoded);
-    ApplyHeartbeatSourceHighPass(source, C::SourceHighPassHz);
-    NormalizeHeartbeatSourceJoint(source, C::SourceRestLevel);
+    ApplyHeartbeatSourceHighPass(source, coefficients.SourceHighPassHz);
+    NormalizeHeartbeatSourceJoint(source, coefficients.SourceRestLevel);
     const std::optional<BaselineAttackRegion> attack = FindBaselineAttackRegion(
         source.S1.ConstView(),
-        C::AttackBuildThreshold
+        coefficients.AttackBuildThreshold
     );
     return {
         .S1 = std::move(source.S1),

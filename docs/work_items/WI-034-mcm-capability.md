@@ -35,7 +35,7 @@ The implementation must:
 MCM belongs on the Skyrim side of the boundary in
 [ARCHITECTURE.md](../ARCHITECTURE.md#value-and-responsibility-split). It may produce
 `RuntimeSettings` replacements and adapter-owned settings changes, but it must not turn the immutable
-offline coefficient value from WI-033 into player configuration.
+offline `ModelCoefficients` value into player configuration.
 
 The current implementation is startup-oriented rather than reconfigurable:
 
@@ -69,8 +69,9 @@ declared installation and compatibility policy.
 - [WI-023](WI-023-cosave-record-validation.md) becomes a dependency only if the selected persistence
   design adds settings to SHR's co-save rather than using an external profile store or framework-owned
   persistence.
-- [WI-033](WI-033-offline-coefficient-overrides.md) is not an implementation dependency; it defines the
-  calibration boundary that the MCM must not cross.
+
+The immutable coefficient boundary is owned by
+[ARCHITECTURE.md](../ARCHITECTURE.md#value-and-responsibility-split), not an implementation dependency.
 
 ## Next action and decision points
 

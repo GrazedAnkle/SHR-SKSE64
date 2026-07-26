@@ -62,8 +62,11 @@ legacy-field defaults.
 ## Value and responsibility split
 
 - `RuntimeSettings` contains subject/runtime configuration: `SimulationSettings` and arrhythmia
-  susceptibility. Model coefficients remain auditable defaults in `Constants.hpp`; a future offline
-  coefficient-override API is a separate immutable value rather than an expansion of runtime settings.
+  susceptibility. `ModelCoefficients` is a separate immutable calibration value with typed `Simulation`,
+  `Rhythm`, `AcousticMapping`, `SourceConditioning`, and `BeatRendering` groups. `Constants.hpp` remains
+  the auditable production-default index. A runtime retains one aggregate and copies the relevant group
+  into each long-lived behavioral owner; coefficient-free C++ entry points delegate to the same immutable
+  production default.
 - `PhysiologySnapshot` is the cohesive downstream view of current physiological and derived state.
   `SimulationState` is the complete resumable state.
 - `RhythmInput` carries the values required to schedule a beat. `BeatEvent` owns scheduled-beat facts:
@@ -98,6 +101,14 @@ The binding exposes `Runtime` for scripted `StepInput` scenarios and notify even
 `CreateRenderSpec` for direct-input rhythm and mapping, and the source-conditioning and `RenderBeat` path.
 Determinism comes from a seeded `RhythmRandom` that reuses production's per-call distributions, so a seed
 reproduces the plugin's draw math; `HeartRateSimulation` is otherwise deterministic.
+
+Offline coefficient sweeps use the bound immutable `ModelCoefficients` value. Python starts from
+`default_model_coefficients`, reports the selected `values`, applies a named batch with
+`with_overrides`, and passes the resulting aggregate consistently to each operation in a run. The binding
+registry preserves scalar type: structural controls remain integers, coordinated knots or bounds validate
+only after the complete batch is applied, and unsupported derived, asset, utility, dormant, or
+game-integration names fail with their reason. Core formulas and global state are never reconstructed or
+mutated by that registry.
 
 Committed golden manifests under `tests/golden/` pin core output for source conditioning, beat rendering,
 rhythm and mapping, and full trajectories. Each is captured from the compiled core through the `shr_pybind`
