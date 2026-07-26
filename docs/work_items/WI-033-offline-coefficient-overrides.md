@@ -1,6 +1,6 @@
 # WI-033: Immutable Offline Coefficient Overrides
 
-Status: `[NEEDS DESIGN]`
+Status: `[NEXT]`
 
 ## Outcome and acceptance criteria
 
@@ -35,6 +35,44 @@ sweepable floats, integer structural controls, derived values such as `FitnessAb
 landmarks, unit conversions, and engine-integration gain. Treating all of them as generic mutable floats
 would erase useful type and dependency constraints.
 
+Callers own one immutable `ModelCoefficients` value with typed `Simulation`, `Rhythm`,
+`AcousticMapping`, `SourceConditioning`, and `BeatRendering` groups. `Runtime` retains that aggregate and
+passes scoped values to the simulation and rhythm owners; the mapping, source-conditioning, and rendering
+functions accept only their corresponding group. Small group values are copied into long-lived owners
+rather than retained by reference. Existing coefficient-free constructors and functions remain as default
+overloads and delegate to one immutable production default.
+
+The aggregate's groups are const after construction. A C++ caller can copy one group, edit the typed
+temporary, and construct a validated replacement aggregate; no core API accepts a string name. The
+binding owns the stable string-to-field registry and exposes a read-only default value plus a batch
+`with_overrides` operation. It applies all requested changes to temporaries, validates the final
+combination once, and returns a new value so coordinated knot or bound changes do not fail on an
+irrelevant intermediate state. Offline clients construct one value and pass it consistently to every
+binding operation.
+
+The override policy is:
+
+- live physiological and DSP coefficients are sweepable;
+- live structural controls such as `PVCRunMaxLength` and `BreathLowPassPoles` are sweepable as strict
+  integers;
+- `FitnessAbsoluteMin` is recomputed from its defining fields and rejects a direct override;
+- `AcuteFatigueMax` and `LongTermFatigueMax` remain independently named coefficients. Their expressions
+  define defaults but do not create implicit coupling when `FitnessMaxMets` is overridden;
+- asset landmarks, `SecondsPerHour`, `VoiceOutputGain`, and dormant controls are not sweepable and return
+  a reason specific to their asset, utility, integration, or unused role.
+
+Validation protects computational domains without imposing narrow calibration ranges: values are finite,
+time constants and required denominators are positive, knots and min/max pairs are ordered, normalized
+fractions remain in range where the formula requires it, and integer structural controls are valid.
+Checks requiring runtime context, such as a high-pass corner below the decoded source's Nyquist frequency,
+remain at the consuming boundary.
+
+The propagation audit also found semantic risk calibration outside `Constants.hpp`: the death-risk ramp,
+the adrenaline run-risk scale, and the reuse of `VeryHighHeartRateThreshold` as the extreme-HR risk knot.
+WI-033 brings those values into the typed rhythm/risk defaults so the selected model value does not leave
+hidden calibration inputs in `Runtime.cpp`. Numerical conversions and implementation safety floors remain
+fixed unless a separate model decision promotes them.
+
 ## Scope and non-goals
 
 Design and implement the immutable coefficient value, default construction, validation, core propagation,
@@ -45,6 +83,11 @@ the existing constant and citation gates.
 Do not expose model coefficients as user-facing game configuration, support live mutation of an existing
 runtime/source, retune any value, or turn asset landmarks and unit conversions into casual sweep knobs.
 
+A future MCM remains on the Skyrim side of this boundary. It may edit `RuntimeSettings` and adapter-owned
+configuration, but it does not expose `ModelCoefficients`, serialize coefficients into a save, or mutate a
+coefficient value held by a live runtime. WI-033 does not add live game reconfiguration merely to prepare
+for that UI.
+
 ## Dependencies
 
 None. WI-028 depends on this item because `sim_offline.py`, `rhythm_offline.py`, and the legacy audition
@@ -52,17 +95,17 @@ tools currently preserve `--set`.
 
 ## Next action and decision points
 
-Produce a header-level API sketch and settle:
-
-- whether callers own one aggregate `ModelCoefficients` or smaller immutable values passed independently;
-- which `Constants.hpp` entries are independently sweepable, derived from other entries, or intentionally
-  fixed;
-- how derived values are recomputed and whether attempts to override them are rejected;
-- whether default-valued overloads remain for focused core tests and plugin call sites;
-- where cross-field validation occurs, including errors for invalid knot ordering and zero denominators;
-  and
-- how the binding maps stable CLI names to typed fields without making strings part of the C++ core API.
+Implement the typed groups and immutable aggregate, replace behavioral `Constants::` reads with scoped
+dependencies, and retain default-delegating overloads for plugin and focused-test callers. Then add the
+binding registry, immutable batch override operation, value reporting, validation tests, one focused
+override test per group, and default-output invariance coverage before migrating the three thin CLI
+clients.
 
 ## Newly observed work to split out
 
-None.
+MCM capability is a separate adapter work item. Before implementation it must choose one authoritative
+persistence source instead of allowing TOML, Papyrus/save state, and a helper-owned INI to compete; define
+which settings apply immediately versus after reset; route UI changes through the runtime thread contract;
+and add the Papyrus/plugin-form, packaging, localization, and optional-dependency surface. Resting-HR
+changes need an explicit state-transition policy because the value seeds fitness, while audio volume,
+notifications, and input mapping can be immediate adapter updates.
