@@ -472,22 +472,24 @@ ratio, until its window baselines are reconciled. These observations ground the 
 brightening the engine produces through onset compression (see
 [SYNTHESIS_MODEL.md](SYNTHESIS_MODEL.md#sourcing-and-shaping)).
 
-## Analyzing our own output (offline mirror and in-game captures)
+## Analyzing our own output (compiled core and in-game captures)
 
 Measuring the engine - to compare against the references above - reuses the same metric battery
-(`tools/shrlib.py`), plus the offline mirror and two caveats.
+(`tools/shrlib.py`), plus the compiled offline path and the capture caveats below.
 
-**Offline mirror.** The compiled core drives offline analysis directly through the Python binding (see
+**Compiled offline path.** The compiled core drives offline analysis directly through the Python binding (see
 [ARCHITECTURE.md](ARCHITECTURE.md#offline-execution)), so measuring the engine reuses the same
 `CreateRenderSpec`, rhythm, and DSP the plugin ships rather than a reimplementation, and its output is
-pinned against regression by the golden manifests under `tests/golden/`. `tools/engine_offline.py` now
-provides only the legacy mono audition path: a one-channel preview for auditioning a synthesis change or
-measuring the engine by ear without a game build. Being mono, it is not the active normalized-stereo float
-playback path, and its PVC option previews voice shaping without reproducing PVC amplitudes or systole.
-Moving that remaining audition path onto the compiled core is tracked by
-[WI-028](work_items/WI-028-retire-offline-mirrors.md).
+pinned against regression by the golden manifests under `tests/golden/`. `tools/audition_core.py` writes
+the compiled renderer's native stereo output for listening; engine measurements explicitly select channel
+zero before using the mono rulers in `shrlib`. `tools/engine_offline.py` is a legacy reproduction and
+counterfactual tool, not an engine oracle. Retiring its active mirror behavior while preserving coefficient
+sweeps and retired tail/tamer reproduction is tracked by
+[WI-028](work_items/WI-028-retire-offline-mirrors.md) and
+[WI-033](work_items/WI-033-offline-coefficient-overrides.md).
 
-**In-game captures** (a recording of the running mod) confirm the shipped DLL matches the mirror.
+**In-game captures** (a recording of the running mod) confirm the shipped DLL matches the compiled
+offline render.
 Extract the audio with `ffmpeg -map 0:a:0 -ac 2 -ar 48000`. The heartbeat voice is centred (mono), so a
 clean capture has zero stereo side energy - any side content means other game audio leaked in and the
 capture is not analyzable. Detect beats from the smoothed energy envelope, then **disambiguate S1 from

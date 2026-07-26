@@ -188,15 +188,21 @@ model.
 
 ## Engine/reference parity
 
-`tools/engine_offline.py` mirrors the C++ sinus DSP stages but does not model the full `Runtime`;
-per-beat filling, jitter, rhythm scheduling, and acoustic mapping require the appropriate sequence
-harness. Its normalized-stereo float path is checked against C++ at the conditioned source, per-beat
-source, transmission, transducer-input, and final-output domains for the five core fixtures. The
-legacy mono audition renderer remains a duplicate reference rather than a golden implementation. Its
-current `is_pvc` option covers the voice's shaping bypasses and resample, not
+The compiled binding is the engine oracle. Its normalized-stereo float path is pinned at the conditioned
+source, per-beat source, transmission, transducer-input, and final-output domains by the committed golden
+manifests. `tools/audition_core.py` writes that native two-channel output for listening. A numerical ruler
+must select channel zero explicitly before calling the mono analysis functions in `shrlib`; silently
+averaging or flattening channels changes the estimand.
+
+`tools/engine_offline.py` remains only as a legacy mono reproduction and counterfactual-audition tool
+pending WI-028 and the immutable coefficient surface in
+[WI-033](work_items/WI-033-offline-coefficient-overrides.md). It is not a golden implementation and must
+not establish current engine behavior. Its `is_pvc` option covers shaping bypasses and resample, not
 `CreateRenderSpec`-assigned PVC amplitudes or systole, and must not be used as a PVC calibration fixture
 until WI-010 closes that gap.
-Any C++ DSP change must be mirrored and checked at the same operating state. A comparison must align:
+
+Any C++ DSP change must pass the compiled-core goldens at the same operating state; it requires no matching
+Python DSP port. A comparison must align:
 
 - physiological state and per-beat variability;
 - signal-chain stages and constant set;

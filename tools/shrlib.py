@@ -1,8 +1,7 @@
 """Shared helpers for the audio-analysis tools.
 
-Single definition for common IO/DSP primitives and the two parsers that are used
-by both the offline engine mirror (engine_offline.py) and the reference analyzer
-(ref_analyze.py):
+Single definition for common IO/DSP primitives and the two parsers used by the
+compiled-core clients, legacy counterfactual tools, and reference analyzer:
   - signal IO + metrics (load/slice/env/attack/decay/centroid/rolloff/
     spread/f0/bands/rms/peak/crest/chirp/energy_conc)
   - parse_annotations: annotated S1/S2 landmark files (docs/references/timestamps/*.txt)
@@ -19,7 +18,15 @@ import numpy as np
 import soundfile as sf
 from scipy.signal import butter, hilbert, sosfiltfilt
 
-SR = 48000  # all references and engine renders are expected to be 48 kHz mono
+SR = 48000  # analysis signals are 48 kHz mono; native stereo core renders must select channel 0 explicitly
+
+
+def analysis_channel(rendered: np.ndarray) -> np.ndarray:
+    """Select channel zero from a native-layout core render without downmixing."""
+    rendered = np.asarray(rendered)
+    if rendered.ndim != 2 or rendered.shape[1] == 0:
+        raise ValueError("core render must have shape (frames, channels)")
+    return rendered[:, 0]
 
 
 def a_weight_gain(f: np.ndarray) -> np.ndarray:

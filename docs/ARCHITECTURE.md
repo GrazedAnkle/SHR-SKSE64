@@ -107,3 +107,8 @@ scenarios are the primary acceptance gate for physiology, rhythm, and DSP change
 construction, measurement, annotation, and reporting as independent analysis rulers, not as production
 mirrors. SKSE input mapping, XAudio ownership and scheduling, thread delivery, and game-mix behavior retain
 their own in-game gates.
+
+Offline audition files preserve the compiled renderer's native channel layout; the current source and
+renderer output are stereo. Numerical analysis selects channel zero explicitly, matching reference-tool
+loading and the baseline S1 attack locator, rather than implicitly downmixing a native-layout render.
+`tools/audition_core.py` is the canonical audition client for this contract.
