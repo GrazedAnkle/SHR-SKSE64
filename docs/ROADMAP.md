@@ -80,6 +80,9 @@ evidence links, and decision points.
   coordinate with WI-029.
 - [WI-026: runtime thread contract](work_items/WI-026-runtime-thread-contract.md) determines whether event
   callbacks can forward directly or require a single-writer mailbox.
+- [WI-034: MCM capability](work_items/WI-034-mcm-capability.md) adds in-game editing for selected
+  subject/runtime and adapter settings after persistence, live-application, thread-delivery, and packaging
+  semantics are settled.
 
 Offline execution now runs on the compiled core through the Python binding, with deterministic golden
 scenarios as the primary acceptance gate for physiology, rhythm, and DSP changes;

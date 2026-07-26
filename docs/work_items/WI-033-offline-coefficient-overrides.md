@@ -86,7 +86,7 @@ runtime/source, retune any value, or turn asset landmarks and unit conversions i
 A future MCM remains on the Skyrim side of this boundary. It may edit `RuntimeSettings` and adapter-owned
 configuration, but it does not expose `ModelCoefficients`, serialize coefficients into a save, or mutate a
 coefficient value held by a live runtime. WI-033 does not add live game reconfiguration merely to prepare
-for that UI.
+for that UI; [WI-034](WI-034-mcm-capability.md) owns the integration.
 
 ## Dependencies
 
@@ -103,9 +103,5 @@ clients.
 
 ## Newly observed work to split out
 
-MCM capability is a separate adapter work item. Before implementation it must choose one authoritative
-persistence source instead of allowing TOML, Papyrus/save state, and a helper-owned INI to compete; define
-which settings apply immediately versus after reset; route UI changes through the runtime thread contract;
-and add the Papyrus/plugin-form, packaging, localization, and optional-dependency surface. Resting-HR
-changes need an explicit state-transition policy because the value seeds fitness, while audio volume,
-notifications, and input mapping can be immediate adapter updates.
+MCM capability and live game reconfiguration are split to
+[WI-034](WI-034-mcm-capability.md).
