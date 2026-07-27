@@ -198,6 +198,21 @@ SHR::PhysiologySnapshot SHR::Runtime::GetSnapshot() const
     return m_Simulation.GetSnapshot();
 }
 
+float SHR::Runtime::GetTargetHeartRate() const noexcept
+{
+    return m_Simulation.GetTargetHeartRate();
+}
+
+float SHR::Runtime::GetTargetRespirationRate() const
+{
+    return m_Simulation.GetTargetRespirationRate();
+}
+
+float SHR::Runtime::GetTargetRespirationDepth() const
+{
+    return m_Simulation.GetTargetRespirationDepth();
+}
+
 SHR::SimulationState SHR::Runtime::GetState() const
 {
     return m_Simulation.GetState();

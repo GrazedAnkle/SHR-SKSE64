@@ -35,6 +35,13 @@ namespace
     }
 }
 
+float SHR::ComputeLungInflation(float respirationPhase)
+{
+    return std::sin(
+        std::numbers::pi_v<float> * std::clamp(respirationPhase, 0.0F, 1.0F)
+    );
+}
+
 SHR::RenderSpec SHR::CreateRenderSpec(
     const BeatEvent &event,
     const PhysiologySnapshot &physiology
@@ -84,9 +91,7 @@ SHR::RenderSpec SHR::CreateRenderSpec(
         )
         : sinusSystole;
 
-    const float lungInflation = std::sin(
-        std::numbers::pi_v<float> * std::clamp(physiology.RespirationPhase, 0.0F, 1.0F)
-    );
+    const float lungInflation = ComputeLungInflation(physiology.RespirationPhase);
     const float breathDepthFactor = coefficients.BreathDepthRestFraction +
         (1.0F - coefficients.BreathDepthRestFraction) *
         std::clamp(physiology.RespirationDepth, 0.0F, 1.0F);

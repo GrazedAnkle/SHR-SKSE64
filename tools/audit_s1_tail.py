@@ -5,9 +5,9 @@ Every value is a within-beat ratio to the 40-80 ms S1 body window; it describes
 decay geometry, not a transferable absolute spectrum or a resonator-frequency
 target.
 
-The audition package keeps the same per-beat jitter, filling, respiratory phase,
-and production gain/limiter path across variants. The only changes are explicit
-legacy audit controls in engine_offline:
+The audition package keeps the same compiled rhythm events, mapping, transmission,
+mix, and limiter path across variants. The only changes are explicit retired
+source-stage transforms:
 
   legacy_current       tamer on, retired fixed tail
   tail_off             tamer on, no tail
@@ -15,7 +15,9 @@ legacy audit controls in engine_offline:
   no_tamer_fixed_tail  tamer off, retired fixed tail
   shipping             tamer off, no tail
 
-Only ``shipping`` mirrors current C++.
+``shipping`` is the unmodified compiled render. Every counterfactual starts from
+the compiled post-onset source stage and returns to C++ for the active downstream
+stages.
 """
 from __future__ import annotations
 
@@ -30,10 +32,11 @@ import numpy as np
 import soundfile as sf
 from scipy.signal import butter, sosfiltfilt
 
-import engine_offline as eo
+import core_offline
+import legacy_s1
 import rhythm_offline as ro
 import shrlib
-from shrlib import SR
+from shrlib import SR, analysis_channel
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -186,7 +189,13 @@ def reference_report() -> list[dict]:
     return out
 
 
-def _paired_states(source: Path, scenario: Scenario, seed: int) -> list[dict]:
+def _paired_states(
+    module,
+    coefficients,
+    source: Path,
+    scenario: Scenario,
+    seed: int,
+) -> list[dict]:
     seq = ro.beat_sequence(
         source,
         scenario.hr,
@@ -195,51 +204,71 @@ def _paired_states(source: Path, scenario: Scenario, seed: int) -> list[dict]:
         n_beats=scenario.beats,
         seed=seed + scenario.seed_offset,
         breath_depth=scenario.breath_depth,
+        render_resp_phase=scenario.fixed_resp_phase,
+        module=module,
+        coefficients=coefficients,
     )
     return seq["beats"]
 
 
 def render_variant_scenario(
-    s1: np.ndarray,
-    s2: np.ndarray,
-    scenario: Scenario,
+    module,
+    source,
+    coefficients,
     states: list[dict],
     variant: Variant,
 ) -> list[np.ndarray]:
-    beats = []
+    beats: list[np.ndarray] = []
     for state in states:
-        phase = state["resp_phase"] if scenario.fixed_resp_phase is None else scenario.fixed_resp_phase
+        if variant.name == "shipping":
+            beats.append(state["audio"])
+            continue
+        trace = core_offline.trace_beat(
+            module,
+            source,
+            state["render"],
+            coefficients,
+        )
+        source_s1 = trace["source_s1"]
+        if variant.tamer_enabled:
+            source_s1 = legacy_s1.tame_lobe(
+                source_s1,
+                min(state["contractility"], 1.0),
+            )
+        source_s1 = legacy_s1.apply_tail(
+            source_s1,
+            variant.tail_mode,
+            baseline_dry_frames=source.s1_frames,
+        )
         beats.append(
-            eo.synth_beat(
-                s1,
-                s2,
-                scenario.hr,
-                state["contractility"],
-                state["frank_starling"],
-                phase,
-                scenario.exertion,
-                breath_depth=scenario.breath_depth,
-                tail_mode=variant.tail_mode,
-                tamer_enabled=variant.tamer_enabled,
+            core_offline.render_from_source_stages(
+                module,
+                source_s1,
+                trace["source_s2"],
+                SR,
+                state["render"],
+                coefficients,
             )
         )
     return beats
 
 
-def measure_engine_beats(beats: list[np.ndarray], hr: float) -> dict:
+def measure_engine_beats(beats: list[np.ndarray], states: list[dict]) -> dict:
     """Measure fixed late-S1 windows on an engine sequence."""
-    run = np.concatenate(beats)
+    native_run = np.concatenate(beats, axis=0)
+    run = analysis_channel(native_run)
     pad = SR
     lf = _lf_filter(np.pad(run, (pad, pad)))[pad:pad + len(run)]
     starts = np.concatenate([[0], np.cumsum([len(b) for b in beats[:-1]])])
-    systole_s = float(np.clip(eo.SYS_INT - hr * eo.SYS_SLOPE, eo.SYS_MIN, eo.SYS_MAX))
 
     late_80_100: list[float] = []
     late_100_120: list[float] = []
     post_120_gap: list[float] = []
     peaks: list[float] = []
     crests: list[float] = []
-    for beat, start in zip(beats, starts):
+    for beat, state, start in zip(beats, states, starts):
+        systole_s = state["systole_duration"]
+
         def wrms(lo: float, hi: float) -> float:
             return _rms(lf[start + int(lo * SR):start + int(hi * SR)])
 
@@ -247,7 +276,7 @@ def measure_engine_beats(beats: list[np.ndarray], hr: float) -> dict:
         late_80_100.append(_db_ratio(wrms(0.080, 0.100), body))
         late_100_120.append(_db_ratio(wrms(0.100, 0.120), body))
         post_120_gap.append(_db_ratio(wrms(0.120, systole_s), body))
-        s1 = beat[:int(round(systole_s * SR))]
+        s1 = analysis_channel(beat)[:int(round(systole_s * SR))]
         peaks.append(shrlib.peak(s1))
         crests.append(20.0 * np.log10(shrlib.crest(s1)))
 
@@ -258,25 +287,38 @@ def measure_engine_beats(beats: list[np.ndarray], hr: float) -> dict:
         "post_120_to_s2_db": _summary(post_120_gap),
         "peak": _summary(peaks),
         "crest_db": _summary(crests),
-        "max_abs": float(np.max(np.abs(run))),
+        "max_abs": float(np.max(np.abs(native_run))),
     }
 
 
-def splice_geometry(source: Path) -> list[dict]:
-    s1, _ = eo.prep_source(source)
+def splice_geometry(module, source, coefficients) -> list[dict]:
     out = []
+    nominal_ibi = 60.0 / 180.0
+    frank_starling_max = float(coefficients.values["FrankStarlingMax"])
     for contractility in (0.0, 0.5, 1.0, 1.4):
-        k = 1.0 + (eo.ATTACK_COMPRESS_MAX - 1.0) * contractility
-        dry = eo.compress_onset_build(s1.copy(), k)
-        dry = eo.tame_lobe(dry, min(contractility, 1.0))
-        env = shrlib.env_analytic(dry, SR, ms=0.0)
+        event = module.BeatEvent(
+            ibi=nominal_ibi,
+            filling_interval=nominal_ibi * frank_starling_max,
+            coupling_fraction=0.0,
+            vigor=contractility,
+            kind="sinus",
+        )
+        physiology = module.PhysiologySnapshot(heart_rate=180.0)
+        render = module.create_render_spec(
+            event=event,
+            physiology=physiology,
+            coefficients=coefficients,
+        )
+        trace = core_offline.trace_beat(module, source, render, coefficients)
+        dry = trace["source_s1"]
+        env = shrlib.env_analytic(analysis_channel(dry), SR, ms=0.0)
         peak = int(np.argmax(env))
-        fixed = eo.tail_splice_frame(len(dry), "fixed")
-        relative = eo.tail_splice_frame(len(dry), "dry-end")
-        ramp = int(eo.LEGACY_TAIL_RAMP_MS * 1.0e-3 * SR)
+        fixed = legacy_s1.tail_splice_frame(len(dry), source.s1_frames, "fixed")
+        relative = legacy_s1.tail_splice_frame(len(dry), source.s1_frames, "dry-end")
+        ramp = int(legacy_s1.LEGACY_TAIL_RAMP_MS * 1.0e-3 * SR)
         out.append({
             "contractility": contractility,
-            "compression_k": k,
+            "compression_k": float(render.onset_compression),
             "dry_ms": len(dry) / SR * 1.0e3,
             "analytic_peak_ms": peak / SR * 1.0e3,
             "fixed_splice_ms": fixed / SR * 1.0e3,
@@ -290,7 +332,7 @@ def splice_geometry(source: Path) -> list[dict]:
 
 
 def _a_weighted_rms(signal: np.ndarray) -> float:
-    return _rms(shrlib.a_weight(signal, SR))
+    return _rms(shrlib.a_weight(analysis_channel(signal), SR))
 
 
 def _write_markdown_readme(path: Path, mapping: dict[str, str], sections: list[dict]) -> None:
@@ -321,26 +363,29 @@ def _write_markdown_readme(path: Path, mapping: dict[str, str], sections: list[d
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def build_audition(source: Path, out_dir: Path, seed: int) -> dict:
+def build_audition(module, coefficients, source_path: Path, out_dir: Path, seed: int) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     production_dir = out_dir / "production"
     matched_dir = out_dir / "level_matched"
     production_dir.mkdir(exist_ok=True)
     matched_dir.mkdir(exist_ok=True)
 
-    s1, s2 = eo.prep_source(source)
+    source, sample_rate = core_offline.prepare_source(module, source_path, coefficients)
+    if sample_rate != SR:
+        raise ValueError(f"late-S1 audit requires {SR} Hz source audio, got {sample_rate}")
     states = {
-        scenario.name: _paired_states(source, scenario, seed)
+        scenario.name: _paired_states(module, coefficients, source_path, scenario, seed)
         for scenario in SCENARIOS
     }
-    silence = np.zeros(int(0.75 * SR))
+    channels = states[SCENARIOS[0].name][0]["audio"].shape[1]
+    silence = np.zeros((int(0.75 * SR), channels), dtype=np.float32)
 
     variant_files: dict[str, np.ndarray] = {}
     metrics: dict[str, dict] = {}
     sections: list[dict] = []
     cursor = 0
     for scenario in SCENARIOS:
-        duration = len(states[scenario.name][0]["audio"]) * scenario.beats / SR
+        duration = sum(len(beat["audio"]) for beat in states[scenario.name]) / SR
         sections.append({"name": scenario.name, "start_s": cursor / SR, "duration_s": duration})
         cursor += int(round(duration * SR))
         if scenario is not SCENARIOS[-1]:
@@ -350,12 +395,22 @@ def build_audition(source: Path, out_dir: Path, seed: int) -> dict:
         chunks = []
         metrics[variant.name] = {}
         for index, scenario in enumerate(SCENARIOS):
-            beats = render_variant_scenario(s1, s2, scenario, states[scenario.name], variant)
-            chunks.append(np.concatenate(beats))
-            metrics[variant.name][scenario.name] = measure_engine_beats(beats, scenario.hr)
+            scenario_states = states[scenario.name]
+            beats = render_variant_scenario(
+                module,
+                source,
+                coefficients,
+                scenario_states,
+                variant,
+            )
+            chunks.append(np.concatenate(beats, axis=0))
+            metrics[variant.name][scenario.name] = measure_engine_beats(
+                beats,
+                scenario_states,
+            )
             if index != len(SCENARIOS) - 1:
                 chunks.append(silence)
-        variant_files[variant.name] = np.concatenate(chunks)
+        variant_files[variant.name] = np.concatenate(chunks, axis=0)
 
     codes = [chr(ord("A") + i) for i in range(len(VARIANTS))]
     random.Random(seed).shuffle(codes)
@@ -380,7 +435,7 @@ def build_audition(source: Path, out_dir: Path, seed: int) -> dict:
     _write_markdown_readme(out_dir / "README.md", mapping, sections)
 
     report = {
-        "source": str(source),
+        "source": str(source_path),
         "sample_rate": SR,
         "seed": seed,
         "sections": sections,
@@ -389,7 +444,7 @@ def build_audition(source: Path, out_dir: Path, seed: int) -> dict:
             "target": match_target,
             "gain": level_match_gain,
         },
-        "splice_geometry": splice_geometry(source),
+        "splice_geometry": splice_geometry(module, source, coefficients),
         "engine_metrics": metrics,
     }
     (out_dir / "UNBLIND_ENGINE_REPORT.json").write_text(
@@ -401,12 +456,28 @@ def build_audition(source: Path, out_dir: Path, seed: int) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--module-dir",
+        type=Path,
+        default=core_offline.DEFAULT_MODULE_DIR,
+        help="directory containing shr_pybind (default: build/pybind)",
+    )
     parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=20260723)
+    parser.add_argument(
+        "--set",
+        action="append",
+        default=[],
+        metavar="NAME=VALUE",
+        help="apply a named immutable model-coefficient override; repeatable",
+    )
     parser.add_argument("--skip-references", action="store_true")
     args = parser.parse_args()
 
+    module = core_offline.load_binding(args.module_dir)
+    coefficients, overrides = core_offline.coefficients_from_args(module, args.set)
+    core_offline.print_overrides(overrides)
     args.out_dir.mkdir(parents=True, exist_ok=True)
     if not args.skip_references:
         refs = reference_report()
@@ -422,7 +493,13 @@ def main() -> int:
                 f"gap {row['s1_to_s2_gap_db']['median']:+.1f} dB"
             )
 
-    report = build_audition(args.source, args.out_dir, args.seed)
+    report = build_audition(
+        module,
+        coefficients,
+        args.source,
+        args.out_dir,
+        args.seed,
+    )
     print(f"wrote blind audition package to {args.out_dir}")
     for row in report["splice_geometry"]:
         print(

@@ -464,6 +464,27 @@ namespace
         return out;
     }
 
+    SHR::AudioBuffer FromArray(
+        py::array_t<float, py::array::c_style | py::array::forcecast> samples,
+        std::uint32_t                                                 sampleRate
+    )
+    {
+        if (samples.ndim() != 2)
+        {
+            throw std::invalid_argument("source stage must be a 2-D (frames, channels) float array");
+        }
+        const auto channels = static_cast<std::uint32_t>(samples.shape(1));
+        const SHR::AudioFormat format{
+            .SampleRate = sampleRate,
+            .ChannelCount = channels,
+        };
+        return SHR::AudioBuffer(
+            format,
+            static_cast<std::size_t>(samples.shape(0)),
+            std::vector<float>(samples.data(), samples.data() + samples.size())
+        );
+    }
+
     SHR::RenderSpec MakeSpec(
         float              ibi,
         float              systoleDuration,
@@ -693,6 +714,62 @@ PYBIND11_MODULE(shr_pybind, m)
         "Render one beat and return every stage as a dict of (frames, channels) float32 arrays."
     );
 
+    m.def(
+        "render_beat_from_source_stages",
+        [](
+            py::array_t<float, py::array::c_style | py::array::forcecast> sourceS1,
+            py::array_t<float, py::array::c_style | py::array::forcecast> sourceS2,
+            std::uint32_t                                                 sampleRate,
+            float                                                         ibi,
+            float                                                         systoleDuration,
+            float                                                         s1Amplitude,
+            float                                                         s2Amplitude,
+            float                                                         s1ResampleRatio,
+            float                                                         s2ResampleRatio,
+            float                                                         lowPassCutoffHz,
+            float                                                         onsetCompression,
+            const std::string                                             &kind,
+            const SHR::ModelCoefficients                                  &coefficients
+        )
+        {
+            const SHR::AudioBuffer s1 = FromArray(sourceS1, sampleRate);
+            const SHR::AudioBuffer s2 = FromArray(sourceS2, sampleRate);
+            return ToArray(
+                SHR::RenderBeatFromSourceStages(
+                    s1.ConstView(),
+                    s2.ConstView(),
+                    MakeSpec(
+                        ibi,
+                        systoleDuration,
+                        s1Amplitude,
+                        s2Amplitude,
+                        s1ResampleRatio,
+                        s2ResampleRatio,
+                        lowPassCutoffHz,
+                        onsetCompression,
+                        kind
+                    ),
+                    coefficients.BeatRendering
+                ).ConstView()
+            );
+        },
+        py::arg("source_s1"),
+        py::arg("source_s2"),
+        py::arg("sample_rate"),
+        py::arg("ibi"),
+        py::arg("systole_duration"),
+        py::arg("s1_amplitude"),
+        py::arg("s2_amplitude"),
+        py::arg("s1_resample_ratio"),
+        py::arg("s2_resample_ratio"),
+        py::arg("lowpass_cutoff_hz"),
+        py::arg("onset_compression"),
+        py::arg("kind") = "sinus",
+        DefaultModelCoefficientsArg(),
+        "Continue a beat from post-source-stage float arrays through compiled transmission, mixing, "
+        "and limiting; intended for explicit offline counterfactual transforms."
+    );
+
     py::class_<SHR::BeatEvent>(m, "BeatEvent")
         .def(
             py::init([](
@@ -808,6 +885,30 @@ PYBIND11_MODULE(shr_pybind, m)
             "kind",
             [](const SHR::RenderSpec &render) { return KindName(render.Kind); }
         );
+
+    m.def(
+        "lung_inflation",
+        &SHR::ComputeLungInflation,
+        py::arg("respiration_phase"),
+        "Return the compiled acoustic mapping's normalized lung-inflation curve."
+    );
+
+    m.def(
+        "ventilation_targets",
+        [](
+            float normalizedExertion,
+            const SHR::ModelCoefficients &coefficients
+        ) {
+            const SHR::VentilationTargets targets = SHR::ComputeVentilationTargets(
+                normalizedExertion,
+                coefficients.Simulation
+            );
+            return py::make_tuple(targets.Rate, targets.Depth);
+        },
+        py::arg("normalized_exertion"),
+        DefaultModelCoefficientsArg(),
+        "Return the compiled simulation's steady-state respiration-rate and depth targets."
+    );
 
     py::class_<SHR::RhythmEngine>(m, "RhythmEngine")
         .def(
@@ -972,5 +1073,14 @@ PYBIND11_MODULE(shr_pybind, m)
         .def("notify_sleep", &SHR::Runtime::NotifySleep, py::arg("duration"))
         .def("notify_fast_travel", &SHR::Runtime::NotifyFastTravel, py::arg("duration"))
         .def("notify_combat_entry", &SHR::Runtime::NotifyCombatEntry)
-        .def("notify_hit", &SHR::Runtime::NotifyHit);
+        .def("notify_hit", &SHR::Runtime::NotifyHit)
+        .def_property_readonly("target_heart_rate", &SHR::Runtime::GetTargetHeartRate)
+        .def_property_readonly(
+            "target_respiration_rate",
+            &SHR::Runtime::GetTargetRespirationRate
+        )
+        .def_property_readonly(
+            "target_respiration_depth",
+            &SHR::Runtime::GetTargetRespirationDepth
+        );
 }

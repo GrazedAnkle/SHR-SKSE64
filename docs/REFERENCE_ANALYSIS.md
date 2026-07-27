@@ -482,10 +482,9 @@ Measuring the engine - to compare against the references above - reuses the same
 `CreateRenderSpec`, rhythm, and DSP the plugin ships rather than a reimplementation, and its output is
 pinned against regression by the golden manifests under `tests/golden/`. `tools/audition_core.py` writes
 the compiled renderer's native stereo output for listening; engine measurements explicitly select channel
-zero before using the mono rulers in `shrlib`. `tools/engine_offline.py` is a legacy reproduction and
-counterfactual tool, not an engine oracle. Retiring its active mirror behavior while preserving coefficient
-sweeps and retired tail/tamer reproduction is tracked by
-[WI-028](work_items/WI-028-retire-offline-mirrors.md).
+zero before using the mono rulers in `shrlib`. The steady-state rhythm and trajectory clients also consume
+the binding directly. Retired tail/tamer reproduction starts from the compiled post-onset source stage and
+returns to the compiled downstream renderer.
 
 **In-game captures** (a recording of the running mod) confirm the shipped DLL matches the compiled
 offline render.

@@ -27,6 +27,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from tools import shrlib
 import rhythm_offline as ro
+import core_offline
 
 
 SR = shrlib.SR
@@ -256,11 +257,14 @@ class BreathPhaseLockTests(unittest.TestCase):
         self.assertLess(worst, 0.30, f"guard now admits {worst:.3f} dB of aliasing error")
 
 
-@unittest.skipUnless(SOURCE.is_file(), f"source sample not found: {SOURCE}")
+@unittest.skipUnless(
+    SOURCE.is_file() and core_offline.binding_available(),
+    f"source sample or compiled binding unavailable: {SOURCE}",
+)
 class WindowRuleTests(unittest.TestCase):
     """One estimator, one declared window rule.
 
-    These render real beats through the DSP mirror, so they are the slow tests here - a short run is
+    These render real beats through the compiled core, so they are the slow tests here - a short run is
     enough, since they assert which window a metric is measured in, not what the value converges to.
     """
 
@@ -276,6 +280,10 @@ class WindowRuleTests(unittest.TestCase):
             self.assertIn(metadata["window"], {"onset+dur_ms", "beat+fixed", "sequence"})
             self.assertIn(metadata["width"], {"invariant", "sensitive"})
             self.assertIn(metadata["converges"], {None, "breath-cycles"})
+
+    def test_compiled_sequence_preserves_native_layout(self):
+        self.assertEqual(self.seq["audio"].ndim, 2)
+        self.assertEqual(self.seq["audio"].shape[1], 2)
 
     def test_the_breath_window_is_independent_of_the_ref8_dur_ms_knob(self):
         """Nothing measured in the fixed breath window may depend on the onset-window dur_ms; assert
@@ -294,7 +302,11 @@ class WindowRuleTests(unittest.TestCase):
         dur_ms = 128.0
         measured = ro.measure_sequence(self.seq, dur_ms=dur_ms, warmup=0)
         for centroid, beat in zip(measured["centroid"], self.seq["beats"]):
-            onset_window = ro._s1_window(beat["audio"], self.seq["hr"], dur_ms)
+            onset_window = ro._s1_window(
+                beat["audio"],
+                beat["systole_duration"],
+                dur_ms,
+            )
             breath_window = ro._fixed_s1_window(beat["audio"])
             self.assertAlmostEqual(centroid, shrlib.centroid(onset_window, SR), places=9)
             self.assertNotAlmostEqual(centroid, shrlib.centroid(breath_window, SR), places=3)
@@ -321,7 +333,11 @@ class WindowRuleTests(unittest.TestCase):
         at a true onset opens near silence and peaks later; one that starts at the peak does not.
         """
         for beat in self.seq["beats"]:
-            window = ro._s1_window(beat["audio"], self.seq["hr"], dur_ms=128.0)
+            window = ro._s1_window(
+                beat["audio"],
+                beat["systole_duration"],
+                dur_ms=128.0,
+            )
             envelope = shrlib.env_analytic(window, SR)
             peak = float(envelope.max())
             self.assertLess(envelope[0], 0.15 * peak,

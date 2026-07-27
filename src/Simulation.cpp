@@ -54,6 +54,39 @@ namespace
     }
 }
 
+SHR::VentilationTargets SHR::ComputeVentilationTargets(float normalizedExertion)
+{
+    return ComputeVentilationTargets(
+        normalizedExertion,
+        DefaultModelCoefficients().Simulation
+    );
+}
+
+SHR::VentilationTargets SHR::ComputeVentilationTargets(
+    float normalizedExertion,
+    const SimulationModelCoefficients &coefficients
+)
+{
+    return {
+        .Rate = InterpolateVentilationTarget(
+            normalizedExertion,
+            coefficients.RestingRespRate,
+            coefficients.RespRateAtVT1,
+            coefficients.RespRateAtRCP,
+            coefficients.MaxRespRate,
+            coefficients
+        ),
+        .Depth = InterpolateVentilationTarget(
+            normalizedExertion,
+            0.0F,
+            coefficients.RespDepthAtVT1,
+            coefficients.RespDepthAtRCP,
+            1.0F,
+            coefficients
+        ),
+    };
+}
+
 void SHR::HeartRateSimulation::Init()
 {
     Restore(CreateInitialState());
@@ -118,6 +151,25 @@ SHR::PhysiologySnapshot SHR::HeartRateSimulation::GetSnapshot() const
         .RespirationPhase    = m_RespPhase,
         .DeathSeconds        = m_MaybeDeathSeconds,
     };
+}
+
+float SHR::HeartRateSimulation::GetTargetHeartRate() const noexcept
+{
+    return m_TargetHeartRate;
+}
+
+float SHR::HeartRateSimulation::GetTargetRespirationRate() const
+{
+    return ComputeTargetRespRate(
+        std::clamp(NormalizedExertion(m_Exertion), 0.0F, 1.0F)
+    );
+}
+
+float SHR::HeartRateSimulation::GetTargetRespirationDepth() const
+{
+    return ComputeTargetRespDepth(
+        std::clamp(NormalizedExertion(m_Exertion), 0.0F, 1.0F)
+    );
 }
 
 SHR::SimulationState SHR::HeartRateSimulation::GetState() const
@@ -449,26 +501,12 @@ void SHR::HeartRateSimulation::UpdateRespiration(float delta)
 
 float SHR::HeartRateSimulation::ComputeTargetRespRate(float normalizedExertion) const
 {
-    return InterpolateVentilationTarget(
-        normalizedExertion,
-        m_Coefficients.RestingRespRate,
-        m_Coefficients.RespRateAtVT1,
-        m_Coefficients.RespRateAtRCP,
-        m_Coefficients.MaxRespRate,
-        m_Coefficients
-    );
+    return ComputeVentilationTargets(normalizedExertion, m_Coefficients).Rate;
 }
 
 float SHR::HeartRateSimulation::ComputeTargetRespDepth(float normalizedExertion) const
 {
-    return InterpolateVentilationTarget(
-        normalizedExertion,
-        0.0F,
-        m_Coefficients.RespDepthAtVT1,
-        m_Coefficients.RespDepthAtRCP,
-        1.0F,
-        m_Coefficients
-    );
+    return ComputeVentilationTargets(normalizedExertion, m_Coefficients).Depth;
 }
 
 void SHR::HeartRateSimulation::UpdateRespDepth(float delta, float target)

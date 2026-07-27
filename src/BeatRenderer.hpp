@@ -43,6 +43,21 @@ namespace SHR
         const BeatRenderingCoefficients &coefficients
     );
 
+    // Offline counterfactual entry point: continue from core-owned, post-onset-compression source
+    // stages. Python may alter those stages for a retired-effect audition, while transmission,
+    // resampling/mixing, and limiting remain the compiled production implementation.
+    AudioBuffer RenderBeatFromSourceStages(
+        ConstAudioBufferView sourceS1,
+        ConstAudioBufferView sourceS2,
+        const RenderSpec    &render
+    );
+    AudioBuffer RenderBeatFromSourceStages(
+        ConstAudioBufferView             sourceS1,
+        ConstAudioBufferView             sourceS2,
+        const RenderSpec                &render,
+        const BeatRenderingCoefficients &coefficients
+    );
+
     BeatRenderTrace TraceBeatRender(
         const HeartbeatSource &source,
         const RenderSpec      &render

@@ -46,6 +46,9 @@ namespace SHR
         void NotifyHit();
 
         PhysiologySnapshot GetSnapshot() const;
+        float GetTargetHeartRate() const noexcept;
+        float GetTargetRespirationRate() const;
+        float GetTargetRespirationDepth() const;
         SimulationState GetState() const;
         SimulationState CreateInitialState() const;
         float ComputeEquilibriumContractility(const SimulationState &state) const;

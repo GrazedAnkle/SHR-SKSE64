@@ -62,6 +62,11 @@ TEST_CASE("Float beat trace exposes source transmission and transducer domains",
 
     const SHR::BeatRenderTrace trace = SHR::TraceBeatRender(source, render);
     const SHR::AudioBuffer output = SHR::RenderBeat(source, render);
+    const SHR::AudioBuffer continued = SHR::RenderBeatFromSourceStages(
+        trace.SourceS1.ConstView(),
+        trace.SourceS2.ConstView(),
+        render
+    );
 
     CHECK(std::ranges::equal(
         trace.SourceS1.ConstView().Samples(),
@@ -80,6 +85,10 @@ TEST_CASE("Float beat trace exposes source transmission and transducer domains",
     CHECK(std::ranges::equal(
         trace.Output.ConstView().Samples(),
         output.ConstView().Samples()
+    ));
+    CHECK(std::ranges::equal(
+        trace.Output.ConstView().Samples(),
+        continued.ConstView().Samples()
     ));
 }
 

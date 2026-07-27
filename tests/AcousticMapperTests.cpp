@@ -49,6 +49,30 @@ namespace
     }
 }
 
+TEST_CASE("Lung inflation curve is core-owned and bounded", "[acoustic][respiration]")
+{
+    CHECK_THAT(
+        SHR::ComputeLungInflation(0.0F),
+        Catch::Matchers::WithinAbs(0.0F, Tolerance)
+    );
+    CHECK_THAT(
+        SHR::ComputeLungInflation(0.5F),
+        Catch::Matchers::WithinAbs(1.0F, Tolerance)
+    );
+    CHECK_THAT(
+        SHR::ComputeLungInflation(1.0F),
+        Catch::Matchers::WithinAbs(0.0F, Tolerance)
+    );
+    CHECK_THAT(
+        SHR::ComputeLungInflation(-1.0F),
+        Catch::Matchers::WithinAbs(0.0F, Tolerance)
+    );
+    CHECK_THAT(
+        SHR::ComputeLungInflation(2.0F),
+        Catch::Matchers::WithinAbs(0.0F, Tolerance)
+    );
+}
+
 TEST_CASE("Sinus render mapping matches the extraction baseline", "[acoustic][characterization]")
 {
     const SHR::BeatEvent event{

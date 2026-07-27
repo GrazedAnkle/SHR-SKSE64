@@ -122,4 +122,12 @@ their own in-game gates.
 Offline audition files preserve the compiled renderer's native channel layout; the current source and
 renderer output are stereo. Numerical analysis selects channel zero explicitly, matching reference-tool
 loading and the baseline S1 attack locator, rather than implicitly downmixing a native-layout render.
-`tools/audition_core.py` is the canonical audition client for this contract.
+`tools/audition_core.py` is the canonical audition client for this contract. `tools/rhythm_offline.py`
+and `tools/sim_offline.py` retain their steady-state measurement and trajectory-reporting surfaces as
+thin clients over `RhythmEngine`, `Runtime`, acoustic mapping, and rendering. Their `--set` options build
+one immutable coefficient aggregate and pass it through the complete run.
+
+Retired late-S1 tail/tamer experiments are isolated in `tools/legacy_s1.py`. They consume the compiled
+trace's post-onset source stage and return the altered stage to `RenderBeatFromSourceStages`, so active
+transmission, resampling/mixing, and limiting remain core-owned even in a counterfactual audition. These
+transforms are reproducibility fixtures for the purpose of documentation.

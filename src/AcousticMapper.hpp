@@ -22,6 +22,8 @@
 
 namespace SHR
 {
+    float ComputeLungInflation(float respirationPhase);
+
     RenderSpec CreateRenderSpec(const BeatEvent &event, const PhysiologySnapshot &physiology);
     RenderSpec CreateRenderSpec(
         const BeatEvent                   &event,

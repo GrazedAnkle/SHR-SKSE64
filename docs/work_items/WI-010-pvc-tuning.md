@@ -24,16 +24,16 @@ a cycle-length proxy, not literal diastolic filling time: the interval includes 
 systole, so it can materially overstate the short filling opportunity before a PVC. PVC systole is
 `max(0.55 * nominalSystole, 150 ms)`; it reaches the 150 ms floor above roughly 112 bpm and becomes longer
 than the sinus floor/curve above roughly 184 bpm. That inversion may be an intended ref7 compromise, but
-it has not been justified across HR. Finally, `engine_offline.py`'s `is_pvc` path previews the shaping
-bypasses and resample only; it still uses sinus amplitude and systole rules, so it is not PVC parity.
+it has not been justified across HR. The compiled binding now supplies actual PVC rhythm events,
+`CreateRenderSpec` amplitudes/systole, trace stages, and native-layout output; no shaping-only Python
+preview is a valid calibration fixture.
 
 ## Scope and non-goals
 
 Tune the existing PVC morphology only. Do not simply apply the sinus contractility law to an ectopic beat:
 coupling/filling, activation site, contractile state, and whether the beat ejects interact. New arrhythmia
-states and coroutine architecture are later design work. Extend the offline fixture to accept the actual
-per-beat systole, S1 amplitude, and S2 amplitude (or an equivalent Beat-state object) before using it to
-calibrate PVC constants.
+states and coroutine architecture are later design work. Build the calibration sweep from bound
+`BeatEvent` / `RenderSpec` values and compiled trace stages.
 
 ## Dependencies
 

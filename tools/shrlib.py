@@ -1,7 +1,7 @@
 """Shared helpers for the audio-analysis tools.
 
 Single definition for common IO/DSP primitives and the two parsers used by the
-compiled-core clients, legacy counterfactual tools, and reference analyzer:
+compiled-core clients, retired-effect counterfactuals, and reference analyzer:
   - signal IO + metrics (load/slice/env/attack/decay/centroid/rolloff/
     spread/f0/bands/rms/peak/crest/chirp/energy_conc)
   - parse_annotations: annotated S1/S2 landmark files (docs/references/timestamps/*.txt)
@@ -195,25 +195,6 @@ def breath_swing_problems(inflations: np.ndarray, hr: float, resp_rate: float, c
             f"uniform coverage (deviation {deviation:.3f} > {BREATH_MEDIAN_TOL}). {cause}")
     return problems
 
-
-def ventilation_targets(constants: dict[str, float], fraction: float) -> tuple[float, float]:
-    """Piecewise-linear steady-state RR/depth targets mirrored from Simulation.cpp."""
-    x = float(np.clip(fraction, 0.0, 1.0))
-    vt1 = constants["VentilationVT1Fraction"]
-    rcp = constants["VentilationRCPFraction"]
-
-    def interp(rest: float, at_vt1: float, at_rcp: float, maximum: float) -> float:
-        if x <= vt1:
-            return float(np.interp(x, (0.0, vt1), (rest, at_vt1)))
-        if x <= rcp:
-            return float(np.interp(x, (vt1, rcp), (at_vt1, at_rcp)))
-        return float(np.interp(x, (rcp, 1.0), (at_rcp, maximum)))
-
-    return (
-        interp(constants["RestingRespRate"], constants["RespRateAtVT1"],
-               constants["RespRateAtRCP"], constants["MaxRespRate"]),
-        interp(0.0, constants["RespDepthAtVT1"], constants["RespDepthAtRCP"], 1.0),
-    )
 
 # Rise/body HF contrast. See rise_body_contrast.
 HF_BAND_HZ = (150.0, 2000.0)

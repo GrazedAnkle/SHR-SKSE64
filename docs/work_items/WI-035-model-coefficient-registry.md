@@ -56,9 +56,8 @@ registry.
 ## Dependencies
 
 None. The current immutable coefficient boundary is owned by
-[ARCHITECTURE.md](../ARCHITECTURE.md#value-and-responsibility-split). This work should not block
-[WI-028](WI-028-retire-offline-mirrors.md), whose thin clients can consume the stable binding names as
-they exist now.
+[ARCHITECTURE.md](../ARCHITECTURE.md#value-and-responsibility-split). The thin offline clients consume
+the stable binding names as they exist now, so registry deduplication can proceed independently.
 
 ## Next action and decision points
 

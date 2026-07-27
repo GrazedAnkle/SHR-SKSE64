@@ -266,9 +266,9 @@ Subtle but real effects that separate synthetic from recorded. Capture as many a
      full strength at high vigor. A dry-end-relative splice restores coherent geometry but does not
      improve the timbral match. A decaying-ceiling tamer based on box-smoothed sample magnitude is
      unsuitable because its detector is carrier-phase/frequency sensitive and its monotonic-lobe premise
-     conflicts with the common multi-lobe reference morphology. `tools/engine_offline.py` retains these
-     alternatives only as explicit legacy controls for reproducibility; shipping synthesis performs
-     neither stage.
+     conflicts with the common multi-lobe reference morphology. `tools/legacy_s1.py` retains these
+     alternatives only as explicit counterfactual transforms over the compiled source stage; shipping
+     synthesis performs neither stage.
 
      The 40-80 Hz body-*fraction* gap is a source-spectrum issue rather than a tail-length problem: the
      source whomp is sub-40 Hz-heavy, so a future correction belongs to a source-brightness/EQ pass, not

@@ -1,19 +1,11 @@
-"""Steady-state rhythm layer for beat-to-beat analysis.
+"""Compiled-core steady-state rhythm client for beat-to-beat analysis.
 
-Adds the sinus steady-state branch missing from engine_offline.py: it converts a
-fixed HR, exertion, and contractility into per-beat parameters and passes them to
-engine_offline.synth_beat.
+The tool supplies one fixed operating point to the bound ``RhythmEngine``, maps each fired event through
+``create_render_spec``, and renders native-layout audio through ``shr_core``. Python owns only scenario
+construction and the independent measurement rulers below.
 
-Scope:
-  - BaseIBI RSA, preceding-RR Frank-Starling, respiratory-phase advance, and
-    optional per-beat vigor jitter
-  - sinus steady state at one operating point; no simulation dynamics, PVCs,
-    compensatory pauses, runs, or PEP hysteresis
-
-Deterministic RSA, Frank-Starling, and DSP match the engine exactly. Vigor jitter
-matches only distributionally because C++ and NumPy use different RNGs.
-
-Measurement rationale and comparison rules live in docs/MEASUREMENT_METHODS.md.
+Retired late-S1 tail/tamer controls remain explicit counterfactuals: they alter the compiled renderer's
+post-onset source stage, then return it to C++ for transmission, mixing, and limiting.
 """
 from __future__ import annotations
 
@@ -23,19 +15,17 @@ from pathlib import Path
 
 import numpy as np
 
+import core_offline
+import legacy_s1
 import shrlib
-from shrlib import SR
-import engine_offline as eo
+from shrlib import SR, analysis_channel
 
 
-_C = eo._C
+RHYTHM_FPS = 240.0
 
 
 def ref8_peak_cv_target() -> tuple[float, float] | None:
-    """Return ref8's peak-group S1 peak CV and jackknife SE.
-
-    Returns None if the measurements.json leaf is absent.
-    """
+    """Return ref8's peak-group S1 peak CV and jackknife SE."""
     path = Path(__file__).resolve().parents[1] / "docs" / "references" / "measurements.json"
     try:
         import json
@@ -45,93 +35,192 @@ def ref8_peak_cv_target() -> tuple[float, float] | None:
         return None
 
 
-def base_ibi(hr: float, resp_phase: float, exertion: float) -> float:
-    """Return RhythmEngine BaseIBI with RSA fading to zero at maximal exertion."""
-    nominal = 60.0 / hr
-    rsa = _C["RSAAmplitudeRest"] * (1.0 - exertion)
-    jitter = rsa * np.sin(2.0 * np.pi * resp_phase)
-    return max(0.1, nominal * (1.0 - jitter))
+def _counterfactual_render(
+    module,
+    source,
+    sample_rate: int,
+    render,
+    vigor: float,
+    coefficients,
+    *,
+    tail_mode: str,
+    tamer_enabled: bool,
+) -> np.ndarray:
+    trace = core_offline.trace_beat(module, source, render, coefficients)
+    source_s1 = trace["source_s1"]
+    if tamer_enabled:
+        source_s1 = legacy_s1.tame_lobe(source_s1, min(vigor, 1.0))
+    source_s1 = legacy_s1.apply_tail(
+        source_s1,
+        tail_mode,
+        baseline_dry_frames=source.s1_frames,
+    )
+    return core_offline.render_from_source_stages(
+        module,
+        source_s1,
+        trace["source_s2"],
+        sample_rate,
+        render,
+        coefficients,
+    )
 
 
-def beat_sequence(path: str | Path, hr: float, contractility: float, exertion: float,
-                  n_beats: int = 24, vigor_sigma: float | None = None, seed: int = 0,
-                  src_highpass: float | None = None, resp_rate: float | None = None,
-                  breath_depth: float | None = None,
-                  synth_options: dict | None = None) -> dict:
-    """Render a steady-state sinus run and return {audio, beats, ...}.
+def beat_sequence(
+    path: str | Path,
+    hr: float,
+    contractility: float,
+    exertion: float,
+    n_beats: int = 24,
+    vigor_sigma: float | None = None,
+    seed: int = 0,
+    src_highpass: float | None = None,
+    resp_rate: float | None = None,
+    breath_depth: float | None = None,
+    synth_options: dict | None = None,
+    *,
+    module=None,
+    coefficients=None,
+    module_dir: str | Path = core_offline.DEFAULT_MODULE_DIR,
+    render_resp_phase: float | None = None,
+) -> dict:
+    """Render a seeded steady-state sinus run through the compiled core."""
+    if hr <= 0.0:
+        raise ValueError("hr must be positive")
+    if n_beats <= 0:
+        raise ValueError("n_beats must be positive")
+    if not 0.0 <= exertion <= 1.0:
+        raise ValueError("exertion must be in [0, 1]")
 
-    Mirrors RhythmEngine fire ordering: a beat uses the IBI set by the previous
-    beat, Frank-Starling reads the preceding interval, and the next IBI and
-    respiratory phase advance from the current phase. `beats` contains per-beat
-    audio, IBI, Frank-Starling, contractility, respiratory phase, and inflation.
-    """
-    if vigor_sigma is None:
-        vigor_sigma = _C["VigorJitterScale"]  # match the engine default; pass a value to override/disable
-    s1, s2 = eo.prep_source(path, src_highpass)
-    rng = np.random.default_rng(seed)
-    synth_options = dict(synth_options or {})
+    module = module or core_offline.load_binding(module_dir)
+    coefficients = coefficients or module.default_model_coefficients
+    direct_overrides: dict[str, float] = {}
+    if vigor_sigma is not None:
+        direct_overrides["VigorJitterScale"] = vigor_sigma
+    if src_highpass is not None:
+        direct_overrides["SourceHighPassHz"] = src_highpass
+    if direct_overrides:
+        coefficients = coefficients.with_overrides(direct_overrides)
 
-    target_rate, target_depth = shrlib.ventilation_targets(_C, exertion)
-    resp_rate = target_rate if resp_rate is None else resp_rate
-    breath_depth = target_depth if breath_depth is None else breath_depth
-    nominal_ibi = 60.0 / hr
-    fs_min, fs_max = _C["FrankStarlingMin"], _C["FrankStarlingMax"]
+    values = dict(coefficients.values)
+    vigor_sigma = float(values["VigorJitterScale"])
+    target_rate, target_depth = module.ventilation_targets(exertion, coefficients)
+    resp_rate = float(target_rate if resp_rate is None else resp_rate)
+    breath_depth = float(target_depth if breath_depth is None else breath_depth)
+    if resp_rate <= 0.0:
+        raise ValueError("resp_rate must be positive")
 
-    resp_phase = 0.0
-    preceding_rr = nominal_ibi
-    next_ibi = base_ibi(hr, resp_phase, exertion)
-
-    beats = []
-    for _ in range(n_beats):
-        effective_ibi = next_ibi
-        frank_starling = float(np.clip(preceding_rr / nominal_ibi, fs_min, fs_max))
-
-        # Mirror the engine's instantaneous vigor draw: preserve excursions above the mean, clamp the
-        # artifact-prone upper tail, and keep the result nonnegative. State contractility is an input here.
-        c_beat = contractility
-        if vigor_sigma > 0.0:
-            draw = min(_C["VigorJitterMaxSigma"], rng.standard_normal())
-            c_beat = max(0.0, contractility * (1.0 + vigor_sigma * draw))
-
-        audio = eo.synth_beat(
-            s1, s2, hr, c_beat, frank_starling, resp_phase, exertion,
-            breath_depth=breath_depth, **synth_options
+    options = dict(synth_options or {})
+    unknown_options = set(options) - {"tail_mode", "tamer_enabled"}
+    if unknown_options:
+        raise ValueError(f"unknown counterfactual options: {sorted(unknown_options)}")
+    tail_mode = options.get("tail_mode", "off")
+    tamer_enabled = bool(options.get("tamer_enabled", False))
+    if tail_mode not in legacy_s1.LEGACY_TAIL_MODES:
+        raise ValueError(
+            f"unknown tail mode {tail_mode!r}; expected one of {legacy_s1.LEGACY_TAIL_MODES}"
         )
-        beats.append({"audio": audio, "ibi": effective_ibi, "frank_starling": frank_starling,
-                      "contractility": c_beat, "resp_phase": resp_phase,
-                      "lung_inflation": float(np.sin(np.pi * resp_phase))})
 
-        next_ibi = base_ibi(hr, resp_phase, exertion) # IBI to the following beat
-        preceding_rr = effective_ibi
-        resp_phase = (resp_phase + resp_rate / 60.0 * next_ibi) % 1.0
+    source, sample_rate = core_offline.prepare_source(module, path, coefficients)
+    if sample_rate != SR:
+        raise ValueError(f"analysis client requires {SR} Hz source audio, got {sample_rate}")
 
-    audio = np.concatenate([b["audio"] for b in beats])
-    return {"audio": audio, "beats": beats, "hr": hr, "exertion": exertion,
-            "contractility": contractility, "resp_rate": resp_rate,
-            "breath_depth": breath_depth, "vigor_sigma": vigor_sigma}
+    engine = module.RhythmEngine(seed=seed, coefficients=coefficients)
+    engine.init()
+    delta = 1.0 / RHYTHM_FPS
+    elapsed = 0.0
+    beats: list[dict] = []
+    max_steps = int(np.ceil(n_beats * max(60.0 / hr, 0.1) / delta * 4.0)) + 1
+    for _ in range(max_steps):
+        rhythm_phase = (elapsed * resp_rate / 60.0) % 1.0
+        event = engine.advance(
+            delta_seconds=delta,
+            heart_rate=hr,
+            respiration_phase=rhythm_phase,
+            exertion_fraction=exertion,
+            contractility=contractility,
+            pvc_chance_per_second=0.0,
+            risk_factor=0.0,
+            run_extension_chance=0.0,
+        )
+        elapsed += delta
+        if event is None:
+            continue
+
+        phase = rhythm_phase if render_resp_phase is None else render_resp_phase
+        physiology = module.PhysiologySnapshot(
+            heart_rate=hr,
+            exertion=exertion,
+            contractility=contractility,
+            contractility_excess=0.0,
+            respiration_rate=resp_rate,
+            respiration_depth=breath_depth,
+            respiration_phase=phase,
+        )
+        render = module.create_render_spec(
+            event=event,
+            physiology=physiology,
+            coefficients=coefficients,
+        )
+        if tail_mode == "off" and not tamer_enabled:
+            audio = core_offline.render_beat(module, source, render, coefficients)
+        else:
+            audio = _counterfactual_render(
+                module,
+                source,
+                sample_rate,
+                render,
+                event.vigor,
+                coefficients,
+                tail_mode=tail_mode,
+                tamer_enabled=tamer_enabled,
+            )
+        beats.append(
+            {
+                "audio": audio,
+                "event": event,
+                "render": render,
+                "ibi": float(event.ibi),
+                "filling_interval": float(event.filling_interval),
+                "contractility": float(event.vigor),
+                "resp_phase": float(phase),
+                "lung_inflation": float(module.lung_inflation(phase)),
+                "systole_duration": float(render.systole_duration),
+            }
+        )
+        if len(beats) == n_beats:
+            break
+    if len(beats) != n_beats:
+        raise RuntimeError(f"compiled RhythmEngine fired only {len(beats)} of {n_beats} requested beats")
+
+    audio = np.concatenate([beat["audio"] for beat in beats], axis=0)
+    return {
+        "audio": audio,
+        "beats": beats,
+        "hr": hr,
+        "exertion": exertion,
+        "contractility": contractility,
+        "resp_rate": resp_rate,
+        "breath_depth": breath_depth,
+        "vigor_sigma": vigor_sigma,
+        "sample_rate": sample_rate,
+        "coefficients": coefficients,
+    }
 
 
-def _s1_window(beat_audio: np.ndarray, hr: float, dur_ms: float) -> np.ndarray:
-    """Return a dur_ms onset-aligned S1 slice matching reference windows.
-
-    Uses the first 10% crossing of the running-maximum envelope, as in
-    shrlib.rise_10_90_ms. shrlib.onset_peak_idx uses the last crossing, which can
-    reset at a near-peak null and discard the rise. synth_beat starts S1 at index
-    zero, so no preceding tail invalidates the first-crossing rule.
-    """
-    systole = np.clip(eo.SYS_INT - hr * eo.SYS_SLOPE, eo.SYS_MIN, eo.SYS_MAX)
-    region = beat_audio[:int(systole * SR)]
+def _s1_window(beat_audio: np.ndarray, systole_duration: float, dur_ms: float) -> np.ndarray:
+    """Return an onset-aligned channel-zero S1 slice matching reference windows."""
+    mono = analysis_channel(beat_audio)
+    region = mono[:int(systole_duration * SR)]
     env = shrlib.env_analytic(region, SR)
-    pk = int(np.argmax(env))
+    peak = int(np.argmax(env))
     onset = 0
-    if pk > 0 and env[pk] > 0:
-        climb = np.maximum.accumulate(env[:pk + 1])
-        above = np.flatnonzero(climb >= 0.10 * env[pk])
+    if peak > 0 and env[peak] > 0:
+        climb = np.maximum.accumulate(env[:peak + 1])
+        above = np.flatnonzero(climb >= 0.10 * env[peak])
         onset = int(above[0]) if len(above) else 0
-    return region[onset:onset + int(dur_ms * 1e-3 * SR)]
+    return region[onset:onset + int(dur_ms * 1.0e-3 * SR)]
 
 
-# Shared breath-ruler contract. Keep it separate from the onset-aligned `--dur-ms` S1 metrics.
 BREATH_WIN_MS = shrlib.BREATH_WIN_MS
 MIN_BREATH_CYCLES = shrlib.MIN_BREATH_CYCLES
 BREATH_MEDIAN_TOL = shrlib.BREATH_MEDIAN_TOL
@@ -144,20 +233,10 @@ breath_swing_problems = shrlib.breath_swing_problems
 
 
 def _fixed_s1_window(beat_audio: np.ndarray) -> np.ndarray:
-    """Fixed S1-start window, ending well before S2, matching the ref20 breath calibration."""
-    return beat_audio[:int(BREATH_WIN_MS * 1e-3 * SR)]
+    """Fixed channel-zero S1-start window matching the ref20 breath calibration."""
+    return analysis_channel(beat_audio)[:int(BREATH_WIN_MS * 1.0e-3 * SR)]
 
 
-# Executable composite-estimator contract; docs/MEASUREMENT_METHODS.md owns the shared rationale.
-#
-#   window     'onset+dur_ms'  S1-onset-aligned slice, width = the caller's dur_ms  (_s1_window)
-#              'beat+fixed'    beat-start slice, width = BREATH_WIN_MS              (_fixed_s1_window)
-#              'sequence'      a statistic over the per-beat series; no audio window of its own
-#   width      whether the value moves with window width. Peak-derived values are invariant once the peak
-#              is inside the window; RMS- and centroid-derived values are sensitive and require matched
-#              widths across comparisons.
-#   converges  the sampling process the value must be swept over before it is trusted; None = no
-#              periodic sampling underneath, so a modest beat count is fine.
 ESTIMATOR_METADATA = {
     "peak":                  {"window": "onset+dur_ms", "width": "invariant", "converges": None},
     "crest":                 {"window": "onset+dur_ms", "width": "sensitive", "converges": None},
@@ -178,144 +257,201 @@ ESTIMATOR_METADATA = {
 
 
 def measure_sequence(seq: dict, dur_ms: float = 128.0, warmup: int = 4) -> dict:
-    """Return per-beat S1 metrics and their coefficients of variation.
-
-    Skips `warmup` beats so RSA and filling reach steady state. Peak CV supports
-    within-signal spread analysis; cross-recording levels remain confounded.
-    """
-    # Breath metrics include warmup beats. A-weight the whole run once, then slice fixed windows; applying
-    # the filter per short window circularly wraps its tail (shrlib.a_weight).
-    weighted_run = shrlib.a_weight(np.concatenate([b["audio"] for b in seq["beats"]]), SR)
-    starts = np.concatenate([[0], np.cumsum([len(b["audio"]) for b in seq["beats"][:-1]])])
-    breath_win = int(BREATH_WIN_MS * 1e-3 * SR)
+    """Return the preserved per-beat S1 metrics over compiled native-layout renders."""
+    native_run = np.concatenate([beat["audio"] for beat in seq["beats"]], axis=0)
+    weighted_run = shrlib.a_weight(analysis_channel(native_run), SR)
+    starts = np.concatenate(
+        [[0], np.cumsum([len(beat["audio"]) for beat in seq["beats"][:-1]])]
+    )
+    breath_win = int(BREATH_WIN_MS * 1.0e-3 * SR)
 
     peaks, crests, cents = [], [], []
     breath_cents, aw_rms, inflations = [], [], []
-    for i, (b, start) in enumerate(zip(seq["beats"], starts)):
-        s1 = _s1_window(b["audio"], seq["hr"], dur_ms)
-        breath_cents.append(shrlib.centroid(_fixed_s1_window(b["audio"]), SR))
+    for index, (beat, start) in enumerate(zip(seq["beats"], starts)):
+        s1 = _s1_window(beat["audio"], beat["systole_duration"], dur_ms)
+        breath_cents.append(shrlib.centroid(_fixed_s1_window(beat["audio"]), SR))
         aw_rms.append(shrlib.rms(weighted_run[start:start + breath_win]))
-        inflations.append(b["lung_inflation"])
-        if i >= warmup:
+        inflations.append(beat["lung_inflation"])
+        if index >= warmup:
             peaks.append(shrlib.peak(s1))
             crests.append(shrlib.crest(s1))
-            # Onset-aligned, like the ref8 brightness target this is printed against. The breath
-            # ruler's beat-start window is a different anchor and belongs to `breath_cents` only.
             cents.append(shrlib.centroid(s1, SR))
     peaks, crests, cents = np.array(peaks), np.array(crests), np.array(cents)
-    breath_cents, aw_rms, inflations = np.array(breath_cents), np.array(aw_rms), np.array(inflations)
+    breath_cents = np.array(breath_cents)
+    aw_rms = np.array(aw_rms)
+    inflations = np.array(inflations)
 
-    def cv(x: np.ndarray) -> float:
-        return float(np.std(x) / np.mean(x)) if np.mean(x) else 0.0
+    def cv(values: np.ndarray) -> float:
+        return float(np.std(values) / np.mean(values)) if np.mean(values) else 0.0
 
     slow, fast = _slow_fast(peaks)
     expiration, inspiration = breath_groups(inflations)
-
-    # Both cycle count and phase coverage are mandatory. A rigid phase lock cannot be repaired by more
-    # beats; callers must reject every returned problem.
     problems = breath_swing_problems(inflations, seq["hr"], seq["resp_rate"], shrlib.SINE)
-    return {"peak": peaks, "crest": crests, "centroid": cents,
-            "peak_cv": cv(peaks), "peak_cv_slow": slow, "peak_cv_fast": fast,
-            "centroid_cv": cv(cents),
-            "peak_mean": float(peaks.mean()), "crest_mean_db": float(20 * np.log10(crests.mean())),
-            "aw_swing_db": breath_swing_db(aw_rms, inflations),
-            "centroid_ratio": breath_group_ratio(breath_cents, inflations),
-            "inflation_exp_median": float(np.median(inflations[expiration])),
-            "inflation_insp_median": float(np.median(inflations[inspiration])),
-            "breath_cycles": breath_cycles(len(inflations), seq["hr"], seq["resp_rate"]),
-            "breath_problems": problems}
+    return {
+        "peak": peaks,
+        "crest": crests,
+        "centroid": cents,
+        "peak_cv": cv(peaks),
+        "peak_cv_slow": slow,
+        "peak_cv_fast": fast,
+        "centroid_cv": cv(cents),
+        "peak_mean": float(peaks.mean()),
+        "crest_mean_db": float(20 * np.log10(crests.mean())),
+        "aw_swing_db": breath_swing_db(aw_rms, inflations),
+        "centroid_ratio": breath_group_ratio(breath_cents, inflations),
+        "inflation_exp_median": float(np.median(inflations[expiration])),
+        "inflation_insp_median": float(np.median(inflations[inspiration])),
+        "breath_cycles": breath_cycles(len(inflations), seq["hr"], seq["resp_rate"]),
+        "breath_problems": problems,
+    }
 
 
-def breath_period_beats(a: np.ndarray) -> int:
+def breath_period_beats(values: np.ndarray) -> int:
     """Return the dominant 2..len/3-beat period by autocorrelation."""
-    a = np.asarray(a, float)
-    s = a - a.mean()
-    ac = np.correlate(s, s, "full")[len(s) - 1:]
-    hi = max(3, len(a) // 3)
-    return 2 + int(np.argmax(ac[2:hi])) if hi > 2 else 3
+    values = np.asarray(values, float)
+    centered = values - values.mean()
+    autocorrelation = np.correlate(centered, centered, "full")[len(centered) - 1:]
+    high = max(3, len(values) // 3)
+    return 2 + int(np.argmax(autocorrelation[2:high])) if high > 2 else 3
 
 
-def _slow_fast(a: np.ndarray, period: int | None = None, n_harm: int = 2) -> tuple[float, float]:
-    """Split per-beat CV into respiratory and residual components.
-
-    Fits linear drift plus `n_harm` harmonics of the breath period. This avoids a
-    successive-difference high-pass misreading short breath periods as fast
-    variation. Returns (cv_slow, cv_fast).
-    """
-    a = np.asarray(a, float)
-    n = len(a)
-    if n < 6 or a.mean() == 0:
+def _slow_fast(
+    values: np.ndarray,
+    period: int | None = None,
+    n_harm: int = 2,
+) -> tuple[float, float]:
+    """Split per-beat CV into respiratory and residual components."""
+    values = np.asarray(values, float)
+    count = len(values)
+    if count < 6 or values.mean() == 0:
         return 0.0, 0.0
-    p = period or breath_period_beats(a)
-    t = np.arange(n)
-    cols = [np.ones(n), t]                                      # DC + linear drift (excluded from slow)
-    for h in range(1, n_harm + 1):
-        cols += [np.cos(2 * np.pi * h * t / p), np.sin(2 * np.pi * h * t / p)]
-    X = np.column_stack(cols)
-    coef, *_ = np.linalg.lstsq(X, a, rcond=None)
-    harm = X[:, 2:] @ coef[2:]                                  # breath component (zero-mean)
-    resid = a - X @ coef
-    mean = a.mean()
-    return float(harm.std() / mean), float(resid.std() / mean)
+    period = period or breath_period_beats(values)
+    time = np.arange(count)
+    columns = [np.ones(count), time]
+    for harmonic in range(1, n_harm + 1):
+        columns += [
+            np.cos(2 * np.pi * harmonic * time / period),
+            np.sin(2 * np.pi * harmonic * time / period),
+        ]
+    design = np.column_stack(columns)
+    coefficients, *_ = np.linalg.lstsq(design, values, rcond=None)
+    respiratory = design[:, 2:] @ coefficients[2:]
+    residual = values - design @ coefficients
+    mean = values.mean()
+    return float(respiratory.std() / mean), float(residual.std() / mean)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("source")
+    parser.add_argument(
+        "--module-dir",
+        type=Path,
+        default=core_offline.DEFAULT_MODULE_DIR,
+        help="directory containing shr_pybind (default: build/pybind)",
+    )
+    parser.add_argument("--hr", type=float, default=180)
+    parser.add_argument("--contractility", type=float, default=1.0)
+    parser.add_argument("--exertion", type=float, default=1.0)
+    parser.add_argument("--resp-rate", type=float, default=None)
+    parser.add_argument("--breath-depth", type=float, default=None)
+    parser.add_argument("--beats", type=int, default=24)
+    parser.add_argument(
+        "--vigor-sigma",
+        type=float,
+        default=None,
+        help="override VigorJitterScale for this run; 0 disables it",
+    )
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--dur-ms", type=float, default=128.0)
+    parser.add_argument(
+        "--set",
+        action="append",
+        metavar="NAME=VALUE",
+        default=[],
+        help="apply a named immutable model-coefficient override; repeatable",
+    )
+    parser.add_argument(
+        "--legacy-tail-mode",
+        choices=legacy_s1.LEGACY_TAIL_MODES,
+        default="off",
+        help="late-S1 counterfactual; fixed/dry-end re-enable retired tail variants",
+    )
+    parser.add_argument(
+        "--legacy-tamer",
+        action="store_true",
+        help="late-S1 counterfactual: re-enable the retired secondary-lobe tamer",
+    )
+    parser.add_argument("--out", help="optional native-layout WAV of the beat run")
+    args = parser.parse_args()
+
+    module = core_offline.load_binding(args.module_dir)
+    coefficients, overrides = core_offline.coefficients_from_args(module, args.set)
+    core_offline.print_overrides(overrides)
+    seq = beat_sequence(
+        args.source,
+        args.hr,
+        args.contractility,
+        args.exertion,
+        args.beats,
+        args.vigor_sigma,
+        args.seed,
+        resp_rate=args.resp_rate,
+        breath_depth=args.breath_depth,
+        synth_options={
+            "tail_mode": args.legacy_tail_mode,
+            "tamer_enabled": args.legacy_tamer,
+        },
+        module=module,
+        coefficients=coefficients,
+    )
+    measured = measure_sequence(seq, args.dur_ms)
+    beats_per_breath = args.hr / seq["resp_rate"]
+    print(
+        f"HR{args.hr:.0f} c{args.contractility:.2f} ex{args.exertion:.2f} "
+        f"vigor_sigma{seq['vigor_sigma']:.2f} respRate{seq['resp_rate']:.1f} "
+        f"depth{seq['breath_depth']:.2f} beats/breath{beats_per_breath:.2f} "
+        f"tail={args.legacy_tail_mode} tamer={'on' if args.legacy_tamer else 'off'} "
+        f"({args.beats} beats, {len(measured['peak'])} measured)"
+    )
+    target = ref8_peak_cv_target()
+    note = (
+        f"   (ref8 peak {target[0] * 100:.1f}% +/-{target[1] * 100:.1f}% SE over 8 beats; "
+        "NOT a calibration target yet - see data_citations.toml)"
+        if target
+        else ""
+    )
+    print(
+        f"  S1 peak-amp: mean {measured['peak_mean']:.3f}  "
+        f"CV {measured['peak_cv'] * 100:.1f}%{note}"
+    )
+    print(
+        f"  S1 brightness (centroid): CV {measured['centroid_cv'] * 100:.1f}%   "
+        "(within-signal only - width-sensitive, no valid cross-recording target)"
+    )
+    print(f"  S1 crest: {measured['crest_mean_db']:.1f} dB mean")
+    targets = breath_group_median_targets(shrlib.SINE)
+    status = "UNSOUND - do not calibrate on this" if measured["breath_problems"] else "sound"
+    print(
+        f"  breath top/bottom 30%: A-weighted swing {measured['aw_swing_db']:.2f} dB  "
+        f"centroid ratio {measured['centroid_ratio']:.3f}  [{status}]"
+    )
+    print(
+        f"    over {measured['breath_cycles']:.1f} respiratory cycles; inflation-group medians "
+        f"{measured['inflation_exp_median']:.3f}/{measured['inflation_insp_median']:.3f} "
+        f"vs {targets[0]:.3f}/{targets[1]:.3f} under uniform phase coverage"
+    )
+    for problem in measured["breath_problems"]:
+        print(f"  WARNING: {problem}", file=sys.stderr)
+    print("  per-beat peak-amp: " + " ".join(f"{peak:.3f}" for peak in measured["peak"]))
+    if args.out:
+        import soundfile as sf
+        sf.write(args.out, np.clip(seq["audio"], -1, 1), SR, subtype="PCM_16")
+        print(
+            f"  wrote native-layout {args.out}  {len(seq['audio']) / SR:.2f}s  "
+            f"{seq['audio'].shape[1]} channels"
+        )
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("source")
-    ap.add_argument("--hr", type=float, default=180)
-    ap.add_argument("--contractility", type=float, default=1.0)
-    ap.add_argument("--exertion", type=float, default=1.0)
-    ap.add_argument("--resp-rate", type=float, default=None,
-                    help="override the steady-state RR target (breaths/min)")
-    ap.add_argument("--breath-depth", type=float, default=None,
-                    help="override normalized tidal depth [0,1]")
-    ap.add_argument("--beats", type=int, default=24)
-    ap.add_argument("--vigor-sigma", type=float, default=None, help="per-beat contractility jitter std "
-                    "(scaled by contractility); default = VigorJitterScale from Constants.hpp; 0 = disable")
-    ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--dur-ms", type=float, default=128.0, help="S1 window (match the reference group)")
-    ap.add_argument("--set", action="append", metavar="NAME=VALUE", default=[],
-                    help="override a Constants.hpp value for this run; repeatable")
-    ap.add_argument("--legacy-tail-mode", choices=eo.LEGACY_TAIL_MODES, default="off",
-                    help="late-S1 audit control; fixed/dry-end re-enable retired tail variants")
-    ap.add_argument("--legacy-tamer", action="store_true",
-                    help="late-S1 audit control: re-enable the retired secondary-lobe tamer")
-    ap.add_argument("--out", help="optional wav of the beat run")
-    a = ap.parse_args()
-    eo.apply_overrides(a.set)
-
-    seq = beat_sequence(
-        a.source, a.hr, a.contractility, a.exertion, a.beats, a.vigor_sigma, a.seed,
-        resp_rate=a.resp_rate, breath_depth=a.breath_depth,
-        synth_options={"tail_mode": a.legacy_tail_mode, "tamer_enabled": a.legacy_tamer}
-    )
-    m = measure_sequence(seq, a.dur_ms)
-    beats_per_breath = a.hr / seq["resp_rate"]
-    print(f"HR{a.hr:.0f} c{a.contractility:.2f} ex{a.exertion:.2f} "
-          f"vigor_sigma{seq['vigor_sigma']:.2f} respRate{seq['resp_rate']:.1f} "
-          f"depth{seq['breath_depth']:.2f} beats/breath{beats_per_breath:.2f} "
-          f"tail={a.legacy_tail_mode} tamer={'on' if a.legacy_tamer else 'off'} "
-          f"({a.beats} beats, {len(m['peak'])} measured)")
-    # Print the live leaf and its uncertainty as context; data_citations.toml records why it is not a target.
-    target = ref8_peak_cv_target()
-    note = (f"   (ref8 peak {target[0]*100:.1f}% +/-{target[1]*100:.1f}% SE over 8 beats; NOT a calibration"
-            f" target yet - see data_citations.toml)" if target else "")
-    print(f"  S1 peak-amp: mean {m['peak_mean']:.3f}  CV {m['peak_cv']*100:.1f}%{note}")
-    # No brightness-CV target: centroid CV is width-sensitive and needs an explicitly matched window.
-    print(f"  S1 brightness (centroid): CV {m['centroid_cv']*100:.1f}%   (within-signal only - "
-          f"width-sensitive, no valid cross-recording target)")
-    print(f"  S1 crest: {m['crest_mean_db']:.1f} dB mean")
-    targets = breath_group_median_targets(shrlib.SINE)  # the ENGINE's inflation curve
-    status = "UNSOUND - do not calibrate on this" if m["breath_problems"] else "sound"
-    print(f"  breath top/bottom 30%: A-weighted swing {m['aw_swing_db']:.2f} dB  "
-          f"centroid ratio {m['centroid_ratio']:.3f}  [{status}]")
-    print(f"    over {m['breath_cycles']:.1f} respiratory cycles; inflation-group medians "
-          f"{m['inflation_exp_median']:.3f}/{m['inflation_insp_median']:.3f} "
-          f"vs {targets[0]:.3f}/{targets[1]:.3f} under uniform phase coverage")
-    for problem in m["breath_problems"]:
-        print(f"  WARNING: {problem}", file=sys.stderr)
-    print("  per-beat peak-amp: " + " ".join(f"{p:.3f}" for p in m["peak"]))
-    if a.out:
-        import soundfile as sf
-        sf.write(a.out, np.clip(seq["audio"], -1, 1), SR, subtype="PCM_16")
-        print(f"  wrote {a.out}  {len(seq['audio'])/SR:.2f}s")
+    main()

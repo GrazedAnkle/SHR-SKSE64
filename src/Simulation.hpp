@@ -24,6 +24,18 @@
 
 namespace SHR
 {
+    struct VentilationTargets
+    {
+        float Rate;
+        float Depth;
+    };
+
+    VentilationTargets ComputeVentilationTargets(float normalizedExertion);
+    VentilationTargets ComputeVentilationTargets(
+        float normalizedExertion,
+        const SimulationModelCoefficients &coefficients
+    );
+
     struct PlayerState
     {
         bool IsDead      = false;
@@ -64,6 +76,9 @@ namespace SHR
         void NotifyHit();
 
         PhysiologySnapshot GetSnapshot() const;
+        float GetTargetHeartRate() const noexcept;
+        float GetTargetRespirationRate() const;
+        float GetTargetRespirationDepth() const;
         SimulationState GetState() const;
         SimulationState CreateInitialState() const;
         float ComputeEquilibriumContractility(const SimulationState &state) const;

@@ -59,6 +59,21 @@ namespace
         }
     }
 
+    void ValidateSourceStages(
+        SHR::ConstAudioBufferView sourceS1,
+        SHR::ConstAudioBufferView sourceS2
+    )
+    {
+        if (
+            sourceS1.GetFormat() != sourceS2.GetFormat() ||
+            sourceS1.Empty() ||
+            sourceS2.Empty()
+        )
+        {
+            throw std::invalid_argument("heartbeat source stages are not renderable");
+        }
+    }
+
     void ValidateRender(const SHR::RenderSpec &render)
     {
         const std::array values{
@@ -382,6 +397,48 @@ SHR::AudioBuffer SHR::RenderBeat(
     AudioBuffer output = MixTransducerInput(
         sourceS1.ConstView(),
         sourceS2.ConstView(),
+        render,
+        coefficients
+    );
+    ApplySoftKnee(output.View(), coefficients);
+    return output;
+}
+
+SHR::AudioBuffer SHR::RenderBeatFromSourceStages(
+    ConstAudioBufferView sourceS1,
+    ConstAudioBufferView sourceS2,
+    const RenderSpec    &render
+)
+{
+    return RenderBeatFromSourceStages(
+        sourceS1,
+        sourceS2,
+        render,
+        DefaultModelCoefficients().BeatRendering
+    );
+}
+
+SHR::AudioBuffer SHR::RenderBeatFromSourceStages(
+    ConstAudioBufferView             sourceS1,
+    ConstAudioBufferView             sourceS2,
+    const RenderSpec                &render,
+    const BeatRenderingCoefficients &coefficients
+)
+{
+    ValidateSourceStages(sourceS1, sourceS2);
+    ValidateRender(render);
+
+    AudioBuffer transmittedS1 = CopyBuffer(sourceS1);
+    AudioBuffer transmittedS2 = CopyBuffer(sourceS2);
+    ApplyTransmission(
+        transmittedS1,
+        transmittedS2,
+        render.LowPassCutoffHz,
+        coefficients
+    );
+    AudioBuffer output = MixTransducerInput(
+        transmittedS1.ConstView(),
+        transmittedS2.ConstView(),
         render,
         coefficients
     );

@@ -68,9 +68,6 @@ evidence links, and decision points.
   submitted-buffer lifetime explicit, including failed submission and shutdown.
 - [WI-023: co-save record validation](work_items/WI-023-cosave-record-validation.md) defines malformed and
   future-version fallback before changing the persisted-state representation.
-- [WI-028: retire remaining offline Python mirrors](work_items/WI-028-retire-offline-mirrors.md) reduces
-  `rhythm_offline.py` and `sim_offline.py` to thin clients over the compiled binding while preserving
-  their analysis and immutable coefficient-sweep surfaces.
 - [WI-029: offline binding CI gate](work_items/WI-029-offline-binding-ci-gate.md) runs the binding build
   and golden checks in CI so a core regression fails automatically.
 - [WI-031: pytest migration of the golden checkers](work_items/WI-031-pytest-golden-checkers.md) runs the
@@ -88,8 +85,8 @@ evidence links, and decision points.
 Offline execution now runs on the compiled core through the Python binding, with deterministic golden
 scenarios as the primary acceptance gate for physiology, rhythm, and DSP changes;
 [ARCHITECTURE.md](ARCHITECTURE.md#offline-execution) owns that boundary, including native-layout audition
-audio, explicit channel-zero analysis, and immutable coefficient sweeps. WI-028 plus WI-029 close the
-remaining offline threads.
+audio, explicit channel-zero analysis, thin rhythm/trajectory clients, retired-effect counterfactuals,
+and immutable coefficient sweeps. WI-029 closes the remaining CI thread.
 
 ## Untriaged ideas
 

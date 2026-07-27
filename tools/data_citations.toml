@@ -52,7 +52,7 @@ docs = ["REFERENCE_ANALYSIS.md"]
 # reference line's own SE, or an engine bound to its closed form over the constants, both re-derive on
 # every `ref_analyze --all` regen instead of freezing stale. Use a formula when the value is DERIVED
 # (an analytic function of constants and/or leaves); use a literal when it is MEASURED (BreathAmpDepth's
-# engine comes from engine_offline, its tolerance from the ear) and no formula can stand in.
+# engine comes from the compiled-core client, its tolerance from the ear) and no formula can stand in.
 #
 # Every [ref]- and [dsp]-tagged constant must appear here or in [[uncited]] below. A constant tuned
 # against a reference with no leaf to point at is the bug this relation exists to prevent.

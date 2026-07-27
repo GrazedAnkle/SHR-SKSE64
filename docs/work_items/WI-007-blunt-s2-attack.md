@@ -5,8 +5,9 @@ Status: `[NEXT]`
 ## Outcome and acceptance criteria
 
 The engine S2 reaches its envelope peak on the reference timescale without shifting its established
-fundamental or adding a site-specific P2 clap by default. The source/mirror paths remain in parity, the
-systole-law comparison does not absorb the S2 shape defect, and an ear test prefers the result.
+fundamental or adding a site-specific P2 clap by default. The compiled source/render paths remain in
+parity, the systole-law comparison does not absorb the S2 shape defect, and an ear test prefers the
+result.
 
 ## Current conclusion
 
@@ -30,10 +31,10 @@ adding a new envelope stage; do not change the S1 boundary taper as collateral w
 
 ## Next action and decision points
 
-Regenerate reference S2 rise distributions and prototype an
-S2-specific decaying-envelope ceiling in `tools/engine_offline.py`. Compare source-only, current 5 ms
-fade-in, shorter/no fade-in, and shaped variants. Ask the maintainer to compare the
-unshaped and shaped "dub" before porting it to C++.
+Regenerate reference S2 rise distributions and use the compiled trace/source-stage re-entry path to
+prototype an S2-specific decaying-envelope ceiling. Compare source-only, current 5 ms fade-in,
+shorter/no fade-in, and shaped variants. Ask the maintainer to compare the unshaped and shaped "dub"
+before adding a production C++ stage.
 
 ## Observed separate work
 
