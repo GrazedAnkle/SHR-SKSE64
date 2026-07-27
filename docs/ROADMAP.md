@@ -73,6 +73,23 @@ evidence links, and decision points.
 - [WI-034: MCM capability](work_items/WI-034-mcm-capability.md) adds in-game editing for selected
   subject/runtime and adapter settings after persistence, live-application, thread-delivery, and packaging
   semantics are settled.
+- The heart-rate-level change detection in `SkyrimHeartRate.cpp` decides *when* to consult
+  `NotificationPolicy`, which owns only message selection. That edge detection is untested logic sitting in
+  the one file nothing can test; a small testable level tracker would close it.
+
+### Project maintainability
+
+Duplication, contract, and build-hygiene items. These are engineering maintenance rather than model or
+evidence work, and none of them changes runtime behavior.
+
+| ID | Outcome | Status | Blocker or dependency | Next action |
+|---|---|---|---|---|
+| [WI-035](work_items/WI-035-golden-check-consolidation.md) | One verification path and one capture path for offline goldens | `[NEXT]` | None | Settle the shared per-domain module surface |
+| [WI-036](work_items/WI-036-native-test-ci-gate.md) | The C++ unit tests run in CI | `[NEXT]` | None | Verify a plugin-free tests configure succeeds |
+| [WI-037](work_items/WI-037-core-plugin-separation.md) | The core/plugin boundary is expressed by source layout | `[NEEDS DESIGN]` | WI-036 should land first | Choose where shared value headers live |
+| [WI-038](work_items/WI-038-fixture-single-sourcing.md) | Beat-render fixtures exist once, not once per language | `[NEEDS DESIGN]` | Sequence after WI-035 | Choose the direction of derivation |
+| [WI-039](work_items/WI-039-python-project-structure.md) | Declared Python project config; no `sys.path` repair | `[NEEDS DESIGN]` | Sequence after WI-035 | Settle how the compiled binding is resolved |
+| [WI-040](work_items/WI-040-formatting-standards.md) | Formatting enforced by tool, not discipline | `[NEEDS DESIGN]` | Sequence after WI-037 and WI-039 | Fit a C++ config and measure the resulting diff |
 
 Offline execution now runs on the compiled core through the Python binding, with deterministic golden
 scenarios as the primary acceptance gate for physiology, rhythm, and DSP changes;

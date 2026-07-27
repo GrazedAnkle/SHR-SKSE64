@@ -45,8 +45,6 @@ if(BUILD_PLUGIN)
     )
 endif()
 
-set(PUBLIC_HEADER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}")
-
 set(headers
     src/AcousticMapper.hpp
     src/AudioBuffer.hpp
@@ -140,7 +138,6 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}
 ## Add CMake features
 ########################################################################################################################
 include(CheckIPOSupported)
-include(GNUInstallDirs)
 
 ########################################################################################################################
 ## Find dependencies
@@ -188,10 +185,9 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     )
 endif()
 
+# Applied per target below rather than globally: the pybind11 extension deliberately opts out.
 check_ipo_supported(RESULT USE_IPO OUTPUT IPO_OUTPUT)
-if(USE_IPO)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
-else()
+if(NOT USE_IPO)
     message(WARNING "Interprocedural optimizations are not supported.")
 endif()
 
@@ -236,6 +232,8 @@ target_include_directories(shr_core
 
 target_compile_features(shr_core PUBLIC cxx_std_23)
 
+set_target_properties(shr_core PROPERTIES INTERPROCEDURAL_OPTIMIZATION ${USE_IPO})
+
 ########################################################################################################################
 ## Configure target DLL
 ########################################################################################################################
@@ -244,16 +242,12 @@ if(BUILD_PLUGIN)
 
     add_library("${PROJECT_NAME}::${PROJECT_NAME}" ALIAS "${PROJECT_NAME}")
 
+    set_target_properties(${PROJECT_NAME} PROPERTIES INTERPROCEDURAL_OPTIMIZATION ${USE_IPO})
+
     target_include_directories(${PROJECT_NAME}
         PRIVATE
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
             $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
-            $<INSTALL_INTERFACE:src>
-    )
-
-    target_include_directories(${PROJECT_NAME}
-        PUBLIC
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     )
 
     target_link_libraries(${PROJECT_NAME}
@@ -301,23 +295,12 @@ if(BUILD_PLUGIN)
         endif()
     endif()
 
-    install(
-        DIRECTORY "${PUBLIC_HEADER_DIR}"
-        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
-    )
-
-    install(
-        TARGETS ${PROJECT_NAME}
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    )
-
     # Automatic deployment to FOMOD directory.
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         set(BUILD_NAME "Debug")
     else()
         set(BUILD_NAME "Release")
     endif()
-    install(DIRECTORY DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Distribution/Papyrus${BUILD_NAME}/")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/Distribution/Plugin${BUILD_NAME}/"
     )

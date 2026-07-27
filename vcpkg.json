@@ -8,24 +8,8 @@
         "pocketfft"
       ]
     },
-    "scripts": {
-      "description": "Install Papyrus sources for this program to develop on top of it."
-    },
-    "scripts-dev": {
-      "description": "Install Papyrus sources necessary to develop scripts for this plugin.",
-      "dependencies": [
-        "bethesda-skyrim-scripts",
-        {
-          "name": "skse",
-          "default-features": false,
-          "features": [
-            "scripts"
-          ]
-        }
-      ]
-    },
     "plugin": {
-      "description": "Build the SKSE plugin.",
+      "description": "Build the SKSE plugin. Includes CommonLibSSE-NG's dependencies: it is consumed as a git submodule via add_subdirectory, so its own manifest does not drive resolution and this one must supply what its CMakeLists resolves (directxtk, rapidcsv, fmt, xbyak, spdlog).",
       "dependencies": [
         "toml11",
         "spdlog",

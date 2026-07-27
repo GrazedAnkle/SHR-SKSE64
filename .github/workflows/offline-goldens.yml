@@ -83,5 +83,9 @@ jobs:
           call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat" -arch=amd64
           python tools\build_pybind.py
 
-      - name: Verify compiled-core goldens
-        run: python -m pytest tests/golden --module-dir build/pybind
+      - name: Verify compiled-core goldens and run the Python suite
+        run: python -m pytest tests --module-dir build/pybind
+
+      # Needs the built binding, so it runs here rather than in the docs workflow. WI-035 folds it in above.
+      - name: Verify the immutable coefficient-override contract
+        run: python tools/check_coefficient_overrides.py --module-dir build/pybind

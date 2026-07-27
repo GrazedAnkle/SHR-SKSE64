@@ -19,6 +19,14 @@ SKSE event sinks and the player update hook are guaranteed to share a thread. It
 architectural uncertainty and a possible data-race risk, not a confirmed defect until the engine callback
 contract is established.
 
+The adapter's own state shape makes this harder to answer than it needs to be. `SkyrimHeartRate.cpp` keeps
+four independent mutable file-scope objects - the runtime, the heartbeat voice, the last game-hours sample,
+and the previous heart-rate level - alongside the process-global configuration and the input handler's
+listening flag. Each has its own implicit lifetime and its own implicit writer. Determining the threading
+contract means answering the question separately for six things rather than once for one owner, so
+consolidating them into a single named adapter-state owner is worth considering as a preparatory step
+rather than as a consequence of whatever contract is chosen.
+
 ## Scope and non-goals
 
 Establish and encode the actual threading contract. Prefer single-writer model state with a small event

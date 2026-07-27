@@ -127,12 +127,13 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 python tools/build_pybind.py
-python -m pytest tests/golden --module-dir build/pybind
+python -m pytest tests --module-dir build/pybind
 ```
 
-The pytest suite reports one case for each compiled-core golden: source
-conditioning, beat rendering, rhythm/mapping, and full trajectories. Point
-`--module-dir` at another binding tree when needed. `tools/check_goldens.py`
+That runs the whole Python suite: one case for each compiled-core golden (source
+conditioning, beat rendering, rhythm/mapping, and full trajectories) plus the
+analysis and offline-client tests. Narrow it to `tests/golden` for the goldens
+alone. Point `--module-dir` at another binding tree when needed. `tools/check_goldens.py`
 remains a convenience wrapper (and supports `--build`); its verify mode launches
 that same pytest suite. The individual `tools/check_*_golden.py` tools remain
 runnable for a focused check or `--capture`; use `tools/check_goldens.py

@@ -6,6 +6,10 @@ Every ``constexpr`` in ``src/Constants.hpp`` must have a provenance tag and appe
 classified non-live constant. A small deliberately broken fixture proves that missing, duplicate, and
 mistyped entries are detected by this gate.
 
+The regexes below match a narrow, stable subset of the two headers' grammar. If a richer parse is ever
+needed - nested conditionals, macro-built entries, anything wanting real preprocessing - generate one
+header from the other instead of extending the parser.
+
 Stdlib-only so it can run in CI.
 
 Usage:  python tools/check_constants.py [--root .]

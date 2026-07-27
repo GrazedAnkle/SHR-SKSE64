@@ -47,6 +47,14 @@ The current implementation is startup-oriented rather than reconfigurable:
 - the distribution contains only the native plugin and heartbeat asset, with no Papyrus script, host
   plugin form, translation, or MCM layout.
 
+The project also carries no Papyrus build configuration. Git history holds a deleted set - three Pyro
+project files (`Debug.ppj`, `Debug-Tests.ppj`, `Release.ppj`) and `scripts` / `scripts-dev` vcpkg manifest
+features installing Bethesda and SKSE Papyrus sources - but they are a reference shape at best, not a
+starting point: they imported from `contrib/Distribution/PapyrusSources` and `PapyrusTestSources`, neither
+of which exists, and `Release.ppj` pointed at a `build/relwithdebinfo-msvc` tree that is not a configured
+preset. Authoring the compile and packaging workflow against this item's chosen script set is part of its
+scope.
+
 Adding a menu without first defining authority and application semantics would therefore create two
 competing configuration systems and several apparent controls that do not update the live subsystem.
 

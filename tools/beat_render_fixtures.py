@@ -1,9 +1,8 @@
 """Shared beat-render fixture specs and stage names.
 
-These mirror the fixtures in ``tests/BeatRenderFixtures.hpp`` (the compiled source of record). Drift is
-guarded automatically: ``check_beat_renderer_golden.py`` drives the binding with these specs to both
-generate and verify the golden manifest, so a mismatched value here fails that check rather than passing
-silently.
+Hand-transcribed from ``tests/BeatRenderFixtures.hpp``; edit both files together. Drift is caught in one
+direction only: a value changed here fails ``check_beat_renderer_golden.py``, while one changed there
+fails nothing, because the manifest is generated from this file. WI-038 owns removing the transcription.
 """
 from __future__ import annotations
 
