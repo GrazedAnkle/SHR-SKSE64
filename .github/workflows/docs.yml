@@ -5,12 +5,14 @@ on:
     paths:
       - "docs/**"
       - "src/**"
+      - "tests/fixtures/model_coefficient_registry/**"
       - "tools/**"
       - ".github/workflows/docs.yml"
   pull_request:
     paths:
       - "docs/**"
       - "src/**"
+      - "tests/fixtures/model_coefficient_registry/**"
       - "tools/**"
 
 jobs:

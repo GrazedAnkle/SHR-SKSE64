@@ -8,8 +8,8 @@ the binding.
     python tools/check_goldens.py --build       # build the binding first, then verify
     python tools/check_goldens.py --capture      # regenerate every manifest (only after an intended retune)
 
-Each checker is also runnable on its own for a focused capture/verify; this runner just forwards
-``--module-dir``/``--capture`` to all of them and aggregates pass/fail.
+Verification is one pytest invocation with a distinct case for each golden. Each checker remains runnable
+on its own for focused verification or capture; ``--capture`` forwards to all four authoring CLIs.
 """
 from __future__ import annotations
 
@@ -60,9 +60,19 @@ def main() -> None:
         if build != 0:
             sys.exit("binding build failed; aborting golden checks")
 
+    if not args.capture:
+        check = [
+            sys.executable,
+            "-m",
+            "pytest",
+            str(ROOT / "tests" / "golden"),
+            "--module-dir",
+            str(args.module_dir),
+        ]
+        sys.exit(subprocess.run(check).returncode)
+
     forwarded = ["--module-dir", str(args.module_dir)]
-    if args.capture:
-        forwarded.append("--capture")
+    forwarded.append("--capture")
 
     results = {name: _run(ROOT / "tools" / name, forwarded) for name in CHECKERS}
 

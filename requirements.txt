@@ -7,3 +7,4 @@ matplotlib>=3.7    # used only for the breath modulation-adjudication view (auto
 pybind11>=3.0      # build-time only: offline core binding (BUILD_PYBIND); provides the CMake config
                    # and headers to build shr_pybind against the venv's Python
 pybind11-stubgen>=2.5  # build-time only: generates build/pybind/shr_pybind.pyi for Pylance/Pyright
+pytest>=8.0        # golden regression suite over the compiled offline binding

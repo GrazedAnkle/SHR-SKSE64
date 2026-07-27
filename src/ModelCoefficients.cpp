@@ -70,60 +70,11 @@ namespace
 
     void Validate(const SHR::SimulationModelCoefficients &c)
     {
+#define SHR_FINITE_MODEL_COEFFICIENT(type, name) { #name, static_cast<float>(c.name) },
         RequireFinite({
-            { "BaseRestingHR", c.BaseRestingHR },
-            { "SleepFraction", c.SleepFraction },
-            { "HRFormulaCeiling", c.HRFormulaCeiling },
-            { "HRFastFraction", c.HRFastFraction },
-            { "FastOnsetTauSedentary", c.FastOnsetTauSedentary },
-            { "FastOnsetTauElite", c.FastOnsetTauElite },
-            { "SlowOnsetTau", c.SlowOnsetTau },
-            { "FastRecoveryTauSedentary", c.FastRecoveryTauSedentary },
-            { "FastRecoveryTauElite", c.FastRecoveryTauElite },
-            { "SlowRecoveryTau", c.SlowRecoveryTau },
-            { "IdleMets", c.IdleMets },
-            { "WalkingMets", c.WalkingMets },
-            { "RunningMets", c.RunningMets },
-            { "SprintingMets", c.SprintingMets },
-            { "SwimmingMets", c.SwimmingMets },
-            { "JumpMets", c.JumpMets },
-            { "CrouchMovementMultiplier", c.CrouchMovementMultiplier },
-            { "MountedMultiplier", c.MountedMultiplier },
-            { "ExertionAccumulationRate", c.ExertionAccumulationRate },
-            { "ExertionRecoveryRate", c.ExertionRecoveryRate },
-            { "AdrenalineHalfLife", c.AdrenalineHalfLife },
-            { "AdrenalineCombatEntry", c.AdrenalineCombatEntry },
-            { "AdrenalineTakeHit", c.AdrenalineTakeHit },
-            { "ContractilityOnsetTau", c.ContractilityOnsetTau },
-            { "ContractilityDecayTau", c.ContractilityDecayTau },
-            { "AdrenalineContractilityScale", c.AdrenalineContractilityScale },
-            { "FitnessGainTau", c.FitnessGainTau },
-            { "FitnessDecayTau", c.FitnessDecayTau },
-            { "FitnessBaseMets", c.FitnessBaseMets },
-            { "FitnessMaxMets", c.FitnessMaxMets },
-            { "RestingHRSlope", c.RestingHRSlope },
-            { "MaxRestingHR", c.MaxRestingHR },
-            { "RestingRespRate", c.RestingRespRate },
-            { "VentilationVT1Fraction", c.VentilationVT1Fraction },
-            { "VentilationRCPFraction", c.VentilationRCPFraction },
-            { "RespRateAtVT1", c.RespRateAtVT1 },
-            { "RespRateAtRCP", c.RespRateAtRCP },
-            { "RespDepthAtVT1", c.RespDepthAtVT1 },
-            { "RespDepthAtRCP", c.RespDepthAtRCP },
-            { "MaxRespRate", c.MaxRespRate },
-            { "SleepRespRate", c.SleepRespRate },
-            { "RespOnsetTau", c.RespOnsetTau },
-            { "RespRecoveryTau", c.RespRecoveryTau },
-            { "BreathDepthOnsetTau", c.BreathDepthOnsetTau },
-            { "BreathDepthRecoveryTau", c.BreathDepthRecoveryTau },
-            { "AcuteFatigueMax", c.AcuteFatigueMax },
-            { "AcuteFatigueGainTau", c.AcuteFatigueGainTau },
-            { "AcuteFatigueDecayTau", c.AcuteFatigueDecayTau },
-            { "LongTermFatigueMax", c.LongTermFatigueMax },
-            { "LongTermFatigueGainTau", c.LongTermFatigueGainTau },
-            { "LongTermFatigueDecayTau", c.LongTermFatigueDecayTau },
-            { "SleepRecoveryRate", c.SleepRecoveryRate },
+            SHR_SIMULATION_MODEL_COEFFICIENTS(SHR_FINITE_MODEL_COEFFICIENT)
         });
+#undef SHR_FINITE_MODEL_COEFFICIENT
 
         RequirePositive("BaseRestingHR", c.BaseRestingHR);
         RequirePositive("HRFormulaCeiling", c.HRFormulaCeiling);
@@ -224,21 +175,11 @@ namespace
 
     void Validate(const SHR::RhythmModelCoefficients &c)
     {
+#define SHR_FINITE_MODEL_COEFFICIENT(type, name) { #name, static_cast<float>(c.name) },
         RequireFinite({
-            { "RSAAmplitudeRest", c.RSAAmplitudeRest },
-            { "PVCCouplingMax", c.PVCCouplingMax },
-            { "PVCCouplingMin", c.PVCCouplingMin },
-            { "PVCCouplingVariation", c.PVCCouplingVariation },
-            { "PVCPauseVariation", c.PVCPauseVariation },
-            { "PVCChanceNormal", c.PVCChanceNormal },
-            { "PVCChanceMax", c.PVCChanceMax },
-            { "PVCRunExtensionChance", c.PVCRunExtensionChance },
-            { "VigorJitterScale", c.VigorJitterScale },
-            { "VigorJitterMaxSigma", c.VigorJitterMaxSigma },
-            { "DeathRiskRampSeconds", c.DeathRiskRampSeconds },
-            { "ExtremeHeartRateRiskThreshold", c.ExtremeHeartRateRiskThreshold },
-            { "AdrenalineRunRiskScale", c.AdrenalineRunRiskScale },
+            SHR_RHYTHM_MODEL_COEFFICIENTS(SHR_FINITE_MODEL_COEFFICIENT)
         });
+#undef SHR_FINITE_MODEL_COEFFICIENT
 
         RequireUnitRange("RSAAmplitudeRest", c.RSAAmplitudeRest);
         RequireUnitRange("PVCCouplingMin", c.PVCCouplingMin);
@@ -270,29 +211,11 @@ namespace
 
     void Validate(const SHR::AcousticMappingCoefficients &c)
     {
+#define SHR_FINITE_MODEL_COEFFICIENT(type, name) { #name, static_cast<float>(c.name) },
         RequireFinite({
-            { "AttackCompressMax", c.AttackCompressMax },
-            { "ResamplePVCRatio", c.ResamplePVCRatio },
-            { "BreathAmpDepth", c.BreathAmpDepth },
-            { "BreathDepthRestFraction", c.BreathDepthRestFraction },
-            { "BreathPitchDipDepth", c.BreathPitchDipDepth },
-            { "BreathLowPassOpenHz", c.BreathLowPassOpenHz },
-            { "BreathLowPassMinHz", c.BreathLowPassMinHz },
-            { "SystoleIntercept", c.SystoleIntercept },
-            { "SystoleSlope", c.SystoleSlope },
-            { "SystoleMin", c.SystoleMin },
-            { "SystoleMax", c.SystoleMax },
-            { "SystolePEPShortening", c.SystolePEPShortening },
-            { "PVCSystoleScale", c.PVCSystoleScale },
-            { "PVCSystoleMin", c.PVCSystoleMin },
-            { "ContractilityGainDb", c.ContractilityGainDb },
-            { "FrankStarlingMin", c.FrankStarlingMin },
-            { "FrankStarlingMax", c.FrankStarlingMax },
-            { "PVCS1Amplitude", c.PVCS1Amplitude },
-            { "PVCS2Amplitude", c.PVCS2Amplitude },
-            { "PVCS2FailCoupling", c.PVCS2FailCoupling },
-            { "PVCS2FullCoupling", c.PVCS2FullCoupling },
+            SHR_ACOUSTIC_MAPPING_COEFFICIENTS(SHR_FINITE_MODEL_COEFFICIENT)
         });
+#undef SHR_FINITE_MODEL_COEFFICIENT
 
         if (c.AttackCompressMax < 1.0F)
         {
@@ -343,11 +266,11 @@ namespace
 
     void Validate(const SHR::SourceConditioningCoefficients &c)
     {
+#define SHR_FINITE_MODEL_COEFFICIENT(type, name) { #name, static_cast<float>(c.name) },
         RequireFinite({
-            { "SourceHighPassHz", c.SourceHighPassHz },
-            { "SourceRestLevel", c.SourceRestLevel },
-            { "AttackBuildThreshold", c.AttackBuildThreshold },
+            SHR_SOURCE_CONDITIONING_COEFFICIENTS(SHR_FINITE_MODEL_COEFFICIENT)
         });
+#undef SHR_FINITE_MODEL_COEFFICIENT
         RequireNonnegative("SourceHighPassHz", c.SourceHighPassHz);
         RequireUnitRange("SourceRestLevel", c.SourceRestLevel);
         RequireUnitRange("AttackBuildThreshold", c.AttackBuildThreshold);
@@ -355,12 +278,11 @@ namespace
 
     void Validate(const SHR::BeatRenderingCoefficients &c)
     {
+#define SHR_FINITE_MODEL_COEFFICIENT(type, name) { #name, static_cast<float>(c.name) },
         RequireFinite({
-            { "CrossfadeMs", c.CrossfadeMs },
-            { "S1SystoleFraction", c.S1SystoleFraction },
-            { "S2WindowFraction", c.S2WindowFraction },
-            { "SoftClipKnee", c.SoftClipKnee },
+            SHR_BEAT_RENDERING_COEFFICIENTS(SHR_FINITE_MODEL_COEFFICIENT)
         });
+#undef SHR_FINITE_MODEL_COEFFICIENT
         RequireNonnegative("CrossfadeMs", c.CrossfadeMs);
         RequireUnitRange("S1SystoleFraction", c.S1SystoleFraction);
         RequireUnitRange("S2WindowFraction", c.S2WindowFraction);

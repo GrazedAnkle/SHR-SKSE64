@@ -125,6 +125,16 @@ def verify(module) -> None:
         "game-mix integration",
     )
     _expect_error(
+        lambda: defaults.with_overrides({"SecondsPerHour": 1.0}),
+        "SecondsPerHour",
+        "unit conversion",
+    )
+    _expect_error(
+        lambda: defaults.with_overrides({"InspirationFraction": 0.5}),
+        "InspirationFraction",
+        "dormant",
+    )
+    _expect_error(
         lambda: defaults.with_overrides({"PVCRunMaxLength": 2.5}),
         "PVCRunMaxLength",
         "integer",

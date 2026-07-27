@@ -127,15 +127,19 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 python tools/build_pybind.py
-python tools/check_goldens.py
+python -m pytest tests/golden --module-dir build/pybind
 ```
 
-`tools/check_goldens.py` runs every golden check in one command (pass `--build`
-to build the binding first). It drives the binding to verify the compiled core's
-source conditioning, beat rendering, rhythm, mapping, and full trajectories
-against the committed manifests under `tests/golden/`. The individual
-`tools/check_*_golden.py` tools are runnable on their own for a focused check;
-pass `--capture` to regenerate a manifest after an intentional core change.
+The pytest suite reports one case for each compiled-core golden: source
+conditioning, beat rendering, rhythm/mapping, and full trajectories. Point
+`--module-dir` at another binding tree when needed. `tools/check_goldens.py`
+remains a convenience wrapper (and supports `--build`); its verify mode launches
+that same pytest suite. The individual `tools/check_*_golden.py` tools remain
+runnable for a focused check or `--capture`; use `tools/check_goldens.py
+--capture` to regenerate every manifest after an intentional core change.
+The waveform manifests hash raw float bytes, so
+`.github/workflows/offline-goldens.yml` pins the compiler used for capture and
+verification rather than relying on the hosted runner's floating LLVM version.
 
 `build_pybind.py` also writes a type stub (`build/pybind/shr_pybind.pyi`) so an
 editor resolves the binding's API. For Pylance, add `build/pybind` to

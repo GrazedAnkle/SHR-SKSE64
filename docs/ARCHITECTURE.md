@@ -63,9 +63,14 @@ legacy-field defaults.
 
 - `RuntimeSettings` contains subject/runtime configuration: `SimulationSettings` and arrhythmia
   susceptibility. `ModelCoefficients` is a separate immutable calibration value with typed `Simulation`,
-  `Rhythm`, `AcousticMapping`, `SourceConditioning`, and `BeatRendering` groups. `Constants.hpp` remains
-  the auditable production-default index. A runtime retains one aggregate and copies the relevant group
-  into each long-lived behavioral owner; coefficient-free C++ entry points delegate to the same immutable
+  `Rhythm`, `AcousticMapping`, `SourceConditioning`, and `BeatRendering` groups.
+  `ModelCoefficientRegistry.hpp` is the single structural catalog of each live field's stable name,
+  scalar type, and group; it generates the typed members and the binding descriptors used for both
+  override lookup and value reporting. The same catalog explicitly classifies non-live constants as
+  derived, asset-fixed, utility, game-integration, or dormant. `Constants.hpp` remains the auditable
+  production-default and provenance index, and `tools/check_constants.py` requires exact name/type
+  coverage between the two. A runtime retains one aggregate and copies the relevant group into each
+  long-lived behavioral owner; coefficient-free C++ entry points delegate to the same immutable
   production default.
 - `PhysiologySnapshot` is the cohesive downstream view of current physiological and derived state.
   `SimulationState` is the complete resumable state.
@@ -105,19 +110,23 @@ reproduces the plugin's draw math; `HeartRateSimulation` is otherwise determinis
 Offline coefficient sweeps use the bound immutable `ModelCoefficients` value. Python starts from
 `default_model_coefficients`, reports the selected `values`, applies a named batch with
 `with_overrides`, and passes the resulting aggregate consistently to each operation in a run. The binding
-registry preserves scalar type: structural controls remain integers, coordinated knots or bounds validate
-only after the complete batch is applied, and unsupported derived, asset, utility, dormant, or
-game-integration names fail with their reason. Core formulas and global state are never reconstructed or
-mutated by that registry.
+descriptors preserve registry scalar type: structural controls remain integers, coordinated knots or
+bounds validate only after the complete batch is applied, and unsupported derived, asset, utility,
+dormant, or game-integration names fail with their reason. Generic per-field finiteness checks come from
+the same registry; cross-field and consuming-context validation remains explicit beside the formulas it
+protects. Core formulas and global state are never reconstructed or mutated by the registry.
 
 Committed golden manifests under `tests/golden/` pin core output for source conditioning, beat rendering,
 rhythm and mapping, and full trajectories. Each is captured from the compiled core through the `shr_pybind`
-binding and re-verified by its golden-check tool, which regenerates the manifest only on an intentional
-retune. These goldens are the permanent regression anchor for offline core behavior, and deterministic offline
-scenarios are the primary acceptance gate for physiology, rhythm, and DSP changes. Python owns scenario
-construction, measurement, annotation, and reporting as independent analysis rulers, not as production
-mirrors. SKSE input mapping, XAudio ownership and scheduling, thread delivery, and game-mix behavior retain
-their own in-game gates.
+binding and verified as one pytest case per domain. Each golden-check tool retains its explicit `--capture`
+authoring path; normal verification never rewrites a manifest. The Windows offline-goldens workflow builds
+the portable binding with the pinned capture compiler and runs the pytest suite, independently of the
+CommonLib/plugin build. The compiler pin matters because the waveform gates hash raw float bytes. These
+goldens are the permanent regression anchor for offline core behavior, and deterministic offline scenarios
+are the primary acceptance gate for physiology, rhythm, and DSP changes. Python owns scenario construction,
+measurement, annotation, and reporting as independent analysis rulers, not as production mirrors. SKSE input
+mapping, XAudio ownership and scheduling, thread delivery, and game-mix behavior retain their own in-game
+gates.
 
 Offline audition files preserve the compiled renderer's native channel layout; the current source and
 renderer output are stereo. Numerical analysis selects channel zero explicitly, matching reference-tool
