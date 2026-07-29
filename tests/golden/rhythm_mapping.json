@@ -1,5 +1,5 @@
 {
-  "_comment": "Golden rhythm and acoustic-mapping output from the compiled shr_core via shr_pybind (Release-Clang, deterministic). Regenerate: python tools/check_rhythm_mapping_golden.py --capture",
+  "_comment": "Golden rhythm and acoustic-mapping output from the compiled shr_core via shr_pybind (Release-Clang, deterministic). Regenerate: python tools/capture_goldens.py rhythm-mapping",
   "rhythm": {
     "rest": [
       {

@@ -91,10 +91,11 @@ def main() -> int:
         print(f"no docs/ under {root}", file=sys.stderr)
         return 1
 
-    # Python scripts in tools/ and tests/ both count as resolvable.
+    # Python scripts in tools/ and tests/ both count as resolvable. tests/ is searched recursively so
+    # suite subdirectories (tests/golden/) resolve like any other test module.
     tests_dir = root / "tests"
     tool_scripts = {p.name for p in tools_dir.glob("*.py")}
-    tool_scripts |= {p.name for p in tests_dir.glob("*.py")}
+    tool_scripts |= {p.name for p in tests_dir.rglob("*.py")}
 
     src_text = "\n".join(
         p.read_text(encoding="utf-8", errors="ignore")

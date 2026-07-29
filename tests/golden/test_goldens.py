@@ -1,63 +1,37 @@
-"""Golden verification cases for every compiled-core offline domain."""
+"""Golden verification cases for every compiled-core offline domain.
+
+One case per domain in ``tools/golden_registry.py``, driven through that registry's surface, so this
+file names no domain individually.
+"""
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
 from types import ModuleType
 
 import pytest
 
-import check_beat_renderer_golden
-import check_rhythm_mapping_golden
-import check_source_conditioning_golden
-import check_trajectory_golden
+import golden_registry
 
-GoldenBuilder = Callable[[ModuleType], dict[str, object]]
-GoldenDiff = Callable[[dict, dict], list[str]]
-
-CHECKS = (
-    pytest.param(
-        check_source_conditioning_golden.GOLDEN,
-        check_source_conditioning_golden._render,
-        check_source_conditioning_golden._diff,
-        id="source-conditioning",
-    ),
-    pytest.param(
-        check_beat_renderer_golden.GOLDEN,
-        check_beat_renderer_golden._render,
-        check_beat_renderer_golden._diff,
-        id="beat-renderer",
-    ),
-    pytest.param(
-        check_rhythm_mapping_golden.GOLDEN,
-        check_rhythm_mapping_golden._build,
-        check_rhythm_mapping_golden._diff,
-        id="rhythm-mapping",
-    ),
-    pytest.param(
-        check_trajectory_golden.GOLDEN,
-        check_trajectory_golden._build,
-        check_trajectory_golden._diff,
-        id="trajectory",
-    ),
-)
+CHECKS = tuple(pytest.param(domain, id=domain.ID) for domain in golden_registry.DOMAINS)
 
 
-@pytest.mark.parametrize(("manifest_path", "build_manifest", "diff"), CHECKS)
-def test_compiled_core_golden(
-    shr_pybind: ModuleType,
-    manifest_path,
-    build_manifest: GoldenBuilder,
-    diff: GoldenDiff,
-) -> None:
-    if not manifest_path.exists():
+@pytest.mark.parametrize("domain", CHECKS)
+def test_compiled_core_golden(shr_pybind: ModuleType, domain: ModuleType) -> None:
+    if not domain.MANIFEST.exists():
         pytest.fail(
-            f"golden manifest missing: {manifest_path.relative_to(manifest_path.parents[2])} "
-            "(run its checker CLI with --capture)",
+            f"golden manifest missing: {domain.MANIFEST.relative_to(domain.MANIFEST.parents[2])} "
+            f"(author it with: python tools/capture_goldens.py {domain.ID})",
             pytrace=False,
         )
 
-    expected = json.loads(manifest_path.read_text(encoding="utf-8"))
-    problems = diff(expected, build_manifest(shr_pybind))
+    expected = json.loads(domain.MANIFEST.read_text(encoding="utf-8"))
+    problems = domain.diff(expected, domain.build(shr_pybind))
     if problems:
-        pytest.fail("\n".join(problems), pytrace=False)
+        pytest.fail(
+            f"compiled core DIVERGED from the {domain.ID} golden "
+            f"({len(problems)} difference(s)):\n"
+            f"{golden_registry.format_problems(problems)}\n"
+            f"Recapture only if the change is intended: "
+            f"python tools/capture_goldens.py {domain.ID}",
+            pytrace=False,
+        )

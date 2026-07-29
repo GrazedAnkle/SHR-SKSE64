@@ -12,7 +12,7 @@ interpreter runs it, so it builds the binding without an activated or convention
     python tools/build_pybind.py --clean    # delete the build tree first
 
 Requires the same environment as any core build (VCPKG_ROOT, clang-cl on PATH). After a successful
-build, verify it with tools/check_goldens.py (runs every golden check).
+build, verify it with: python -m pytest tests --module-dir build/pybind
 """
 from __future__ import annotations
 
@@ -89,7 +89,7 @@ def main() -> None:
         sys.exit("build reported success but no shr_pybind*.pyd was produced")
     print(f"\nBuilt {modules[-1].relative_to(ROOT)}")
     generate_stub()
-    print("Verify with: python tools/check_beat_renderer_golden.py")
+    print(f"Verify with: python -m pytest tests --module-dir {BUILD_DIR.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

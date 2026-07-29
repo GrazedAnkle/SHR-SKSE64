@@ -1,32 +1,29 @@
-"""Capture and verify the compiled core's golden source-conditioning output.
+"""The golden source-conditioning domain: what to freeze and how to compare it.
 
-Drives the offline core binding (shr_pybind) over the shortened heartbeat source and freezes its
-per-stage source conditioning (slice -> high-pass -> joint normalize) as a committed manifest, then
-re-verifies a fresh core run against it. This is the full-waveform, per-stage regression oracle for
-offline source conditioning, anchored to the compiled core. The Catch suite pins the conditioning
-contract (frame counts, attack region, joint peak); this golden pins the exact conditioned samples.
+Drives the offline core binding (shr_pybind) over the shortened heartbeat source and describes its
+per-stage source conditioning (slice -> high-pass -> joint normalize) as a manifest. This is the
+full-waveform, per-stage regression oracle for offline source conditioning, anchored to the compiled
+core. The Catch suite pins the conditioning contract (frame counts, attack region, joint peak); this
+golden pins the exact conditioned samples.
 
 The Release-Clang build is deterministic, so per-stage SHA-256 of the raw float bytes is the gate;
 ``peak_abs``/``rms`` are review aids compared at a loose tolerance.
 
-Build the module first with tools/build_pybind.py.
-
-    python tools/check_source_conditioning_golden.py            # verify against the manifest
-    python tools/check_source_conditioning_golden.py --capture  # (re)generate after an intended change
+One golden domain; tools/golden_registry.py describes the surface it exposes.
 """
 from __future__ import annotations
 
-import argparse
 import hashlib
-import json
-import sys
 from pathlib import Path
 
 import numpy as np
 import soundfile as sf
 
 ROOT = Path(__file__).resolve().parent.parent
-GOLDEN = ROOT / "tests" / "golden" / "source_conditioning.json"
+
+ID = "source-conditioning"
+MANIFEST = ROOT / "tests" / "golden" / "source_conditioning.json"
+
 SOURCE = ROOT / "contrib/Distribution/Sound/fx/SHR_HeartBeat/HeartBeat_Shortened.wav"
 
 # Fixed conditioning stages emitted by trace_source_conditioning: slice -> high-pass -> joint normalize.
@@ -56,13 +53,13 @@ def _stage_entry(array: np.ndarray) -> dict[str, object]:
     }
 
 
-def _render(module) -> dict[str, object]:
+def build(module) -> dict[str, object]:
     samples, rate = sf.read(SOURCE, dtype="int16", always_2d=True)
     trace = module.trace_source_conditioning(np.ascontiguousarray(samples), rate)
     return {
         "_comment": (
             "Golden source-conditioning output from the compiled shr_core (Release-Clang, deterministic). "
-            "Regenerate with: python tools/check_source_conditioning_golden.py --capture"
+            "Regenerate with: python tools/capture_goldens.py source-conditioning"
         ),
         "sample_rate": int(trace["sample_rate"]),
         "channel_count": int(trace["channel_count"]),
@@ -72,7 +69,7 @@ def _render(module) -> dict[str, object]:
     }
 
 
-def _diff(expected: dict, actual: dict) -> list[str]:
+def diff(expected: dict, actual: dict) -> list[str]:
     problems: list[str] = []
     for scalar in ("sample_rate", "channel_count", "attack_start", "attack_peak"):
         if expected.get(scalar) != actual.get(scalar):
@@ -100,54 +97,10 @@ def _diff(expected: dict, actual: dict) -> list[str]:
     return problems
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--module-dir",
-        type=Path,
-        default=ROOT / "build" / "pybind",
-        help="Directory containing the built shr_pybind*.pyd (default: build/pybind).",
-    )
-    parser.add_argument(
-        "--capture",
-        action="store_true",
-        help="Write the manifest instead of verifying against it.",
-    )
-    args = parser.parse_args()
-
-    sys.path.insert(0, str(args.module_dir.resolve()))
-    try:
-        import shr_pybind
-    except ImportError as error:
-        sys.exit(
-            f"cannot import shr_pybind from {args.module_dir} ({error}); "
-            f"build it with: python tools/build_pybind.py"
-        )
-
-    manifest = _render(shr_pybind)
-
-    if args.capture:
-        GOLDEN.parent.mkdir(parents=True, exist_ok=True)
-        GOLDEN.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-        print(f"Wrote {GOLDEN.relative_to(ROOT)} ({len(STAGES)} stages)")
-        return
-
-    if not GOLDEN.exists():
-        sys.exit(f"golden manifest missing: {GOLDEN.relative_to(ROOT)} (run with --capture)")
-    expected = json.loads(GOLDEN.read_text(encoding="utf-8"))
-    problems = _diff(expected, manifest)
-    if problems:
-        print("Compiled core source conditioning DIVERGED from golden:", file=sys.stderr)
-        for problem in problems:
-            print(f"  {problem}", file=sys.stderr)
-        sys.exit("golden mismatch (regenerate with --capture only if the change is intended)")
-
-    print(f"Compiled core source conditioning matches golden ({len(STAGES)} stages):")
+def summary(manifest: dict) -> list[str]:
+    lines = [f"{len(STAGES)} stages"]
     for stage in STAGES:
-        entry = expected["stages"][stage]
-        print(f"  {stage}: {entry['frames']} frames, peak_abs = {entry['peak_abs']:.6g}")
-    print(f"  baseline attack region: [{expected['attack_start']}, {expected['attack_peak']}]")
-
-
-if __name__ == "__main__":
-    main()
+        entry = manifest["stages"][stage]
+        lines.append(f"{stage}: {entry['frames']} frames, peak_abs = {entry['peak_abs']:.6g}")
+    lines.append(f"baseline attack region: [{manifest['attack_start']}, {manifest['attack_peak']}]")
+    return lines

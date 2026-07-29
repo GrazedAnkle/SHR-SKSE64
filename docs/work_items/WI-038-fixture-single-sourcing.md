@@ -22,7 +22,7 @@ The beat-render fixtures are transcribed by hand into two languages: seven fixtu
 in `tests/BeatRenderFixtures.hpp` and `tools/beat_render_fixtures.py`. The guard against drift is
 one-directional:
 
-- editing a value in the Python file fails `check_beat_renderer_golden.py`, because the committed manifest
+- editing a value in the Python file fails the beat-renderer golden, because the committed manifest
   was captured from the previous specs; but
 - editing a value in the C++ header fails nothing, because the manifest is generated from the Python specs
   and the C++ array feeds only the Catch2 assertions.
@@ -49,9 +49,9 @@ own generation path and their own checker, and they are not part of this duplica
 
 ## Dependencies
 
-None blocking. This shares files with [WI-035](WI-035-golden-check-consolidation.md), so sequence them
-rather than running both at once; WI-035 should land first, since it establishes the module surface these
-fixtures would be loaded through.
+None. The module surface these fixtures load through is settled: `tools/golden_registry.py` documents it,
+and `tools/golden_beat_render.py` consumes `FIXTURES` and `STAGES` from `tools/beat_render_fixtures.py` in
+its `build` function.
 
 ## Next action and decision points
 
@@ -66,9 +66,18 @@ Choose the direction of derivation. The options are not equivalent:
   `tools/check_constants.py` relies on, which is the technique that file's own note warns against
   extending further.
 
-Decide first whether the rhythm-mapping and trajectory fixtures share this shape. If they do, that argues
-for the neutral data file; if the beat-render fixtures are the only genuine duplication, the binding route
-is proportionate.
+The gating question is settled: the rhythm-mapping and trajectory fixtures do **not** share this shape.
+`tests/BeatRenderFixtures.hpp` is the only fixture header in the C++ suite - the sole other header,
+`tests/TestWav.hpp`, is a PCM16 loading helper - and `RHYTHM_SCENARIOS`, `MAPPING_CASES`, and
+`TRAJECTORY_SCENARIOS` exist in `tools/` alone, consumed only by their golden domains. Their C++
+counterparts assert behavior directly rather than from a shared table, so there is no second definition to
+drift from, which also discharges the third acceptance bullet by recording why they need no
+single-sourcing.
+
+That makes the beat-render fixtures the only genuine cross-language duplication, so the binding route is
+the proportionate one: the neutral data file's build-time generation step and third artifact buy removal of
+a language asymmetry that exists in exactly one file. Remaining decision is therefore narrower than it
+looked - whether test-only data may enter a binding surface that so far exposes production API only.
 
 ## Newly observed work to split out
 

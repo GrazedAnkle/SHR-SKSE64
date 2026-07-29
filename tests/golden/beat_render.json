@@ -1,5 +1,5 @@
 {
-  "_comment": "Golden beat-renderer output from the compiled shr_core (Release-Clang, deterministic). Regenerate with: python tools/check_beat_renderer_golden.py --capture",
+  "_comment": "Golden beat-renderer output from the compiled shr_core (Release-Clang, deterministic). Regenerate with: python tools/capture_goldens.py beat-renderer",
   "sample_rate": 48000,
   "channel_count": 2,
   "fixtures": {

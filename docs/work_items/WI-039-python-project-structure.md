@@ -54,9 +54,10 @@ be configured in the same file.
 
 ## Dependencies
 
-None blocking. Sequence after [WI-035](WI-035-golden-check-consolidation.md) if both are active, since
-that item deletes several of the tool entry points whose imports would otherwise be migrated here and then
-removed.
+None. The redundant golden-check entry points whose imports would otherwise have been migrated here and
+then deleted are already gone. The remaining `sys.path` repair in the offline path is the `tools/`
+insertion each golden domain module, `tools/golden_registry.py`, and `tools/capture_goldens.py` perform to
+reach their fixtures and each other, which this item owns.
 
 ## Next action and decision points
 

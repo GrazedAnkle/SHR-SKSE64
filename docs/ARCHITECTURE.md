@@ -118,10 +118,14 @@ protects. Core formulas and global state are never reconstructed or mutated by t
 
 Committed golden manifests under `tests/golden/` pin core output for source conditioning, beat rendering,
 rhythm and mapping, and full trajectories. Each is captured from the compiled core through the `shr_pybind`
-binding and verified as one pytest case per domain. Each golden-check tool retains its explicit `--capture`
-authoring path; normal verification never rewrites a manifest. The Windows offline-goldens workflow builds
-the portable binding with the pinned capture compiler and runs the pytest suite, independently of the
-CommonLib/plugin build. The compiler pin matters because the waveform gates hash raw float bytes. These
+binding and verified as one pytest case per domain. Verification and authoring are separate entry points
+by one verb each: `tools/golden_registry.py` enumerates the domains and the uniform surface each exposes,
+pytest verifies them, and `tools/capture_goldens.py` is the only path that writes a manifest. Nothing
+reachable from a test run can rewrite the values it is checking, because a verify that passes immediately
+after a recapture proves only that the manifest was just overwritten; the reviewable manifest diff is what
+establishes an intended retune. The immutable coefficient-override contract is verified in the same suite,
+as assertions rather than a manifest. The Windows offline-goldens workflow builds the portable binding with
+the pinned capture compiler and runs the pytest suite, independently of the CommonLib/plugin build. The compiler pin matters because the waveform gates hash raw float bytes. These
 goldens are the permanent regression anchor for offline core behavior, and deterministic offline scenarios
 are the primary acceptance gate for physiology, rhythm, and DSP changes. Python owns scenario construction,
 measurement, annotation, and reporting as independent analysis rulers, not as production mirrors. SKSE input

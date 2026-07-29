@@ -1,5 +1,5 @@
 {
-  "_comment": "Golden full-trajectory Runtime output from the compiled shr_core via shr_pybind (Release-Clang, deterministic). Regenerate: python tools/check_trajectory_golden.py --capture",
+  "_comment": "Golden full-trajectory Runtime output from the compiled shr_core via shr_pybind (Release-Clang, deterministic). Regenerate: python tools/capture_goldens.py trajectory",
   "scenarios": {
     "rest_sprint_recovery": {
       "snapshots": [

@@ -15,12 +15,12 @@ Build ``shr_pybind`` first:
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
 import numpy as np
 import soundfile as sf
 
+import core_offline
 from beat_render_fixtures import FIXTURES
 from shrlib import analysis_channel
 
@@ -109,18 +109,6 @@ def build_reel(
     return np.concatenate(sections, axis=0), int(sample_rate), report
 
 
-def _load_binding(module_dir: Path):
-    sys.path.insert(0, str(module_dir.resolve()))
-    try:
-        import shr_pybind
-    except ImportError as error:
-        raise SystemExit(
-            f"cannot import shr_pybind from {module_dir} ({error}); "
-            "build it with: python tools/build_pybind.py"
-        ) from error
-    return shr_pybind
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -147,7 +135,7 @@ def main() -> None:
         parser.error("--gap must be nonnegative")
     fixture_names = args.fixture or list(DEFAULT_FIXTURES)
 
-    module = _load_binding(args.module_dir)
+    module = core_offline.load_binding(args.module_dir)
     reel, sample_rate, report = build_reel(
         module,
         args.source,

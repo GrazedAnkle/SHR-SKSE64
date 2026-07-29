@@ -1,8 +1,8 @@
 """Shared beat-render fixture specs and stage names.
 
 Hand-transcribed from ``tests/BeatRenderFixtures.hpp``; edit both files together. Drift is caught in one
-direction only: a value changed here fails ``check_beat_renderer_golden.py``, while one changed there
-fails nothing, because the manifest is generated from this file. WI-038 owns removing the transcription.
+direction only: a value changed here fails the beat-renderer golden, while one changed there fails
+nothing, because the manifest is generated from this file. WI-038 owns removing the transcription.
 """
 from __future__ import annotations
 

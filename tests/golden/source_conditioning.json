@@ -1,5 +1,5 @@
 {
-  "_comment": "Golden source-conditioning output from the compiled shr_core (Release-Clang, deterministic). Regenerate with: python tools/check_source_conditioning_golden.py --capture",
+  "_comment": "Golden source-conditioning output from the compiled shr_core (Release-Clang, deterministic). Regenerate with: python tools/capture_goldens.py source-conditioning",
   "sample_rate": 48000,
   "channel_count": 2,
   "attack_start": 2314,

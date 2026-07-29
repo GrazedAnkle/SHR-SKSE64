@@ -103,7 +103,7 @@ namespace SHR::Tests
         // branches, not a validated operating point. Their extreme-end amplitudes are extrapolated (the
         // corpus has no max-effort reference); the extreme-value audit (ROADMAP "maintenance candidates")
         // may retune them, after which the golden manifest is regenerated via
-        // tools/check_beat_renderer_golden.py.
+        // tools/capture_goldens.py beat-renderer.
         //
         // extreme-vigor: vigor-jitter ceiling. Peak is Vigor 1.0 -> S1Amplitude 10^(0.55*1.0) = 3.548;
         // the VigorJitterMaxSigma(2.5) * VigorJitterScale(0.17) clamp lifts effective vigor to 1.425, so

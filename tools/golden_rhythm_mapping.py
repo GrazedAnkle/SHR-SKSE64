@@ -1,27 +1,25 @@
-"""Capture and verify the compiled core's golden rhythm and acoustic-mapping output.
+"""The golden rhythm and acoustic-mapping domain: what to freeze and how to compare it.
 
 Drives shr_pybind's RhythmEngine (over scripted, seeded scenarios) and create_render_spec (over a table
-of operating points) and freezes their output as a committed manifest, then re-verifies a fresh run
-against it. This oracle locks the compiled core's rhythm scheduling and acoustic mapping so future core
-changes are caught. Independent C++ behavioral coverage lives in RhythmEngineTests.cpp and
-AcousticMapperTests.cpp; this golden anchors full sequences end to end.
+of operating points) and describes their output as a manifest. This oracle locks the compiled core's
+rhythm scheduling and acoustic mapping so future core changes are caught. Independent C++ behavioral
+coverage lives in RhythmEngineTests.cpp and AcousticMapperTests.cpp; this golden anchors full sequences
+end to end.
 
 Outputs are small structured values, stored rounded and compared at a loose tolerance.
 
-    python tools/check_rhythm_mapping_golden.py            # verify against the manifest
-    python tools/check_rhythm_mapping_golden.py --capture  # (re)generate after an intended change
-
-Build the module first with tools/build_pybind.py.
+One golden domain; tools/golden_registry.py describes the surface it exposes.
 """
 from __future__ import annotations
 
-import argparse
-import json
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-GOLDEN = ROOT / "tests" / "golden" / "rhythm_mapping.json"
+
+ID = "rhythm-mapping"
+MANIFEST = ROOT / "tests" / "golden" / "rhythm_mapping.json"
+
 ATOL = 1.0e-6
 
 sys.path.insert(0, str(ROOT / "tools"))
@@ -87,11 +85,11 @@ def _run_mapping(module, case) -> dict:
     return result
 
 
-def _build(module) -> dict:
+def build(module) -> dict:
     return {
         "_comment": (
             "Golden rhythm and acoustic-mapping output from the compiled shr_core via shr_pybind "
-            "(Release-Clang, deterministic). Regenerate: python tools/check_rhythm_mapping_golden.py --capture"
+            "(Release-Clang, deterministic). Regenerate: python tools/capture_goldens.py rhythm-mapping"
         ),
         "rhythm": {name: _run_scenario(module, sc) for name, sc in RHYTHM_SCENARIOS.items()},
         "mapping": {name: _run_mapping(module, case) for name, case in MAPPING_CASES.items()},
@@ -106,7 +104,7 @@ def _diff_value(label: str, expected, actual, problems: list[str]) -> None:
         problems.append(f"{label}: golden {expected} != core {actual}")
 
 
-def _diff(expected: dict, actual: dict) -> list[str]:
+def diff(expected: dict, actual: dict) -> list[str]:
     problems: list[str] = []
 
     exp_rhythm = expected.get("rhythm", {})
@@ -147,55 +145,14 @@ def _diff(expected: dict, actual: dict) -> list[str]:
     return problems
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--module-dir",
-        type=Path,
-        default=ROOT / "build" / "pybind",
-        help="Directory containing the built shr_pybind*.pyd (default: build/pybind).",
-    )
-    parser.add_argument("--capture", action="store_true", help="Write the manifest instead of verifying.")
-    args = parser.parse_args()
-
-    sys.path.insert(0, str(args.module_dir.resolve()))
-    try:
-        import shr_pybind
-    except ImportError as error:
-        sys.exit(
-            f"cannot import shr_pybind from {args.module_dir} ({error}); "
-            f"build it with: python tools/build_pybind.py"
-        )
-
-    manifest = _build(shr_pybind)
-
-    if args.capture:
-        GOLDEN.parent.mkdir(parents=True, exist_ok=True)
-        GOLDEN.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-        beats = sum(len(v) for v in manifest["rhythm"].values())
-        print(
-            f"Wrote {GOLDEN.relative_to(ROOT)} "
-            f"({len(RHYTHM_SCENARIOS)} scenarios / {beats} beats, {len(MAPPING_CASES)} mapping cases)"
-        )
-        return
-
-    if not GOLDEN.exists():
-        sys.exit(f"golden manifest missing: {GOLDEN.relative_to(ROOT)} (run with --capture)")
-    expected = json.loads(GOLDEN.read_text(encoding="utf-8"))
-    problems = _diff(expected, manifest)
-    if problems:
-        print("Compiled core rhythm/mapping DIVERGED from golden:", file=sys.stderr)
-        for problem in problems:
-            print(f"  {problem}", file=sys.stderr)
-        sys.exit("golden mismatch (regenerate with --capture only if the change is intended)")
-
-    print("Compiled core rhythm/mapping matches golden:")
-    for name, beats in expected["rhythm"].items():
+def summary(manifest: dict) -> list[str]:
+    total = sum(len(beats) for beats in manifest["rhythm"].values())
+    lines = [
+        f"{len(RHYTHM_SCENARIOS)} scenarios / {total} beats, {len(MAPPING_CASES)} mapping cases"
+    ]
+    for name, beats in manifest["rhythm"].items():
         kinds = ", ".join(sorted({beat["kind"] for beat in beats})) or "none"
-        print(f"  rhythm/{name}: {len(beats)} beats ({kinds})")
+        lines.append(f"rhythm/{name}: {len(beats)} beats ({kinds})")
     for name in MAPPING_CASES:
-        print(f"  mapping/{name}: OK")
-
-
-if __name__ == "__main__":
-    main()
+        lines.append(f"mapping/{name}: OK")
+    return lines

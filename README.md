@@ -131,16 +131,26 @@ python -m pytest tests --module-dir build/pybind
 ```
 
 That runs the whole Python suite: one case for each compiled-core golden (source
-conditioning, beat rendering, rhythm/mapping, and full trajectories) plus the
-analysis and offline-client tests. Narrow it to `tests/golden` for the goldens
-alone. Point `--module-dir` at another binding tree when needed. `tools/check_goldens.py`
-remains a convenience wrapper (and supports `--build`); its verify mode launches
-that same pytest suite. The individual `tools/check_*_golden.py` tools remain
-runnable for a focused check or `--capture`; use `tools/check_goldens.py
---capture` to regenerate every manifest after an intentional core change.
-The waveform manifests hash raw float bytes, so
-`.github/workflows/offline-goldens.yml` pins the compiler used for capture and
-verification rather than relying on the hosted runner's floating LLVM version.
+conditioning, beat rendering, rhythm/mapping, and full trajectories), the
+immutable coefficient-override contract, and the analysis and offline-client
+tests. Narrow it to `tests/golden` for the compiled-core gates alone, or select
+one with `-k trajectory`. Point `--module-dir` at another binding tree when
+needed.
+
+Verifying goldens is the pytest run above; authoring them is a separate tool,
+for the reason
+[ARCHITECTURE.md](docs/ARCHITECTURE.md#offline-execution) records:
+
+```
+python tools/capture_goldens.py                 # recapture every manifest
+python tools/capture_goldens.py trajectory      # recapture one domain
+```
+
+Review the resulting manifest diff before committing it. The waveform manifests
+hash raw float bytes, so `.github/workflows/offline-goldens.yml` pins the
+compiler used for capture and verification rather than relying on the hosted
+runner's floating LLVM version; capturing with a different toolchain produces a
+manifest that will not verify there.
 
 `build_pybind.py` also writes a type stub (`build/pybind/shr_pybind.pyi`) so an
 editor resolves the binding's API. For Pylance, add `build/pybind` to
