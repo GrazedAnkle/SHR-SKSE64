@@ -59,7 +59,8 @@ Reference findings are owned by [REFERENCE_ANALYSIS.md](REFERENCE_ANALYSIS.md). 
 authored in `references/state_ledger.toml`; `tools/ref_analyze.py` embeds it with computed values in the
 generated `references/measurements.json`. [MEASUREMENT_METHODS.md](MEASUREMENT_METHODS.md#reference-state-ledger)
 owns the schema semantics. `tools/check_docs.py` validates links, anchors, symbols, coupling numbers, and
-tool references. `tools/check_data_citations.py` validates supported prose citations, calibration bindings,
+tool references, and enforces that `tools/README.md` indexes every module in `tools/` so the
+load-bearing/exploratory distinction there cannot silently decay. `tools/check_data_citations.py` validates supported prose citations, calibration bindings,
 and their structured state references.
 
 ## Constant provenance tags

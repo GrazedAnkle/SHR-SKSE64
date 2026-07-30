@@ -1,6 +1,8 @@
 {
+  // Pylance reads neither the published binding's location nor pytest's import root, so both are named
+  // again here. See tools/README.md.
   "python.analysis.extraPaths": [
-    // Resolve the compiled offline binding (shr_pybind) for Pylance/Pyright.
-    "build/pybind"
+    "build/module",
+    "tools"
   ]
 }

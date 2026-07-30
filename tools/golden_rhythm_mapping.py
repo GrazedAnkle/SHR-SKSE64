@@ -12,8 +12,14 @@ One golden domain; tools/golden_registry.py describes the surface it exposes.
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
+
+from rhythm_mapping_fixtures import (
+    BEAT_FIELDS,
+    MAPPING_CASES,
+    RENDER_SPEC_FIELDS,
+    RHYTHM_SCENARIOS,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -21,14 +27,6 @@ ID = "rhythm-mapping"
 MANIFEST = ROOT / "tests" / "golden" / "rhythm_mapping.json"
 
 ATOL = 1.0e-6
-
-sys.path.insert(0, str(ROOT / "tools"))
-from rhythm_mapping_fixtures import (  # noqa: E402
-    BEAT_FIELDS,
-    MAPPING_CASES,
-    RENDER_SPEC_FIELDS,
-    RHYTHM_SCENARIOS,
-)
 
 
 def _round(value: float) -> float:

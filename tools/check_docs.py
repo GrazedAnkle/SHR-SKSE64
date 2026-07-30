@@ -3,7 +3,7 @@
 
 Checks docs/*.md for local links and anchors, source symbols, numbered coupling
 references, and Python script references. Python script references in tools/*.py
-are also checked.
+are also checked, and tools/README.md must index every module in tools/.
 
 Exit code is the number of problems found.
 
@@ -75,6 +75,26 @@ def coupling_count(docs_dir: Path) -> int:
 
 def lines_of(text: str) -> list[tuple[int, str]]:
     return list(enumerate(text.splitlines(), start=1))
+
+
+def tools_index_problems(tools_dir: Path, resolvable: set[str]) -> list[str]:
+    """Every tools/*.py must appear in tools/README.md, and the index must not cite a script that is gone.
+
+    The index cites the tests covering each module, so a cited name resolves against tests/ as well as
+    tools/.
+    """
+    index = tools_dir / "README.md"
+    if not index.is_file():
+        return [f"{tools_dir.name}/README.md: missing tools index"]
+
+    listed = set(PYREF_RE.findall(index.read_text(encoding="utf-8")))
+    present = {path.name for path in tools_dir.glob("*.py")}
+    problems = [f"tools/README.md: does not list {name}" for name in sorted(present - listed)]
+    problems += [
+        f"tools/README.md: references Python script '{name}' not in tools/ or tests/"
+        for name in sorted(listed - resolvable)
+    ]
+    return problems
 
 
 def main() -> int:
@@ -176,6 +196,8 @@ def main() -> int:
             for ref in PYREF_RE.findall(line):
                 if ref not in tool_scripts:
                     problems.append(f"{tool.name}:{lineno}: references Python script '{ref}' not in tools/ or tests/")
+
+    problems.extend(tools_index_problems(tools_dir, tool_scripts))
 
     if problems:
         print(f"{len(problems)} doc cross-reference problem(s):\n")

@@ -1,14 +1,8 @@
 """Tests for logical-reference lineage in generated measurements."""
 
-import sys
 import unittest
-from pathlib import Path
 
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "tools"))
-
-import ref_analyze  # noqa: E402
+import ref_analyze
 
 
 class ReferenceLineageTests(unittest.TestCase):

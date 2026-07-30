@@ -348,7 +348,7 @@ def main() -> None:
         "--module-dir",
         type=Path,
         default=core_offline.DEFAULT_MODULE_DIR,
-        help="directory containing shr_pybind (default: build/pybind)",
+        help=core_offline.MODULE_DIR_HELP,
     )
     parser.add_argument("--hr", type=float, default=180)
     parser.add_argument("--contractility", type=float, default=1.0)

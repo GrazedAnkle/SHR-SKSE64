@@ -126,16 +126,33 @@ from a Python virtual environment:
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-python tools/build_pybind.py
-python -m pytest tests --module-dir build/pybind
+cmake --preset Dev-Clang
+cmake --build build/dev-clang
+python -m pytest
 ```
+
+Any build that enables `BUILD_PYBIND` publishes the binding, its type stub, and a
+provenance stamp naming the tree it came from into `build/module`, which is where
+the Python side imports from. `pyproject.toml` declares the test paths and the
+`tools/` import root, so `pytest` needs no arguments;
+[tools/README.md](tools/README.md) indexes the tools and covers how the Python
+side is organized.
 
 That runs the whole Python suite: one case for each compiled-core golden (source
 conditioning, beat rendering, rhythm/mapping, and full trajectories), the
 immutable coefficient-override contract, and the analysis and offline-client
 tests. Narrow it to `tests/golden` for the compiled-core gates alone, or select
-one with `-k trajectory`. Point `--module-dir` at another binding tree when
-needed.
+one with `-k trajectory`.
+
+Build trees keep their own copy of the binding, so several can coexist; point
+`--module-dir` at one to test it specifically rather than whichever was built
+most recently. To build the binding without the plugin - CI, or a checkout
+without the CommonLibSSE submodule - use the portable tree instead, which
+publishes identically:
+
+```
+python tools/build_pybind.py
+```
 
 Verifying goldens is the pytest run above; authoring them is a separate tool,
 for the reason
@@ -152,23 +169,25 @@ compiler used for capture and verification rather than relying on the hosted
 runner's floating LLVM version; capturing with a different toolchain produces a
 manifest that will not verify there.
 
-`build_pybind.py` also writes a type stub (`build/pybind/shr_pybind.pyi`) so an
-editor resolves the binding's API. For Pylance, add `build/pybind` to
-`python.analysis.extraPaths`. `.vscode/settings.json` handles this already.
+The published stub (`build/module/shr_pybind.pyi`) is what lets an editor resolve
+the binding's API. For Pylance, `build/module` and `tools` both need to be on
+`python.analysis.extraPaths`, since it does not read pytest's import root;
+`.vscode/settings.json` handles both already.
 
 #### One preset for editing across all paths
 
-`Release-Clang` (plugin + tests) and the binding build are separate configures,
-so C++ IntelliSense only resolves includes for whichever one was configured last.
-To edit the plugin, tests, and binding together with one compile database,
-configure the `Dev-Clang` preset (it turns `BUILD_PYBIND` on and uses the `.venv`
-interpreter, so it also configures straight from an IDE with no activated venv):
+`Release-Clang` (plugin + tests) and the portable binding tree are separate
+configures, so C++ IntelliSense only resolves includes for whichever one was
+configured last. The `Dev-Clang` preset configures the plugin, tests, and binding
+together, so one compile database serves every path (it turns `BUILD_PYBIND` on
+and uses the `.venv` interpreter, so it also configures straight from an IDE with
+no activated venv):
 
 ```
 cmake --preset Dev-Clang
 ```
 
-Point the IDE at `build/dev-clang/compile_commands.json`. This preset is for
-development and IntelliSense; the plugin release still ships from `Release-Clang`
-and the golden binding from `build_pybind.py`. Create `.venv` first (see above);
-for a venv elsewhere, override `-DPython_EXECUTABLE`.
+Point the IDE at `build/dev-clang/compile_commands.json`. Create `.venv` first
+(see above); for a venv elsewhere, override `-DPython_EXECUTABLE`. This is the
+recommended local preset and it also publishes the binding the Python suite uses;
+the plugin release still ships from `Release-Clang`.

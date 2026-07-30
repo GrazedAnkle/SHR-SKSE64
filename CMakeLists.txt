@@ -430,4 +430,20 @@ if(BUILD_PYBIND)
     # LTO across the pybind11 extension boundary buys little here and risks clang-cl bitcode mismatches;
     # shr_core itself keeps its optimization settings.
     set_target_properties(shr_pybind PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
+
+    # $<TARGET_FILE:> names the built artifact directly, so this does not depend on which output-directory
+    # property governs a MODULE library on this platform.
+    add_custom_command(TARGET shr_pybind POST_BUILD
+        COMMAND "${CMAKE_COMMAND}"
+                -DMODULE_FILE=$<TARGET_FILE:shr_pybind>
+                -DMODULE_DIR=${CMAKE_SOURCE_DIR}/build/module
+                -DPYTHON_EXECUTABLE=${Python_EXECUTABLE}
+                -DBUILD_TYPE=${CMAKE_BUILD_TYPE}
+                -DBINARY_DIR=${CMAKE_BINARY_DIR}
+                -DCOMPILER=${CMAKE_CXX_COMPILER_ID}
+                -DCOMPILER_VERSION=${CMAKE_CXX_COMPILER_VERSION}
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/publish_pybind_module.cmake"
+        VERBATIM
+        COMMENT "Publishing shr_pybind, its stub, and its provenance to build/module"
+    )
 endif()

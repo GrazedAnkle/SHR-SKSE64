@@ -460,7 +460,7 @@ def main() -> int:
         "--module-dir",
         type=Path,
         default=core_offline.DEFAULT_MODULE_DIR,
-        help="directory containing shr_pybind (default: build/pybind)",
+        help=core_offline.MODULE_DIR_HELP,
     )
     parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
     parser.add_argument("--out-dir", type=Path, required=True)

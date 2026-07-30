@@ -16,15 +16,12 @@ ARCHITECTURE.md (offline execution) owns the verify/author split these domains a
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-import golden_beat_render  # noqa: E402
-import golden_rhythm_mapping  # noqa: E402
-import golden_source_conditioning  # noqa: E402
-import golden_trajectory  # noqa: E402
+import golden_beat_render
+import golden_rhythm_mapping
+import golden_source_conditioning
+import golden_trajectory
 
 # Ordered along the offline pipeline: source conditioning -> beat rendering -> rhythm/mapping -> trajectory.
 DOMAINS = (

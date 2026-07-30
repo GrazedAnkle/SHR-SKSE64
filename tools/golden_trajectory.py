@@ -14,8 +14,13 @@ One golden domain; tools/golden_registry.py describes the surface it exposes.
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
+
+from trajectory_fixtures import (
+    BEAT_FIELDS,
+    SNAPSHOT_FIELDS,
+    TRAJECTORY_SCENARIOS,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -23,13 +28,6 @@ ID = "trajectory"
 MANIFEST = ROOT / "tests" / "golden" / "trajectory.json"
 
 ATOL = 1.0e-5
-
-sys.path.insert(0, str(ROOT / "tools"))
-from trajectory_fixtures import (  # noqa: E402
-    BEAT_FIELDS,
-    SNAPSHOT_FIELDS,
-    TRAJECTORY_SCENARIOS,
-)
 
 _NOTIFY = {
     "combat_entry": lambda rt, _d: rt.notify_combat_entry(),

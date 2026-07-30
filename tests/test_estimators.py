@@ -15,19 +15,16 @@ That lets the tests assert ACCURACY against a known answer, not merely stability
 claim and the one that catches a ruler locked onto a wrong value.
 """
 
-import sys
 import unittest
 from pathlib import Path
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "tools"))
-
-from tools import shrlib
+import shrlib
 import rhythm_offline as ro
 import core_offline
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 SR = shrlib.SR

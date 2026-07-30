@@ -1,29 +1,27 @@
 """Author the offline golden manifests from the compiled core.
 
-This tool only ever writes; verification is ``pytest tests``. ARCHITECTURE.md (offline execution) owns
-why the two are separate commands.
+This tool only ever writes; verification is ``pytest``. ARCHITECTURE.md (offline execution) owns why the
+two are separate commands.
 
     python tools/capture_goldens.py                          # recapture every domain
     python tools/capture_goldens.py trajectory               # recapture one
     python tools/capture_goldens.py rhythm-mapping trajectory
     python tools/capture_goldens.py --module-dir build/dev-clang
 
-Build the binding first with tools/build_pybind.py. The waveform manifests hash raw float bytes, so
-capture with the compiler .github/workflows/offline-goldens.yml pins - a manifest captured with a
-different toolchain will not verify there.
+Build the binding first (any preset enabling BUILD_PYBIND publishes it). The waveform manifests hash raw
+float bytes, so capture with the compiler .github/workflows/offline-goldens.yml pins - a manifest captured
+with a different toolchain will not verify there.
 """
 from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+import core_offline
+import golden_registry
 
-sys.path.insert(0, str(ROOT / "tools"))
-import core_offline  # noqa: E402
-import golden_registry  # noqa: E402
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def main() -> None:
@@ -42,7 +40,7 @@ def main() -> None:
         "--module-dir",
         type=Path,
         default=core_offline.DEFAULT_MODULE_DIR,
-        help="Directory containing the built shr_pybind*.pyd (default: build/pybind).",
+        help=core_offline.MODULE_DIR_HELP,
     )
     args = parser.parse_args()
 

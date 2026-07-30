@@ -52,8 +52,14 @@ Sequence after [WI-037](WI-037-core-plugin-separation.md) if both are planned. T
 C++ sources between directories, and a reformatting commit layered onto a large relocation makes both
 harder to review than either alone.
 
-[WI-039](WI-039-python-project-structure.md) creates the file the Python configuration would live in, so
-the Python half of this item should follow it.
+`pyproject.toml` already exists and carries `[tool.*]` tables only, so the Python half of this item adds a
+formatter and linter table there rather than introducing the file. It is also where the supported
+interpreter would move: `[tool.shr] requires-python` holds it now because no linting table existed to
+declare a target version.
+
+The repository currently mixes CRLF and LF line endings between files, which is why nearly any edit draws a
+git conversion warning. Deciding whether a formatter or `.gitattributes` owns that - and whether
+normalizing is one commit or none - belongs to this item.
 
 ## Next action and decision points
 

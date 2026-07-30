@@ -6,25 +6,20 @@ further down is an unrecognized argument to any invocation that does not name th
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-TOOLS = ROOT / "tools"
-DEFAULT_MODULE_DIR = ROOT / "build" / "pybind"
-
-sys.path.insert(0, str(TOOLS))
-from core_offline import load_binding  # noqa: E402
+import core_offline
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
         "--module-dir",
         type=Path,
-        default=DEFAULT_MODULE_DIR,
-        help="directory containing the built shr_pybind module (default: build/pybind)",
+        # core_offline owns the default so the suite and the tools cannot disagree.
+        default=core_offline.DEFAULT_MODULE_DIR,
+        help=core_offline.MODULE_DIR_HELP,
     )
 
 
@@ -37,6 +32,12 @@ def shr_pybind(request: pytest.FixtureRequest):
     """
     module_dir = request.config.getoption("--module-dir")
     try:
-        return load_binding(module_dir)
+        return core_offline.load_binding(module_dir)
     except SystemExit as error:
         pytest.fail(str(error), pytrace=False)
+
+
+@pytest.fixture(scope="session")
+def binding_summary(request: pytest.FixtureRequest) -> str:
+    """Which binding this session loaded, for failures whose likeliest cause is the wrong one."""
+    return core_offline.provenance_summary(request.config.getoption("--module-dir"))

@@ -11,6 +11,7 @@ on:
       - "tools/**"
       - "CMakeLists.txt"
       - "CMakePresets.json"
+      - "pyproject.toml"
       - "requirements.txt"
       - "vcpkg.json"
       - "vcpkg-configuration.json"
@@ -25,6 +26,7 @@ on:
       - "tools/**"
       - "CMakeLists.txt"
       - "CMakePresets.json"
+      - "pyproject.toml"
       - "requirements.txt"
       - "vcpkg.json"
       - "vcpkg-configuration.json"
@@ -84,6 +86,7 @@ jobs:
           python tools\build_pybind.py
 
       # Covers the four golden domains and the immutable coefficient-override contract, both of which
-      # need the binding built above, plus the analysis and offline-client tests.
+      # need the binding built above, plus the analysis and offline-client tests. Deliberately the bare
+      # invocation README.md documents, so CI exercises the path a contributor runs.
       - name: Verify compiled-core goldens and run the Python suite
-        run: python -m pytest tests --module-dir build/pybind
+        run: python -m pytest

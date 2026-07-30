@@ -15,11 +15,12 @@ One golden domain; tools/golden_registry.py describes the surface it exposes.
 from __future__ import annotations
 
 import hashlib
-import sys
 from pathlib import Path
 
 import numpy as np
 import soundfile as sf
+
+from beat_render_fixtures import FIXTURES, STAGES  # committed fixture specs + stage names
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -27,9 +28,6 @@ ID = "beat-renderer"
 MANIFEST = ROOT / "tests" / "golden" / "beat_render.json"
 
 SOURCE = ROOT / "contrib/Distribution/Sound/fx/SHR_HeartBeat/HeartBeat_Shortened.wav"
-
-sys.path.insert(0, str(ROOT / "tools"))
-from beat_render_fixtures import FIXTURES, STAGES  # committed fixture specs + stage names
 
 # peak_abs / rms are informational; sha256 is the real gate. Tolerate float-repr drift on recompute.
 STAT_ATOL = 1.0e-9

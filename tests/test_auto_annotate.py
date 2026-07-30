@@ -1,13 +1,8 @@
 """Synthetic ground-truth tests for the S1/S2 annotator's onset decisions."""
 
-import sys
 import unittest
-from pathlib import Path
 
 import numpy as np
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "tools"))
 
 import auto_annotate as aa
 

@@ -162,7 +162,7 @@ def main() -> None:
         "--module-dir",
         type=Path,
         default=core_offline.DEFAULT_MODULE_DIR,
-        help="directory containing shr_pybind (default: build/pybind)",
+        help=core_offline.MODULE_DIR_HELP,
     )
     parser.add_argument("--resting", type=float, default=55.0)
     parser.add_argument("--max", type=float, default=200.0)

@@ -1,15 +1,12 @@
 """Contract tests for the thin rhythm/simulation clients and their override plumbing."""
-import sys
 import unittest
 from pathlib import Path
-
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "tools"))
 
 import core_offline
 import rhythm_offline
 import sim_offline
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 SOURCE = (

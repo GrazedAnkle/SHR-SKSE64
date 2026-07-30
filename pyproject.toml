@@ -1,0 +1,13 @@
+# Configuration for the repository's Python side: the tools in tools/ and the suite in tests/.
+# tools/README.md explains what this declares and what it deliberately does not.
+
+[tool.shr]
+# Read by tools/build_pybind.py; .github/workflows/offline-goldens.yml pins the same version.
+requires-python = ">=3.13"
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+# tools/ only. Adding the repository root would make the same files importable a second time as
+# tools.<name>, giving one file two module objects.
+pythonpath = ["tools"]

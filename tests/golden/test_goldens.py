@@ -16,7 +16,7 @@ CHECKS = tuple(pytest.param(domain, id=domain.ID) for domain in golden_registry.
 
 
 @pytest.mark.parametrize("domain", CHECKS)
-def test_compiled_core_golden(shr_pybind: ModuleType, domain: ModuleType) -> None:
+def test_compiled_core_golden(shr_pybind: ModuleType, binding_summary: str, domain: ModuleType) -> None:
     if not domain.MANIFEST.exists():
         pytest.fail(
             f"golden manifest missing: {domain.MANIFEST.relative_to(domain.MANIFEST.parents[2])} "
@@ -31,6 +31,7 @@ def test_compiled_core_golden(shr_pybind: ModuleType, domain: ModuleType) -> Non
             f"compiled core DIVERGED from the {domain.ID} golden "
             f"({len(problems)} difference(s)):\n"
             f"{golden_registry.format_problems(problems)}\n"
+            f"Binding under test: {binding_summary}\n"
             f"Recapture only if the change is intended: "
             f"python tools/capture_goldens.py {domain.ID}",
             pytrace=False,

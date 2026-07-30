@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import sys
 from pathlib import Path
 
@@ -10,7 +11,15 @@ import soundfile as sf
 
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_MODULE_DIR = ROOT / "build" / "pybind"
+
+# Written by cmake/publish_pybind_module.cmake; README.md (Building) owns what it means.
+DEFAULT_MODULE_DIR = ROOT / "build" / "module"
+
+# Shared so no tool's --help can drift from the default it applies.
+MODULE_DIR_HELP = (
+    "directory containing the built shr_pybind module "
+    f"(default: {DEFAULT_MODULE_DIR.relative_to(ROOT).as_posix()})"
+)
 
 
 def load_binding(module_dir: str | Path = DEFAULT_MODULE_DIR):
@@ -23,8 +32,28 @@ def load_binding(module_dir: str | Path = DEFAULT_MODULE_DIR):
     except ImportError as error:
         raise SystemExit(
             f"cannot import shr_pybind from {module_dir} ({error}); "
-            "build it with: python tools/build_pybind.py"
+            "build it with any preset that enables BUILD_PYBIND (cmake --preset Dev-Clang), "
+            "or for a plugin-free tree: python tools/build_pybind.py"
         ) from error
+
+
+def binding_provenance(module_dir: str | Path = DEFAULT_MODULE_DIR) -> dict[str, str] | None:
+    """What the publishing build recorded about the binding in ``module_dir``, if anything did."""
+    try:
+        return json.loads((Path(module_dir) / "binding.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def provenance_summary(module_dir: str | Path = DEFAULT_MODULE_DIR) -> str:
+    """One line naming the binding under test, for failure messages."""
+    stamp = binding_provenance(module_dir)
+    if stamp is None:
+        return f"{module_dir} (no provenance stamp; published by an older build or copied by hand)"
+    return (
+        f"{stamp.get('build_type') or 'unknown'} build from {stamp.get('binary_dir')}, "
+        f"{stamp.get('compiler')}, published {stamp.get('published_utc')}"
+    )
 
 
 def binding_available(module_dir: str | Path = DEFAULT_MODULE_DIR) -> bool:

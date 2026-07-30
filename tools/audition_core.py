@@ -114,8 +114,8 @@ def main() -> None:
     parser.add_argument(
         "--module-dir",
         type=Path,
-        default=ROOT / "build" / "pybind",
-        help="directory containing shr_pybind (default: build/pybind)",
+        default=core_offline.DEFAULT_MODULE_DIR,
+        help=core_offline.MODULE_DIR_HELP,
     )
     parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
     parser.add_argument("--out", type=Path, required=True, help="native-layout PCM16 audition WAV")
