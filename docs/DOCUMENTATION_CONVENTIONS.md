@@ -63,6 +63,12 @@ tool references, and enforces that `tools/README.md` indexes every module in `to
 load-bearing/exploratory distinction there cannot silently decay. `tools/check_data_citations.py` validates supported prose citations, calibration bindings,
 and their structured state references.
 
+## Keep in-source comments lean
+
+To ensure code remains readable, and to minimize surface area for comment drift, source comments should only document
+implementation details or quirks necessary for local understanding. Detailed explanations go in appropriate owning docs,
+and should not be duplicated in comments.
+
 ## Constant provenance tags
 
 Every constant in `src/Constants.hpp` has one provenance tag answering what process is required to change
