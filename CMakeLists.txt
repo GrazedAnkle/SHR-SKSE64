@@ -100,8 +100,6 @@ set(sources
     src/NotificationPolicy.cpp
     src/SkyrimHeartRate.cpp
     src/EventHandler.cpp
-
-    ${CMAKE_CURRENT_BINARY_DIR}/version.rc
 )
 
 set(tests
@@ -238,7 +236,14 @@ set_target_properties(shr_core PROPERTIES INTERPROCEDURAL_OPTIMIZATION ${USE_IPO
 ## Configure target DLL
 ########################################################################################################################
 if(BUILD_PLUGIN)
-    add_commonlibsse_plugin(${PROJECT_NAME} SOURCES ${headers} ${sources})
+    # version.rc is generated into the binary directory, so it stays out of ${sources}: source_group's
+    # TREE root is the source directory, and a binary directory outside it fails to configure.
+    add_commonlibsse_plugin(${PROJECT_NAME}
+        SOURCES
+            ${headers}
+            ${sources}
+            ${CMAKE_CURRENT_BINARY_DIR}/version.rc
+    )
 
     add_library("${PROJECT_NAME}::${PROJECT_NAME}" ALIAS "${PROJECT_NAME}")
 

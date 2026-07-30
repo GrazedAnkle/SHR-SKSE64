@@ -52,15 +52,17 @@ Do not change any runtime behavior, any numerical value, or any public core sign
 relocation, and its acceptance criterion is that nothing observable changes.
 
 Do not fold the plugin-adapter support target into `shr_core`. `Config`, `LoggingConfiguration`, and
-`NotificationPolicy` may be Skyrim-free, but they are adapter policy rather than model behavior, and the
-core's dependency rule is what makes it portable. Verify that claim before creating the target rather than
-assuming it - if any of the three does reach into CommonLibSSE, it belongs with the plugin instead.
+`NotificationPolicy` are Skyrim-free, but they are adapter policy rather than model behavior, and the
+core's dependency rule is what makes it portable. Their being Skyrim-free is settled rather than assumed:
+the native CI gate compiles and links all three in a tree configured with the plugin off and no
+CommonLibSSE submodule resolved, reaching only spdlog and toml11. The support target is therefore viable.
 
 ## Dependencies
 
-[WI-036](WI-036-native-test-ci-gate.md) should land first so that a native CI gate exists to catch
-regressions from the move. This item edits the same option names and target structure, so running them
-concurrently would conflict.
+None blocking. The native CI gate that catches regressions from the move now exists, so the move can be
+verified rather than reasoned about. That gate configures the plugin-free tests preset, which this item's
+option renaming and target restructuring both touch; keep the preset and the workflow building as the
+structure changes.
 
 ## Next action and decision points
 
@@ -74,9 +76,6 @@ their own definition.
 Then decide whether includes become directory-qualified. Qualification makes each boundary crossing
 visible at the include site, which is most of the value of the move, but it touches every file and
 enlarges an already large mechanical diff.
-
-Confirm before starting that `Config.cpp`, `LoggingConfiguration.cpp`, and `NotificationPolicy.cpp` are
-genuinely CommonLibSSE-free, since that determines whether the support target is viable at all.
 
 ## Newly observed work to split out
 

@@ -30,6 +30,15 @@ The plugin and core tests link that same library rather than compiling private c
 implementations. The `Core-Release-Clang` preset resolves only portable core dependencies and proves the
 boundary without configuring CommonLib or the plugin target.
 
+The Catch2 suite is gated on that same boundary. The Windows native-tests workflow configures the
+plugin-free `Core-Tests-Release-MSVC` preset, whose vcpkg feature set supplies Catch2, spdlog, and toml11
+without the plugin dependency closure, and runs the suite through its `Core-Unit-Tests` test preset. The
+test executable links `shr_core` and compiles the three Skyrim-free adapter sources - configuration,
+logging configuration, and notification policy - directly, so it needs neither the CommonLib submodule nor
+a Skyrim module. Nothing in the suite hashes floating-point bytes, so unlike the golden gate it pins no
+compiler. Every test in the suite is a unit test and CI runs all of them; label-based selection is not
+operational, which [WI-041](work_items/WI-041-test-label-selection.md) owns.
+
 The active plugin path decodes source PCM into a typed float `HeartbeatSource`, performs the complete
 source -> transmission -> transducer chain through `RenderBeat`, then calls `EncodePcm16` exactly once at
 the XAudio submission boundary. `TraceBeatRender` retains domain outputs for tests and offline inspection

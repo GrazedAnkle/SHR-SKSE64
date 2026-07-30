@@ -162,6 +162,29 @@
       }
     },
     {
+      "name": "Core-Tests-Release-MSVC",
+      "inherits": [
+        "vcpkg",
+        "msvc"
+      ],
+      "displayName": "Core Tests Release (MSVC)",
+      "description": "Plugin-free Catch2 build used by the native-tests CI workflow. Local test builds use Dev-Clang or Release-Clang; this preset exists so CI can build the suite without CommonLibSSE.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/core-tests-release-msvc",
+      "cacheVariables": {
+        "BUILD_PLUGIN": "OFF",
+        "BUILD_TESTS": "ON",
+        "VCPKG_MANIFEST_NO_DEFAULT_FEATURES": "ON",
+        "VCPKG_MANIFEST_FEATURES": "tests",
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl",
+        "CMAKE_BUILD_TYPE": {
+          "type": "STRING",
+          "value": "Release"
+        }
+      }
+    },
+    {
       "name": "Dev-Clang",
       "inherits": "Release-Clang",
       "displayName": "Developer (Clang, all targets)",
@@ -218,6 +241,13 @@
           "label": "[e2e]"
         }
       }
+    },
+    {
+      "name": "Core-Unit-Tests",
+      "displayName": "Core Unit Tests",
+      "description": "Runs the whole suite against the plugin-free build. No label filter: every test in the suite is a unit test.",
+      "inherits": "All-Tests",
+      "configurePreset": "Core-Tests-Release-MSVC"
     }
   ]
 }

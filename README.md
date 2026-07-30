@@ -119,6 +119,21 @@ cmake --preset Release-Clang
 cmake --build build/release-clang
 ```
 
+Every preset that builds the plugin also builds the Catch2 suite. Run it against
+whichever tree you configured:
+
+```
+ctest --test-dir build/release-clang --output-on-failure
+```
+
+CI runs the same suite without building the plugin at all, through the
+`Core-Tests-Release-MSVC` configure preset and its `Core-Unit-Tests` test preset.
+That pair exists for `.github/workflows/native-tests.yml` rather than for local
+work - it selects MSVC and resolves the test dependencies without the plugin
+closure, so it needs no CommonLibSSE submodule.
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#dependency-boundary) owns why that
+gate is possible.
+
 The offline analysis binding (`shr_pybind`) and the golden regression checks run
 from a Python virtual environment:
 
