@@ -9,6 +9,31 @@ mechanisms.
 
 ## Dependency boundary
 
+Three source directories hold three populations with different dependency rules, and each build
+target lists exactly one of them, so a file's directory states which target owns it:
+
+| Directory | Target | May reach |
+|---|---|---|
+| `src/core` | `shr_core` | nothing beyond the standard library and private pocketfft |
+| `src/adapter` | `shr_adapter` | `src/core`, spdlog, toml11 |
+| `src/plugin` | `SHR` | `src/adapter`, `src/core`, CommonLibSSE, XAudio |
+
+`src/` is the single include root for every target, so an include names the layer it reaches into -
+`#include "core/RenderSpec.hpp"` - and each crossing is visible where it happens. The permitted
+direction is downward only. `tools/check_layering.py` enforces that direction, the qualification
+itself, and that each layer directory and its CMake source list hold the same files; the last of
+those is what keeps a new file from being silently omitted from a target.
+
+Shared value types - `RenderSpec`, `BeatEvent`, `PhysiologySnapshot`, `SimulationState` - live in
+`src/core` rather than a separate shared directory. They are core-owned outputs, and a shared
+directory's rule would be "anyone may depend on this", which is weaker than the downward-only chain
+rather than stronger. Layers are flat rather than component trees with public `include/` directories.
+That shape would make the direction compiler-enforced, since per-component include directories
+propagate only along link edges, but the include strings are identical either way, the private-header
+set that would justify it is one file (`Random.hpp`), and the preset and checker below already cover
+the direction. Promoting `src/core/*.hpp` to `src/core/include/core/*.hpp` later would therefore not
+touch a single include.
+
 Dependencies point inward:
 
 ```text
@@ -28,16 +53,28 @@ co-save records <---> SimulationState    `-- CreateRenderSpec ----> RenderSpec
 private numerical implementation dependency for the analytic envelope; it does not cross the public API.
 The plugin and core tests link that same library rather than compiling private copies of its
 implementations. The `Core-Release-Clang` preset resolves only portable core dependencies and proves the
-boundary without configuring CommonLib or the plugin target.
+boundary without configuring CommonLib or the plugin target: a core file reaching upward pulls a library
+that preset does not supply, so the crossing fails to configure. That leaves header-only crossings, which
+would compile on either side of the boundary, and `tools/check_layering.py` covers those.
+
+`shr_adapter` is the Skyrim-free half of the adapter: configuration parsing, logging configuration, and
+notification message selection. These are adapter policy rather than model behavior, so they stay out of
+`shr_core` even though they reach no Skyrim API - the core's dependency rule is what makes it portable.
+Logging is split along that line: `adapter/LoggingConfiguration.hpp` declares the level application, which
+touches only the installed default logger, while `plugin/Logging.hpp` declares the sink installation that
+resolves the SKSE log directory.
 
 The Catch2 suite is gated on that same boundary. The Windows native-tests workflow configures the
 plugin-free `Core-Tests-Release-MSVC` preset, whose vcpkg feature set supplies Catch2, spdlog, and toml11
 without the plugin dependency closure, and runs the suite through its `Core-Unit-Tests` test preset. The
-test executable links `shr_core` and compiles the three Skyrim-free adapter sources - configuration,
-logging configuration, and notification policy - directly, so it needs neither the CommonLib submodule nor
-a Skyrim module. Nothing in the suite hashes floating-point bytes, so unlike the golden gate it pins no
-compiler. Every test in the suite is a unit test and CI runs all of them; label-based selection is not
-operational, which [WI-041](work_items/WI-041-test-label-selection.md) owns.
+test executable links `shr_adapter`, which carries `shr_core` and spdlog with it, and compiles no `src/`
+sources of its own, so it needs neither the CommonLib submodule nor a Skyrim module. Nothing in the suite
+hashes floating-point bytes, so unlike the golden gate it pins no compiler. Every test in the suite is a
+unit test and CI runs all of them; label-based selection is not operational, which
+[WI-041](work_items/WI-041-test-label-selection.md) owns.
+
+The project's CMake options are `SHR_`-prefixed so they cannot alias an identically named option in a
+dependency added through `add_subdirectory`.
 
 The active plugin path decodes source PCM into a typed float `HeartbeatSource`, performs the complete
 source -> transmission -> transducer chain through `RenderBeat`, then calls `EncodePcm16` exactly once at
@@ -92,7 +129,7 @@ legacy-field defaults.
   float renderer. `RenderBeat` consumes that source and a `RenderSpec` without filesystem, device, or
   Skyrim state. The plugin owns WAV container parsing; offline clients may supply the same decoded
   samples without reproducing conditioning or rendering.
-- The Skyrim adapter owns RE/SKSE mapping, game-clock sampling, event delivery, co-save translation, HUD
+- The plugin layer owns RE/SKSE mapping, game-clock sampling, event delivery, co-save translation, HUD
   policy, pause/resume integration, WAV/file I/O, and XAudio submission. The audio sink owns device
   volume and queue/resource behavior.
 
@@ -105,7 +142,7 @@ single-writer mailbox remains a thread-contract decision under
 `shr_core` is the single implementation of physiology, rhythm, acoustic mapping, source conditioning, and
 beat rendering for both the plugin and offline analysis; Python reimplements none of them. The binding in
 `bindings/shr_pybind.cpp` compiles that same target into a Python extension so scenario, analysis, and
-reporting code drives the compiled core directly. It builds under the `BUILD_PYBIND` option against the
+reporting code drives the compiled core directly. It builds under the `SHR_BUILD_PYBIND` option against the
 analysis virtual environment's Python, with no CommonLib, Skyrim, or XAudio dependency (see the README build
 steps). WAV container parsing stays in Python because the plugin owns it in-game, so the binding accepts
 decoded PCM16 and returns NumPy float audio alongside physiology snapshots, beat events, and render

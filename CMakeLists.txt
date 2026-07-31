@@ -9,13 +9,16 @@ project(SHR
     DESCRIPTION "Physiological heart-rate simulation with synthesized heartbeat audio."
 )
 
-option(BUILD_PLUGIN "Build the Skyrim plugin." ON)
-option(BUILD_TESTS "Build unit tests." OFF)
-option(BUILD_PYBIND "Build the offline Python binding." OFF)
+# Namespaced so they cannot collide with an option of the same name in a dependency added via
+# add_subdirectory. CommonLibSSE defines its own BUILD_TESTS, which an unnamespaced option here would
+# alias.
+option(SHR_BUILD_PLUGIN "Build the Skyrim plugin." ON)
+option(SHR_BUILD_TESTS "Build unit tests." OFF)
+option(SHR_BUILD_PYBIND "Build the offline Python binding." OFF)
 message("Options:")
-message("    Plugin: ${BUILD_PLUGIN}")
-message("    Tests: ${BUILD_TESTS}")
-message("    Pybind: ${BUILD_PYBIND}")
+message("    Plugin: ${SHR_BUILD_PLUGIN}")
+message("    Tests: ${SHR_BUILD_TESTS}")
+message("    Pybind: ${SHR_BUILD_PYBIND}")
 
 string(TIMESTAMP PROJECT_CONFIGURE_YEAR "%Y" UTC)
 set(PROJECT_AUTHOR        "GrazedAnkle")
@@ -25,87 +28,90 @@ set(PROJECT_COPYRIGHT     "SHR Copyright (C) ${PROJECT_CONFIGURE_YEAR} ${PROJECT
 set(CMAKE_CXX_STANDARD          23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(BUILD_PLUGIN)
+if(SHR_BUILD_PLUGIN)
     configure_file(
-        src/version.rc.in
+        src/plugin/version.rc.in
         ${CMAKE_CURRENT_BINARY_DIR}/version.rc
         @ONLY
     )
 
     configure_file(
-        src/fomod/info.xml.in
+        src/plugin/fomod/info.xml.in
         ${CMAKE_CURRENT_BINARY_DIR}/Distribution/fomod/info.xml
         @ONLY
     )
 
     configure_file(
-        src/fomod/ModuleConfig.xml.in
+        src/plugin/fomod/ModuleConfig.xml.in
         ${CMAKE_CURRENT_BINARY_DIR}/Distribution/fomod/ModuleConfig.xml
         @ONLY
     )
 endif()
 
-set(headers
-    src/AcousticMapper.hpp
-    src/AudioBuffer.hpp
-    src/BeatRenderer.hpp
-    src/BeatEvent.hpp
-    src/BeatKind.hpp
-    src/Config.hpp
-    src/Constants.hpp
-    src/EventHandler.hpp
-    src/HeartbeatVoice.hpp
-    src/HeartbeatSource.hpp
-    src/HeartRate.hpp
-    src/InputHandler.hpp
-    src/Logging.hpp
-    src/ModelCoefficients.hpp
-    src/NotificationPolicy.hpp
-    src/Pcm16.hpp
-    src/pch.hpp
-    src/PhysiologySnapshot.hpp
-    src/Random.hpp
-    src/RhythmEngine.hpp
-    src/RhythmInput.hpp
-    src/RhythmRandom.hpp
-    src/RenderSpec.hpp
-    src/Runtime.hpp
-    src/RuntimeSettings.hpp
-    src/Simulation.hpp
-    src/SimulationSettings.hpp
-    src/SimulationState.hpp
-    src/SkyrimHeartRate.hpp
-    src/StepInput.hpp
-    src/StepResult.hpp
-)
+# One list per source directory, and each target below lists exactly one of them. A file's directory
+# states which target owns it; no file appears in two lists. Layer directories may include downward
+# only (plugin -> adapter -> core), which tools/check_layering.py enforces at the include site.
 
 set(core_sources
-    src/AcousticMapper.cpp
-    src/BeatRenderer.cpp
-    src/HeartbeatSource.cpp
-    src/ModelCoefficients.cpp
-    src/Pcm16.cpp
-    src/RhythmEngine.cpp
-    src/Runtime.cpp
-    src/Simulation.cpp
+    src/core/AcousticMapper.cpp
+    src/core/AcousticMapper.hpp
+    src/core/AudioBuffer.hpp
+    src/core/BeatEvent.hpp
+    src/core/BeatKind.hpp
+    src/core/BeatRenderer.cpp
+    src/core/BeatRenderer.hpp
+    src/core/Constants.hpp
+    src/core/HeartbeatSource.cpp
+    src/core/HeartbeatSource.hpp
+    src/core/ModelCoefficientRegistry.hpp
+    src/core/ModelCoefficients.cpp
+    src/core/ModelCoefficients.hpp
+    src/core/Pcm16.cpp
+    src/core/Pcm16.hpp
+    src/core/PhysiologySnapshot.hpp
+    src/core/Random.hpp
+    src/core/RenderSpec.hpp
+    src/core/RhythmEngine.cpp
+    src/core/RhythmEngine.hpp
+    src/core/RhythmInput.hpp
+    src/core/RhythmRandom.hpp
+    src/core/Runtime.cpp
+    src/core/Runtime.hpp
+    src/core/RuntimeSettings.hpp
+    src/core/Simulation.cpp
+    src/core/Simulation.hpp
+    src/core/SimulationSettings.hpp
+    src/core/SimulationState.hpp
+    src/core/StepInput.hpp
+    src/core/StepResult.hpp
 )
 
-set(sources
-    src/Main.cpp
-    src/Config.cpp
-    src/HeartbeatVoice.cpp
-    src/InputHandler.cpp
-    src/Logging.cpp
-    src/LoggingConfiguration.cpp
-    src/NotificationPolicy.cpp
-    src/SkyrimHeartRate.cpp
-    src/EventHandler.cpp
+set(adapter_sources
+    src/adapter/Config.cpp
+    src/adapter/Config.hpp
+    src/adapter/HeartRate.hpp
+    src/adapter/LoggingConfiguration.cpp
+    src/adapter/LoggingConfiguration.hpp
+    src/adapter/NotificationPolicy.cpp
+    src/adapter/NotificationPolicy.hpp
 )
 
-set(tests
-    src/Config.cpp
-    src/LoggingConfiguration.cpp
-    src/NotificationPolicy.cpp
+set(plugin_sources
+    src/plugin/EventHandler.cpp
+    src/plugin/EventHandler.hpp
+    src/plugin/HeartbeatVoice.cpp
+    src/plugin/HeartbeatVoice.hpp
+    src/plugin/InputHandler.cpp
+    src/plugin/InputHandler.hpp
+    src/plugin/Logging.cpp
+    src/plugin/Logging.hpp
+    src/plugin/Main.cpp
+    src/plugin/SkyrimHeartRate.cpp
+    src/plugin/SkyrimHeartRate.hpp
+    src/plugin/pch.hpp
+)
+
+set(test_sources
     tests/AcousticMapperTests.cpp
     tests/AudioBufferTests.cpp
     tests/BeatRendererTests.cpp
@@ -126,10 +132,10 @@ set(tests
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}
     FILES
-        ${headers}
         ${core_sources}
-        ${sources}
-        ${tests}
+        ${adapter_sources}
+        ${plugin_sources}
+        ${test_sources}
 )
 
 ########################################################################################################################
@@ -140,16 +146,18 @@ include(CheckIPOSupported)
 ########################################################################################################################
 ## Find dependencies
 ########################################################################################################################
-if(BUILD_PLUGIN)
-    set(SHR_BUILD_TESTS ${BUILD_TESTS})
-    set(BUILD_TESTS OFF)  # Prevent CommonLibSSE from building its own test suite
+if(SHR_BUILD_PLUGIN)
+    # CommonLibSSE's own BUILD_TESTS defaults to ON; turn it off so it does not configure its test
+    # suite. Under CMP0077 its option() honors this normal variable. Nothing needs saving and
+    # restoring around the call any more: this project's options are SHR_-prefixed, so the name no
+    # longer refers to two different settings.
+    set(BUILD_TESTS OFF)
     set(ENABLE_SKYRIM_VR OFF CACHE BOOL "" FORCE)  # TODO(2026-06-06): Add VR support?
     add_subdirectory("extern/commonlibsse-ng" "CommonLibSSE" EXCLUDE_FROM_ALL)
     include("extern/commonlibsse-ng/cmake/CommonLibSSE.cmake")
-    set(BUILD_TESTS ${SHR_BUILD_TESTS})  # Restore after CommonLibSSE subdirectory
 endif()
 
-if(BUILD_PLUGIN OR BUILD_TESTS)
+if(SHR_BUILD_PLUGIN OR SHR_BUILD_TESTS)
     find_package(spdlog CONFIG REQUIRED)
     find_package(toml11 CONFIG REQUIRED)
 endif()
@@ -158,7 +166,7 @@ endif()
 # the core analytic envelope and scipy's offline mirror, so both compute the same transform.
 find_path(POCKETFFT_INCLUDE_DIRS "pocketfft_hdronly.h" REQUIRED)
 
-if(BUILD_TESTS)
+if(SHR_BUILD_TESTS)
     find_package(Catch2 CONFIG REQUIRED)
 endif()
 
@@ -192,32 +200,7 @@ endif()
 ########################################################################################################################
 ## Configure core library
 ########################################################################################################################
-add_library(shr_core STATIC
-    src/AcousticMapper.hpp
-    src/AudioBuffer.hpp
-    src/BeatRenderer.hpp
-    src/BeatEvent.hpp
-    src/BeatKind.hpp
-    src/Constants.hpp
-    src/HeartRate.hpp
-    src/HeartbeatSource.hpp
-    src/ModelCoefficients.hpp
-    src/PhysiologySnapshot.hpp
-    src/Pcm16.hpp
-    src/Random.hpp
-    src/RhythmEngine.hpp
-    src/RhythmInput.hpp
-    src/RhythmRandom.hpp
-    src/RenderSpec.hpp
-    src/Runtime.hpp
-    src/RuntimeSettings.hpp
-    src/Simulation.hpp
-    src/SimulationSettings.hpp
-    src/SimulationState.hpp
-    src/StepInput.hpp
-    src/StepResult.hpp
-    ${core_sources}
-)
+add_library(shr_core STATIC ${core_sources})
 
 add_library("${PROJECT_NAME}::core" ALIAS shr_core)
 
@@ -233,15 +216,37 @@ target_compile_features(shr_core PUBLIC cxx_std_23)
 set_target_properties(shr_core PROPERTIES INTERPROCEDURAL_OPTIMIZATION ${USE_IPO})
 
 ########################################################################################################################
+## Configure adapter policy library
+########################################################################################################################
+# Skyrim-free adapter policy: configuration parsing, logging configuration, and notification message
+# selection. Separated from the plugin so the tests link one built artifact instead of recompiling
+# these sources with a second set of compilation settings.
+if(SHR_BUILD_PLUGIN OR SHR_BUILD_TESTS)
+    add_library(shr_adapter STATIC ${adapter_sources})
+
+    add_library("${PROJECT_NAME}::adapter" ALIAS shr_adapter)
+
+    target_link_libraries(shr_adapter
+        PUBLIC
+            shr_core
+            spdlog::spdlog   # Config.hpp stores spdlog::level::level_enum, so this crosses its API.
+        PRIVATE
+            toml11::toml11   # Serialization lives entirely in Config.cpp.
+    )
+
+    set_target_properties(shr_adapter PROPERTIES INTERPROCEDURAL_OPTIMIZATION ${USE_IPO})
+endif()
+
+########################################################################################################################
 ## Configure target DLL
 ########################################################################################################################
-if(BUILD_PLUGIN)
-    # version.rc is generated into the binary directory, so it stays out of ${sources}: source_group's
-    # TREE root is the source directory, and a binary directory outside it fails to configure.
+if(SHR_BUILD_PLUGIN)
+    # version.rc is generated into the binary directory, so it stays out of ${plugin_sources}:
+    # source_group's TREE root is the source directory, and a binary directory outside it fails to
+    # configure.
     add_commonlibsse_plugin(${PROJECT_NAME}
         SOURCES
-            ${headers}
-            ${sources}
+            ${plugin_sources}
             ${CMAKE_CURRENT_BINARY_DIR}/version.rc
     )
 
@@ -251,19 +256,19 @@ if(BUILD_PLUGIN)
 
     target_include_directories(${PROJECT_NAME}
         PRIVATE
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
             $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
     )
 
+    # shr_core and spdlog arrive transitively; the plugin reaches core types through adapter headers
+    # and directly, and both are PUBLIC on shr_adapter.
     target_link_libraries(${PROJECT_NAME}
         PRIVATE
-            shr_core
-            toml11::toml11
+            shr_adapter
     )
 
     target_precompile_headers(${PROJECT_NAME}
         PRIVATE
-            src/pch.hpp
+            src/plugin/pch.hpp
     )
 
     # CMake flags for Release builds are suboptimal.
@@ -362,17 +367,17 @@ endif()
 ########################################################################################################################
 ## Configure unit tests
 ########################################################################################################################
-if(BUILD_TESTS)
+if(SHR_BUILD_TESTS)
     include(CTest)
     include(Catch)
 
     add_executable(${PROJECT_NAME}Tests
-        ${tests}
+        ${test_sources}
     )
 
+    # src/ arrives with shr_core's usage requirements; only the suite's own headers need adding.
     target_include_directories(${PROJECT_NAME}Tests
         PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/src
             ${CMAKE_CURRENT_SOURCE_DIR}/tests
     )
 
@@ -381,12 +386,11 @@ if(BUILD_TESTS)
             SHR_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
     )
 
+    # shr_adapter carries shr_core and spdlog; the suite compiles no src/ sources of its own.
     target_link_libraries(${PROJECT_NAME}Tests
         PRIVATE
             Catch2::Catch2WithMain
-            shr_core
-            spdlog::spdlog
-            toml11::toml11
+            shr_adapter
     )
 
     catch_discover_tests(${PROJECT_NAME}Tests)
@@ -395,7 +399,7 @@ endif()
 ########################################################################################################################
 ## Configure offline Python binding
 ########################################################################################################################
-if(BUILD_PYBIND)
+if(SHR_BUILD_PYBIND)
     # The extension must build against the interpreter that will import it so its ABI and CRT match.
     # Callers pass -DPython_EXECUTABLE (presets pin the .venv interpreter; build_pybind.py passes whichever
     # interpreter runs it).
@@ -422,11 +426,7 @@ if(BUILD_PYBIND)
 
     pybind11_add_module(shr_pybind bindings/shr_pybind.cpp)
 
-    target_include_directories(shr_pybind
-        PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/src
-    )
-
+    # src/ arrives with shr_core's usage requirements.
     target_link_libraries(shr_pybind
         PRIVATE
             shr_core

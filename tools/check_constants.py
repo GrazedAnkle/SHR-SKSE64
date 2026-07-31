@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Verify constant provenance and exact model-registry coverage.
 
-Every ``constexpr`` in ``src/Constants.hpp`` must have a provenance tag and appear exactly once in
+Every ``constexpr`` in ``src/core/Constants.hpp`` must have a provenance tag and appear exactly once in
 ``ModelCoefficientRegistry.hpp``: either as a typed live field in one owning group or as an explicitly
 classified non-live constant. A small deliberately broken fixture proves that missing, duplicate, and
 mistyped entries are detected by this gate.
@@ -250,10 +250,10 @@ def main() -> int:
     args = parser.parse_args()
 
     root = Path(args.root).resolve()
-    constants_path = root / "src" / "Constants.hpp"
-    registry_path = root / "src" / "ModelCoefficientRegistry.hpp"
+    constants_path = root / "src" / "core" / "Constants.hpp"
+    registry_path = root / "src" / "core" / "ModelCoefficientRegistry.hpp"
     if not constants_path.exists() or not registry_path.exists():
-        print("missing src/Constants.hpp or src/ModelCoefficientRegistry.hpp", file=sys.stderr)
+        print("missing src/core/Constants.hpp or src/core/ModelCoefficientRegistry.hpp", file=sys.stderr)
         return 1
 
     provenance, counts = _provenance_problems(constants_path)

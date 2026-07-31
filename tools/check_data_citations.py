@@ -56,7 +56,7 @@ CONSTEXPR_RE = re.compile(r"^\s*constexpr\b.*?\b([A-Za-z_]\w*)\s*=\s*(-?[\d.]+)"
 
 def tuned_constants(root: Path) -> dict[str, float]:
     """Return [ref]- and [dsp]-tagged constants using the check_constants.py block-tag rule."""
-    path = root / "src" / "Constants.hpp"
+    path = root / "src" / "core" / "Constants.hpp"
     if not path.exists():
         return {}
     found: dict[str, float] = {}
@@ -81,7 +81,7 @@ def float_constants(root: Path) -> dict[str, float]:
 
     Ignores provenance tags and skips expressions that reference other symbols.
     """
-    path = root / "src" / "Constants.hpp"
+    path = root / "src" / "core" / "Constants.hpp"
     if not path.exists():
         return {}
     found: dict[str, float] = {}
@@ -186,7 +186,7 @@ def check_calibrations(root: Path, manifest: dict, measurements: Any) -> list[st
     problems: list[str] = []
     constants = tuned_constants(root)
     if not constants:
-        return ["src/Constants.hpp: no [ref]/[dsp] constants found (parser broken?)"]
+        return ["src/core/Constants.hpp: no [ref]/[dsp] constants found (parser broken?)"]
     fconstants = float_constants(root)
 
     declared: set[str] = set()

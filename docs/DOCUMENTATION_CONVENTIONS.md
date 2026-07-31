@@ -71,7 +71,7 @@ and should not be duplicated in comments.
 
 ## Constant provenance tags
 
-Every constant in `src/Constants.hpp` has one provenance tag answering what process is required to change
+Every constant in `src/core/Constants.hpp` has one provenance tag answering what process is required to change
 it:
 
 - `[physio]` - physiology or sport-science literature.

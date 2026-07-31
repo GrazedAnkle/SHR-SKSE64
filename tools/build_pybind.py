@@ -58,7 +58,7 @@ def main() -> None:
         "cmake",
         "--preset", PRESET,
         "-B", str(BUILD_DIR),
-        "-DBUILD_PYBIND=ON",
+        "-DSHR_BUILD_PYBIND=ON",
         f"-DPython_EXECUTABLE={sys.executable}",
     ]
     build = ["cmake", "--build", str(BUILD_DIR), "--target", "shr_pybind"]

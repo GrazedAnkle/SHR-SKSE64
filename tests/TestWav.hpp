@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "AudioBuffer.hpp"
+#include "core/AudioBuffer.hpp"
 
 #include <bit>
 #include <cstddef>

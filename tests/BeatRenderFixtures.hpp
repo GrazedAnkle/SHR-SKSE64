@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "RenderSpec.hpp"
+#include "core/RenderSpec.hpp"
 
 #include <array>
 #include <string_view>

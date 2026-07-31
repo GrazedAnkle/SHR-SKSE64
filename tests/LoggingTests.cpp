@@ -13,8 +13,8 @@
  * You should have received a copy of the GNU General Public License along with
  * SHR. If not, see <https://www.gnu.org/licenses/>.
  */
-#include "Config.hpp"
-#include "Logging.hpp"
+#include "adapter/Config.hpp"
+#include "adapter/LoggingConfiguration.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 #include <spdlog/sinks/ostream_sink.h>

@@ -13,10 +13,10 @@
  * You should have received a copy of the GNU General Public License along with
  * SHR. If not, see <https://www.gnu.org/licenses/>.
  */
-#include "BeatRenderer.hpp"
+#include "core/BeatRenderer.hpp"
 
 #include "BeatRenderFixtures.hpp"
-#include "Pcm16.hpp"
+#include "core/Pcm16.hpp"
 #include "TestWav.hpp"
 
 #include <catch2/catch_approx.hpp>

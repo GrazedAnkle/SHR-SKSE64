@@ -13,9 +13,9 @@
  * You should have received a copy of the GNU General Public License along with
  * SHR. If not, see <https://www.gnu.org/licenses/>.
  */
-#include "AcousticMapper.hpp"
-#include "Constants.hpp"
-#include "Runtime.hpp"
+#include "core/AcousticMapper.hpp"
+#include "core/Constants.hpp"
+#include "core/Runtime.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>

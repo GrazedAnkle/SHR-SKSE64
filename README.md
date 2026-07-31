@@ -146,7 +146,7 @@ cmake --build build/dev-clang
 python -m pytest
 ```
 
-Any build that enables `BUILD_PYBIND` publishes the binding, its type stub, and a
+Any build that enables `SHR_BUILD_PYBIND` publishes the binding, its type stub, and a
 provenance stamp naming the tree it came from into `build/module`, which is where
 the Python side imports from. `pyproject.toml` declares the test paths and the
 `tools/` import root, so `pytest` needs no arguments;
@@ -194,7 +194,7 @@ the binding's API. For Pylance, `build/module` and `tools` both need to be on
 `Release-Clang` (plugin + tests) and the portable binding tree are separate
 configures, so C++ IntelliSense only resolves includes for whichever one was
 configured last. The `Dev-Clang` preset configures the plugin, tests, and binding
-together, so one compile database serves every path (it turns `BUILD_PYBIND` on
+together, so one compile database serves every path (it turns `SHR_BUILD_PYBIND` on
 and uses the `.venv` interpreter, so it also configures straight from an IDE with
 no activated venv):
 

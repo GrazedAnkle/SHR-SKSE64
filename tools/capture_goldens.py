@@ -8,7 +8,7 @@ two are separate commands.
     python tools/capture_goldens.py rhythm-mapping trajectory
     python tools/capture_goldens.py --module-dir build/dev-clang
 
-Build the binding first (any preset enabling BUILD_PYBIND publishes it). The waveform manifests hash raw
+Build the binding first (any preset enabling SHR_BUILD_PYBIND publishes it). The waveform manifests hash raw
 float bytes, so capture with the compiler .github/workflows/offline-goldens.yml pins - a manifest captured
 with a different toolchain will not verify there.
 """

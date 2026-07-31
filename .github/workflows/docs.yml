@@ -7,6 +7,7 @@ on:
       - "src/**"
       - "tests/fixtures/model_coefficient_registry/**"
       - "tools/**"
+      - "CMakeLists.txt"
       - ".github/workflows/docs.yml"
   pull_request:
     paths:
@@ -14,6 +15,7 @@ on:
       - "src/**"
       - "tests/fixtures/model_coefficient_registry/**"
       - "tools/**"
+      - "CMakeLists.txt"
 
 jobs:
   check-doc-references:
@@ -29,3 +31,5 @@ jobs:
         run: python tools/check_constants.py
       - name: Validate doc data figure citations against measurements.json
         run: python tools/check_data_citations.py
+      - name: Validate the core/adapter/plugin include boundary
+        run: python tools/check_layering.py

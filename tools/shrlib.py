@@ -5,7 +5,7 @@ compiled-core clients, retired-effect counterfactuals, and reference analyzer:
   - signal IO + metrics (load/slice/env/attack/decay/centroid/rolloff/
     spread/f0/bands/rms/peak/crest/chirp/energy_conc)
   - parse_annotations: annotated S1/S2 landmark files (docs/references/timestamps/*.txt)
-  - parse_constants: synthesis constants from src/Constants.hpp
+  - parse_constants: synthesis constants from src/core/Constants.hpp
 
 Metric rationale and the preferred-metric taxonomy live in docs/MEASUREMENT_METHODS.md.
 """

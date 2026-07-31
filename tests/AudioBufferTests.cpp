@@ -13,7 +13,7 @@
  * You should have received a copy of the GNU General Public License along with
  * SHR. If not, see <https://www.gnu.org/licenses/>.
  */
-#include "AudioBuffer.hpp"
+#include "core/AudioBuffer.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 

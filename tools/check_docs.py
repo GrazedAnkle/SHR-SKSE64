@@ -117,12 +117,19 @@ def main() -> int:
     tool_scripts = {p.name for p in tools_dir.glob("*.py")}
     tool_scripts |= {p.name for p in tests_dir.rglob("*.py")}
 
-    src_text = "\n".join(
-        p.read_text(encoding="utf-8", errors="ignore")
-        for p in src_dir.rglob("*")
-        if p.suffix in (".cpp", ".hpp", ".h")
-    )
+    src_files = [p for p in src_dir.rglob("*") if p.suffix in (".cpp", ".hpp", ".h")]
+
+    src_text = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in src_files)
     src_words = set(re.findall(r"[A-Za-z_]\w*", src_text))
+
+    # Docs cite sources by bare filename ("Runtime.cpp: Step"), not by layer path, so citations stay
+    # stable when a file moves between src/core, src/adapter, and src/plugin. That only works while
+    # basenames are unique across the tree, which the directory-qualified include scheme requires
+    # anyway - "core/Runtime.hpp" and "plugin/Runtime.hpp" would be two different includes resolving
+    # off the same src/ root. Enforce the uniqueness the citation format depends on.
+    src_by_name: dict[str, list[Path]] = {}
+    for p in src_files:
+        src_by_name.setdefault(p.name, []).append(p)
 
     heading_cache: dict[Path, set[str]] = {}
 
@@ -133,6 +140,11 @@ def main() -> int:
 
     n_couplings = coupling_count(docs_dir)
     problems: list[str] = []
+
+    for name, paths in sorted(src_by_name.items()):
+        if len(paths) > 1:
+            where = ", ".join(sorted(p.relative_to(root).as_posix() for p in paths))
+            problems.append(f"src/: '{name}' exists in more than one layer ({where})")
 
     for doc in sorted(docs_dir.glob("*.md")):
         text = doc.read_text(encoding="utf-8")
@@ -164,7 +176,7 @@ def main() -> int:
 
             # Symbol citations, including fenced blocks.
             for fname, sym in FILECITE_RE.findall(line):
-                if not (src_dir / fname).exists():
+                if fname not in src_by_name:
                     problems.append(f"{doc.name}:{lineno}: cites source file '{fname}' not in src/")
                 if sym not in src_words:
                     problems.append(f"{doc.name}:{lineno}: symbol '{sym}' (cited as {fname}: {sym}) not found in src/")

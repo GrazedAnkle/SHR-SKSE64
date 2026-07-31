@@ -91,7 +91,7 @@ dulling is also separate and uses `ResamplePVCRatio`.
 - The CTLY co-save record persists the state. Saves without that field seed contractility to the restored
   exertion/adrenaline equilibrium.
 
-As-built values and provenance tags live in `src/Constants.hpp`. The focused provenance audit is
+As-built values and provenance tags live in `src/core/Constants.hpp`. The focused provenance audit is
 [WI-015](work_items/WI-015-calibration-provenance.md).
 
 ## Deferred driver separation

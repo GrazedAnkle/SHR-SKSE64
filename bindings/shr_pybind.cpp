@@ -19,22 +19,22 @@
 // docs/ARCHITECTURE.md, Offline execution). WAV container parsing stays in Python because the plugin
 // owns it in-game, so this binding accepts already-decoded PCM16 samples.
 
-#include <AcousticMapper.hpp>
-#include <BeatEvent.hpp>
-#include <BeatKind.hpp>
-#include <BeatRenderer.hpp>
-#include <HeartbeatSource.hpp>
-#include <ModelCoefficients.hpp>
-#include <Pcm16.hpp>
-#include <PhysiologySnapshot.hpp>
-#include <RenderSpec.hpp>
-#include <RhythmEngine.hpp>
-#include <RhythmInput.hpp>
-#include <Runtime.hpp>
-#include <RuntimeSettings.hpp>
-#include <Simulation.hpp>
-#include <StepInput.hpp>
-#include <StepResult.hpp>
+#include <core/AcousticMapper.hpp>
+#include <core/BeatEvent.hpp>
+#include <core/BeatKind.hpp>
+#include <core/BeatRenderer.hpp>
+#include <core/HeartbeatSource.hpp>
+#include <core/ModelCoefficients.hpp>
+#include <core/Pcm16.hpp>
+#include <core/PhysiologySnapshot.hpp>
+#include <core/RenderSpec.hpp>
+#include <core/RhythmEngine.hpp>
+#include <core/RhythmInput.hpp>
+#include <core/Runtime.hpp>
+#include <core/RuntimeSettings.hpp>
+#include <core/Simulation.hpp>
+#include <core/StepInput.hpp>
+#include <core/StepResult.hpp>
 
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>

@@ -57,7 +57,7 @@ DERIVED_CLIPS = {
     },
 }
 
-_C = shrlib.parse_constants(ROOT / "src" / "Constants.hpp")
+_C = shrlib.parse_constants(ROOT / "src" / "core" / "Constants.hpp")
 SYS_INT, SYS_SLOPE = _C["SystoleIntercept"], _C["SystoleSlope"]
 SYS_MIN, SYS_MAX = _C["SystoleMin"], _C["SystoleMax"]
 S1_SYS_FRAC, S2_WIN_FRAC = _C["S1SystoleFraction"], _C["S2WindowFraction"]

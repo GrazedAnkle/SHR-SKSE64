@@ -48,9 +48,8 @@ the property, and local enforcement is a workflow preference that should be chos
 
 ## Dependencies
 
-Sequence after [WI-037](WI-037-core-plugin-separation.md) if both are planned. That item moves most of the
-C++ sources between directories, and a reformatting commit layered onto a large relocation makes both
-harder to review than either alone.
+None blocking. The core/adapter/plugin relocation that would have collided with a reformatting commit has
+landed, so this no longer needs sequencing behind it.
 
 `pyproject.toml` already exists and carries `[tool.*]` tables only, so the Python half of this item adds a
 formatter and linter table there rather than introducing the file. It is also where the supported

@@ -65,7 +65,7 @@
       "hidden": true,
       "description": "Include test suites in the build.",
       "cacheVariables": {
-        "BUILD_TESTS": "ON"
+        "SHR_BUILD_TESTS": "ON"
       }
     },
     {
@@ -151,8 +151,8 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/core-release-clang",
       "cacheVariables": {
-        "BUILD_PLUGIN": "OFF",
-        "BUILD_TESTS": "OFF",
+        "SHR_BUILD_PLUGIN": "OFF",
+        "SHR_BUILD_TESTS": "OFF",
         "VCPKG_MANIFEST_NO_DEFAULT_FEATURES": "ON",
         "VCPKG_MANIFEST_FEATURES": "core-dsp",
         "CMAKE_BUILD_TYPE": {
@@ -172,8 +172,8 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/core-tests-release-msvc",
       "cacheVariables": {
-        "BUILD_PLUGIN": "OFF",
-        "BUILD_TESTS": "ON",
+        "SHR_BUILD_PLUGIN": "OFF",
+        "SHR_BUILD_TESTS": "ON",
         "VCPKG_MANIFEST_NO_DEFAULT_FEATURES": "ON",
         "VCPKG_MANIFEST_FEATURES": "tests",
         "CMAKE_C_COMPILER": "cl",
@@ -191,7 +191,7 @@
       "description": "All targets configured together (plugin + tests + offline binding) so one compile database serves IDE IntelliSense. Uses the project's .venv interpreter, so it configures from an IDE with no activated venv; override -DPython_EXECUTABLE for a venv elsewhere.",
       "binaryDir": "${sourceDir}/build/dev-clang",
       "cacheVariables": {
-        "BUILD_PYBIND": "ON",
+        "SHR_BUILD_PYBIND": "ON",
         "Python_EXECUTABLE": "${sourceDir}/.venv/Scripts/python.exe"
       }
     }

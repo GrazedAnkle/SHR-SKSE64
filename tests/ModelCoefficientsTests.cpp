@@ -13,14 +13,14 @@
  * You should have received a copy of the GNU General Public License along with
  * SHR. If not, see <https://www.gnu.org/licenses/>.
  */
-#include "AcousticMapper.hpp"
-#include "BeatRenderer.hpp"
-#include "Constants.hpp"
-#include "HeartbeatSource.hpp"
-#include "ModelCoefficients.hpp"
-#include "RhythmEngine.hpp"
-#include "Runtime.hpp"
-#include "Simulation.hpp"
+#include "core/AcousticMapper.hpp"
+#include "core/BeatRenderer.hpp"
+#include "core/Constants.hpp"
+#include "core/HeartbeatSource.hpp"
+#include "core/ModelCoefficients.hpp"
+#include "core/RhythmEngine.hpp"
+#include "core/Runtime.hpp"
+#include "core/Simulation.hpp"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>

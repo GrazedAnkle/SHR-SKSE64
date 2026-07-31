@@ -37,7 +37,7 @@ docs = ["REFERENCE_ANALYSIS.md"]
 # against a named measurement leaf. A reference-tuned constant must name that leaf or explicitly declare
 # that none is valid, preventing an engine output from becoming its own calibration target.
 #
-#   constant   a name in src/Constants.hpp                        (checked to exist)
+#   constant   a name in src/core/Constants.hpp                        (checked to exist)
 #   key        the leaf in measurements.json it is calibrated to  (checked to resolve)
 #   engine     what the engine reads on the SAME ruler
 #   tolerance  the accepted |engine - reference| gap

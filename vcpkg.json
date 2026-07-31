@@ -21,7 +21,7 @@
       ]
     },
     "tests": {
-      "description": "Build the Catch2 suite over the portable core. spdlog and toml11 are direct dependencies because the test executable compiles the adapter sources Config.cpp, LoggingConfiguration.cpp, and NotificationPolicy.cpp; it links no CommonLibSSE.",
+      "description": "Build the Catch2 suite over the portable core. spdlog and toml11 are direct dependencies because the suite links shr_adapter, the Skyrim-free adapter policy library, which needs both; it links no CommonLibSSE.",
       "dependencies": [
         {
           "name": "shr",

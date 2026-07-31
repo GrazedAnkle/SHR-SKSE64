@@ -84,10 +84,16 @@ evidence work, and none of them changes runtime behavior.
 
 | ID | Outcome | Status | Blocker or dependency | Next action |
 |---|---|---|---|---|
-| [WI-037](work_items/WI-037-core-plugin-separation.md) | The core/plugin boundary is expressed by source layout | `[NEEDS DESIGN]` | None | Choose where shared value headers live |
 | [WI-038](work_items/WI-038-fixture-single-sourcing.md) | Beat-render fixtures exist once, not once per language | `[NEEDS DESIGN]` | None | Choose the direction of derivation |
-| [WI-040](work_items/WI-040-formatting-standards.md) | Formatting enforced by tool, not discipline | `[NEEDS DESIGN]` | Sequence after WI-037 | Fit a C++ config and measure the resulting diff |
+| [WI-040](work_items/WI-040-formatting-standards.md) | Formatting enforced by tool, not discipline | `[NEEDS DESIGN]` | None | Fit a C++ config and measure the resulting diff |
 | [WI-041](work_items/WI-041-test-label-selection.md) | Test selection by label works, or is not offered | `[NEEDS DESIGN]` | None | Decide whether to enable tag labels or collapse the presets |
+
+The core/plugin dependency boundary is now expressed by the source layout rather than by convention:
+`src/core`, `src/adapter`, and `src/plugin` each back exactly one target, `src/` is the single include
+root so every include names the layer it crosses into, and `tools/check_layering.py` enforces the
+downward-only direction, the qualification, and agreement between each directory and its CMake list.
+[ARCHITECTURE.md](ARCHITECTURE.md#dependency-boundary) owns that boundary, including why shared value
+types stay in core and why the layers are flat rather than component trees.
 
 Offline execution now runs on the compiled core through the Python binding, with deterministic golden
 scenarios as the primary acceptance gate for physiology, rhythm, and DSP changes;

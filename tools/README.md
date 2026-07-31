@@ -64,6 +64,7 @@ Run by `.github/workflows/docs.yml`. Stdlib-only, so they need no virtual enviro
 | `check_docs.py` | Documentation cross-references, anchors, symbols, script references, and this index |
 | `check_constants.py` | Constant provenance tags and exact model-registry coverage |
 | `check_data_citations.py` | Documentation figures and synthesis calibrations against `measurements.json` |
+| `check_layering.py` | Core/adapter/plugin include direction, include qualification, and CMake list coverage |
 
 ### Reference measurement and annotation
 
