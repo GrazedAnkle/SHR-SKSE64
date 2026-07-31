@@ -392,7 +392,8 @@ if(SHR_BUILD_TESTS)
             shr_adapter
     )
 
-    catch_discover_tests(${PROJECT_NAME}Tests)
+    # Tags become CTest labels without their brackets: `ctest -L fatigue`, not `-L [fatigue]`.
+    catch_discover_tests(${PROJECT_NAME}Tests ADD_TAGS_AS_LABELS)
 endif()
 
 ########################################################################################################################

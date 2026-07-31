@@ -69,9 +69,15 @@ plugin-free `Core-Tests-Release-MSVC` preset, whose vcpkg feature set supplies C
 without the plugin dependency closure, and runs the suite through its `Core-Unit-Tests` test preset. The
 test executable links `shr_adapter`, which carries `shr_core` and spdlog with it, and compiles no `src/`
 sources of its own, so it needs neither the CommonLib submodule nor a Skyrim module. Nothing in the suite
-hashes floating-point bytes, so unlike the golden gate it pins no compiler. Every test in the suite is a
-unit test and CI runs all of them; label-based selection is not operational, which
-[WI-041](work_items/WI-041-test-label-selection.md) owns.
+hashes floating-point bytes, so unlike the golden gate it pins no compiler.
+
+Every test in the suite is a unit test, so both test presets run all of them and neither filters.
+`catch_discover_tests` is called with `ADD_TAGS_AS_LABELS`, so each Catch2 tag is a CTest label and
+`ctest -L rhythm` selects by subject ad hoc. No preset is built on those labels: the tag vocabulary names
+what a test is *about* rather than what it *needs to run*, and only the latter can justify excluding a test
+from a gate. The first test requiring a Skyrim module or a running engine introduces that vocabulary and
+brings its excluding preset with it; a filter written earlier selects nothing, which CTest reports as an
+error rather than an empty run.
 
 The project's CMake options are `SHR_`-prefixed so they cannot alias an identically named option in a
 dependency added through `add_subdirectory`.

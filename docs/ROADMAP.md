@@ -85,7 +85,6 @@ evidence work, and none of them changes runtime behavior.
 | ID | Outcome | Status | Blocker or dependency | Next action |
 |---|---|---|---|---|
 | [WI-040](work_items/WI-040-formatting-standards.md) | Formatting enforced by tool, not discipline | `[NEEDS DESIGN]` | None | Fit a C++ config and measure the resulting diff |
-| [WI-041](work_items/WI-041-test-label-selection.md) | Test selection by label works, or is not offered | `[NEEDS DESIGN]` | None | Decide whether to enable tag labels or collapse the presets |
 
 The core/plugin dependency boundary is now expressed by the source layout rather than by convention:
 `src/core`, `src/adapter`, and `src/plugin` each back exactly one target, `src/` is the single include
