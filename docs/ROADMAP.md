@@ -84,7 +84,6 @@ evidence work, and none of them changes runtime behavior.
 
 | ID | Outcome | Status | Blocker or dependency | Next action |
 |---|---|---|---|---|
-| [WI-038](work_items/WI-038-fixture-single-sourcing.md) | Beat-render fixtures exist once, not once per language | `[NEEDS DESIGN]` | None | Choose the direction of derivation |
 | [WI-040](work_items/WI-040-formatting-standards.md) | Formatting enforced by tool, not discipline | `[NEEDS DESIGN]` | None | Fit a C++ config and measure the resulting diff |
 | [WI-041](work_items/WI-041-test-label-selection.md) | Test selection by label works, or is not offered | `[NEEDS DESIGN]` | None | Decide whether to enable tag labels or collapse the presets |
 
@@ -100,7 +99,8 @@ scenarios as the primary acceptance gate for physiology, rhythm, and DSP changes
 [ARCHITECTURE.md](ARCHITECTURE.md#offline-execution) owns that boundary, including native-layout audition
 audio, explicit channel-zero analysis, thin rhythm/trajectory clients, retired-effect counterfactuals,
 immutable coefficient sweeps, the registry-backed coefficient surface, the registry-enumerated golden
-domains behind separate verify and capture entry points, and their Windows CI gate.
+domains behind separate verify and capture entry points, single-definition domain fixtures, and their
+Windows CI gate.
 
 The Python side's project configuration is settled and needs no further work item:
 [../README.md](../README.md) owns setup and where a build publishes the compiled binding, and

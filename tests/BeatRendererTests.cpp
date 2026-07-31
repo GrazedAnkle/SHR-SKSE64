@@ -15,7 +15,6 @@
  */
 #include "core/BeatRenderer.hpp"
 
-#include "BeatRenderFixtures.hpp"
 #include "core/Pcm16.hpp"
 #include "TestWav.hpp"
 
@@ -25,6 +24,7 @@
 #include <algorithm>
 #include <array>
 #include <filesystem>
+#include <string_view>
 #include <vector>
 
 namespace
@@ -176,19 +176,106 @@ TEST_CASE("Float beat renderer bounds or rejects unsafe public inputs", "[audio]
     }
 }
 
-TEST_CASE("Float beat fixtures render consistently through RenderBeat and the trace",
+TEST_CASE("Float beat rendering over the real source agrees between RenderBeat and the trace",
     "[audio][renderer][characterization]")
 {
     const SHR::HeartbeatSource source = LoadSource();
 
+    // Round synthetic values chosen to reach each renderer branch over a real conditioned source, not
+    // operating points: tools/beat_render_fixtures.py owns the named specs the golden manifest
+    // fingerprints, and nothing here is expected to track them.
+    struct NamedSpec
+    {
+        std::string_view Name;
+        SHR::RenderSpec  Render;
+    };
+    constexpr std::array specs{
+        // Unity gains and ratios: the plain path, with no stage transforming its input.
+        NamedSpec{
+            .Name = "unity",
+            .Render = {
+                .IBI              = 0.80F,
+                .SystoleDuration  = 0.30F,
+                .S1Amplitude      = 1.0F,
+                .S2Amplitude      = 1.0F,
+                .S1ResampleRatio  = 1.0F,
+                .S2ResampleRatio  = 1.0F,
+                .LowPassCutoffHz  = 400.0F,
+                .OnsetCompression = 1.0F,
+                .Kind             = SHR::BeatKind::Sinus,
+            },
+        },
+        // Amplitude past the soft knee with the baseline attack compressed: the two nonlinear stages.
+        NamedSpec{
+            .Name = "saturating",
+            .Render = {
+                .IBI              = 0.35F,
+                .SystoleDuration  = 0.15F,
+                .S1Amplitude      = 6.0F,
+                .S2Amplitude      = 1.0F,
+                .S1ResampleRatio  = 1.0F,
+                .S2ResampleRatio  = 1.0F,
+                .LowPassCutoffHz  = 400.0F,
+                .OnsetCompression = 2.5F,
+                .Kind             = SHR::BeatKind::Sinus,
+            },
+        },
+        // Both copies resampled under an audibly low cutoff: resampling and transmission together.
+        NamedSpec{
+            .Name = "resampled",
+            .Render = {
+                .IBI              = 0.80F,
+                .SystoleDuration  = 0.30F,
+                .S1Amplitude      = 0.50F,
+                .S2Amplitude      = 0.50F,
+                .S1ResampleRatio  = 0.80F,
+                .S2ResampleRatio  = 0.80F,
+                .LowPassCutoffHz  = 120.0F,
+                .OnsetCompression = 1.0F,
+                .Kind             = SHR::BeatKind::Sinus,
+            },
+        },
+        // PVC bypasses onset compression even when the spec asks for it.
+        NamedSpec{
+            .Name = "pvc",
+            .Render = {
+                .IBI              = 0.70F,
+                .SystoleDuration  = 0.20F,
+                .S1Amplitude      = 0.50F,
+                .S2Amplitude      = 0.60F,
+                .S1ResampleRatio  = 0.90F,
+                .S2ResampleRatio  = 1.0F,
+                .LowPassCutoffHz  = 400.0F,
+                .OnsetCompression = 2.0F,
+                .Kind             = SHR::BeatKind::PVC,
+            },
+        },
+        // IBI below SystoleDuration: the S2-absent window and the S1 frame cap, on the real source
+        // rather than the two-frame buffer the input-bounds case uses.
+        NamedSpec{
+            .Name = "truncated",
+            .Render = {
+                .IBI              = 0.10F,
+                .SystoleDuration  = 0.15F,
+                .S1Amplitude      = 1.0F,
+                .S2Amplitude      = 1.0F,
+                .S1ResampleRatio  = 1.0F,
+                .S2ResampleRatio  = 1.0F,
+                .LowPassCutoffHz  = 400.0F,
+                .OnsetCompression = 1.0F,
+                .Kind             = SHR::BeatKind::Sinus,
+            },
+        },
+    };
+
     // Guards that RenderBeat and TraceBeatRender agree over the real source; the committed beat-render
     // golden fingerprints the output samples, and Pcm16Tests covers EncodePcm16.
-    for (const SHR::Tests::NamedBeatRenderFixture &fixture : SHR::Tests::BeatRenderFixtures)
+    for (const NamedSpec &spec : specs)
     {
-        DYNAMIC_SECTION(fixture.Name)
+        DYNAMIC_SECTION(spec.Name)
         {
-            const SHR::BeatRenderTrace trace = SHR::TraceBeatRender(source, fixture.Render);
-            const SHR::AudioBuffer output = SHR::RenderBeat(source, fixture.Render);
+            const SHR::BeatRenderTrace trace = SHR::TraceBeatRender(source, spec.Render);
+            const SHR::AudioBuffer output = SHR::RenderBeat(source, spec.Render);
 
             CHECK(output.GetFormat() == source.S1.GetFormat());
             CHECK(std::ranges::equal(

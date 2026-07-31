@@ -115,7 +115,6 @@ set(test_sources
     tests/AcousticMapperTests.cpp
     tests/AudioBufferTests.cpp
     tests/BeatRendererTests.cpp
-    tests/BeatRenderFixtures.hpp
     tests/ConfigTests.cpp
     tests/HeartbeatSourceTests.cpp
     tests/LoggingTests.cpp

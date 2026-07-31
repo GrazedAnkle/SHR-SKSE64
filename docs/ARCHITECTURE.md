@@ -169,8 +169,12 @@ by one verb each: `tools/golden_registry.py` enumerates the domains and the unif
 pytest verifies them, and `tools/capture_goldens.py` is the only path that writes a manifest. Nothing
 reachable from a test run can rewrite the values it is checking, because a verify that passes immediately
 after a recapture proves only that the manifest was just overwritten; the reviewable manifest diff is what
-establishes an intended retune. The immutable coefficient-override contract is verified in the same suite,
-as assertions rather than a manifest. The Windows offline-goldens workflow builds the portable binding with
+establishes an intended retune. Each domain's inputs are defined once, beside the domain that consumes
+them: the named beat-render operating points in `tools/beat_render_fixtures.py`, and the rhythm, mapping,
+and trajectory scenarios in their sibling modules. The C++ suite asserts renderer and engine properties
+from its own local inputs rather than mirroring those tables, so there is no second definition that can
+silently disagree, and every fixture change surfaces as a manifest diff. The immutable
+coefficient-override contract is verified in the same suite, as assertions rather than a manifest. The Windows offline-goldens workflow builds the portable binding with
 the pinned capture compiler and runs the pytest suite, independently of the CommonLib/plugin build. The compiler pin matters because the waveform gates hash raw float bytes. These
 goldens are the permanent regression anchor for offline core behavior, and deterministic offline scenarios
 are the primary acceptance gate for physiology, rhythm, and DSP changes. Python owns scenario construction,

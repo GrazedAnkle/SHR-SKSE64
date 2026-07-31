@@ -1,8 +1,11 @@
-"""Shared beat-render fixture specs and stage names.
+"""The named beat-render operating points, and the stage names the trace returns.
 
-Hand-transcribed from ``tests/BeatRenderFixtures.hpp``; edit both files together. Drift is caught in one
-direction only: a value changed here fails the beat-renderer golden, while one changed there fails
-nothing, because the manifest is generated from this file. WI-038 owns removing the transcription.
+Sole definition: the beat-renderer golden manifest and the audition reel are both built from these
+specs, so any change here is caught by the golden. The C++ suite asserts renderer properties from its
+own local specs and does not mirror this table.
+
+The values are regression inputs, not physiological claims. Changing one is a retune, and the manifest
+is regenerated with ``python tools/capture_goldens.py beat-renderer`` so the diff is reviewable.
 """
 from __future__ import annotations
 
@@ -86,8 +89,15 @@ FIXTURES: dict[str, BeatRenderSpec] = {
         onset_compression=1.0,
         kind="pvc",
     ),
-    # Provisional edge fixtures (see tests/BeatRenderFixtures.hpp): extreme-vigor drives the soft-knee into
-    # saturation, truncation collapses the S2 window to zero.
+    # The two edge fixtures below carry provisional values. They guard the renderer's most nonlinear
+    # branches, not a validated operating point. Their extreme-end amplitudes are extrapolated (the
+    # corpus has no max-effort reference); the extreme-value audit (ROADMAP "maintenance candidates")
+    # may retune them.
+    #
+    # extreme-vigor: vigor-jitter ceiling. Peak is Vigor 1.0 -> s1_amplitude 10^(0.55*1.0) = 3.548;
+    # the VigorJitterMaxSigma(2.5) * VigorJitterScale(0.17) clamp lifts effective vigor to 1.425, so
+    # s1_amplitude = 10^(0.55*1.425) ~= 6.079, with onset_compression at AttackCompressMax. Timing is
+    # borrowed from peak. This is the only fixture that drives ApplySoftKnee hard into saturation.
     "extreme-vigor": BeatRenderSpec(
         ibi=60.0 / 177.0,
         systole_duration=0.130,
@@ -98,6 +108,9 @@ FIXTURES: dict[str, BeatRenderSpec] = {
         lowpass_cutoff_hz=450.0,
         onset_compression=2.5,
     ),
+    # truncation: synthetic robustness case, not a physiological rate. ibi(0.12) < systole_duration
+    # drops the S2 window to zero (MixTransducerInput's s2Window==0 path) and forces S1's s1Cap /
+    # totalFrames clamp to bind. No other fixture reaches the S2-absent branch.
     "truncation": BeatRenderSpec(
         ibi=0.12,
         systole_duration=0.130,
