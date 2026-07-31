@@ -6,6 +6,7 @@ fixed seed so its stochastic output (vigor jitter, PVC sampling) is reproducible
 deliberately: contractility > 0 activates vigor jitter, and pvc_chance_per_second > 0 activates the PVC
 path. The values are test inputs, not physiological claims.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -28,22 +29,44 @@ class RhythmScenario:
 # One operating point each, phase swept at breaths_per_min. contractility > 0 keeps vigor jitter live.
 RHYTHM_SCENARIOS: dict[str, RhythmScenario] = {
     "rest": RhythmScenario(
-        seed=1, seconds=12.0, fps=30.0, heart_rate=64.0,
-        exertion_fraction=0.0, contractility=0.20, breaths_per_min=12.0,
+        seed=1,
+        seconds=12.0,
+        fps=30.0,
+        heart_rate=64.0,
+        exertion_fraction=0.0,
+        contractility=0.20,
+        breaths_per_min=12.0,
     ),
     "exercise": RhythmScenario(
-        seed=2, seconds=8.0, fps=30.0, heart_rate=168.0,
-        exertion_fraction=0.95, contractility=0.85, breaths_per_min=40.0,
+        seed=2,
+        seconds=8.0,
+        fps=30.0,
+        heart_rate=168.0,
+        exertion_fraction=0.95,
+        contractility=0.85,
+        breaths_per_min=40.0,
     ),
     "recovery": RhythmScenario(
-        seed=3, seconds=10.0, fps=30.0, heart_rate=120.0,
-        exertion_fraction=0.40, contractility=0.55, breaths_per_min=24.0,
+        seed=3,
+        seconds=10.0,
+        fps=30.0,
+        heart_rate=120.0,
+        exertion_fraction=0.40,
+        contractility=0.55,
+        breaths_per_min=24.0,
     ),
     # PVC-prone: elevated ectopy chance + run extension + risk so coupling, pauses, and runs all fire.
     "pvc": RhythmScenario(
-        seed=4, seconds=20.0, fps=30.0, heart_rate=88.0,
-        exertion_fraction=0.15, contractility=0.35, breaths_per_min=16.0,
-        pvc_chance_per_second=0.60, risk_factor=0.30, run_extension_chance=0.35,
+        seed=4,
+        seconds=20.0,
+        fps=30.0,
+        heart_rate=88.0,
+        exertion_fraction=0.15,
+        contractility=0.35,
+        breaths_per_min=16.0,
+        pvc_chance_per_second=0.60,
+        risk_factor=0.30,
+        run_extension_chance=0.35,
     ),
 }
 
@@ -66,24 +89,55 @@ class MappingCase:
 # Representative operating points for CreateRenderSpec, mirroring the render fixtures' physiology.
 MAPPING_CASES: dict[str, MappingCase] = {
     "rest": MappingCase(
-        ibi=60.0 / 64.0, filling_interval=60.0 / 64.0, coupling_fraction=0.0, vigor=0.0, kind="sinus",
-        heart_rate=64.0, contractility_excess=0.0, respiration_phase=0.0,
+        ibi=60.0 / 64.0,
+        filling_interval=60.0 / 64.0,
+        coupling_fraction=0.0,
+        vigor=0.0,
+        kind="sinus",
+        heart_rate=64.0,
+        contractility_excess=0.0,
+        respiration_phase=0.0,
     ),
     "peak": MappingCase(
-        ibi=60.0 / 177.0, filling_interval=60.0 / 177.0, coupling_fraction=0.0, vigor=1.0, kind="sinus",
-        heart_rate=177.0, contractility_excess=0.8, respiration_phase=0.0,
+        ibi=60.0 / 177.0,
+        filling_interval=60.0 / 177.0,
+        coupling_fraction=0.0,
+        vigor=1.0,
+        kind="sinus",
+        heart_rate=177.0,
+        contractility_excess=0.8,
+        respiration_phase=0.0,
     ),
     "recovery": MappingCase(
-        ibi=0.6, filling_interval=0.6, coupling_fraction=0.0, vigor=0.5, kind="sinus",
-        heart_rate=110.0, contractility_excess=0.3, respiration_phase=0.0,
+        ibi=0.6,
+        filling_interval=0.6,
+        coupling_fraction=0.0,
+        vigor=0.5,
+        kind="sinus",
+        heart_rate=110.0,
+        contractility_excess=0.3,
+        respiration_phase=0.0,
     ),
     "inspiration": MappingCase(
-        ibi=60.0 / 79.0, filling_interval=60.0 / 79.0, coupling_fraction=0.0, vigor=0.2, kind="sinus",
-        heart_rate=79.0, contractility_excess=0.0, respiration_phase=0.5, respiration_depth=1.0,
+        ibi=60.0 / 79.0,
+        filling_interval=60.0 / 79.0,
+        coupling_fraction=0.0,
+        vigor=0.2,
+        kind="sinus",
+        heart_rate=79.0,
+        contractility_excess=0.0,
+        respiration_phase=0.5,
+        respiration_depth=1.0,
     ),
     "pvc": MappingCase(
-        ibi=0.42, filling_interval=0.42, coupling_fraction=0.55, vigor=0.35, kind="pvc",
-        heart_rate=88.0, contractility_excess=0.1, respiration_phase=0.25,
+        ibi=0.42,
+        filling_interval=0.42,
+        coupling_fraction=0.55,
+        vigor=0.35,
+        kind="pvc",
+        heart_rate=88.0,
+        contractility_excess=0.1,
+        respiration_phase=0.25,
     ),
 }
 

@@ -11,6 +11,7 @@ The Release-Clang build is deterministic, so per-stage SHA-256 of the raw float 
 
 One golden domain; tools/golden_registry.py describes the surface it exposes.
 """
+
 from __future__ import annotations
 
 import hashlib

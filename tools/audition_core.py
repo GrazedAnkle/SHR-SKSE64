@@ -12,6 +12,7 @@ Build ``shr_pybind`` first:
     python tools/build_pybind.py
     python tools/audition_core.py --out build/audition/core.wav
 """
+
 from __future__ import annotations
 
 import argparse
@@ -27,13 +28,7 @@ from shrlib import analysis_channel
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SOURCE = (
-    ROOT
-    / "contrib"
-    / "Distribution"
-    / "Sound"
-    / "fx"
-    / "SHR_HeartBeat"
-    / "HeartBeat_Shortened.wav"
+    ROOT / "contrib" / "Distribution" / "Sound" / "fx" / "SHR_HeartBeat" / "HeartBeat_Shortened.wav"
 )
 DEFAULT_FIXTURES = ("rest", "peak", "inspiration", "recovery", "pvc")
 

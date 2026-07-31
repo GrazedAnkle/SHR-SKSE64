@@ -20,6 +20,7 @@ in full-scale units. Usage:
     python tools/measure_source_candidates.py docs/references/clips/*.wav
     python tools/measure_source_candidates.py docs/references/clips
 """
+
 from __future__ import annotations
 
 import glob
@@ -31,17 +32,17 @@ import soundfile as sf
 
 import shrlib
 
-HF_SPLIT_HZ = 200.0   # "high frequency" boundary for the muffle's working material
+HF_SPLIT_HZ = 200.0  # "high frequency" boundary for the muffle's working material
 BAND_MAX_HZ = 2000.0  # ignore content above this (heart sounds are low; cuts hiss bias)
-FFT_N = 4096          # analysis window
-WIN_MS = 40           # RMS window for the noise-floor scan
+FFT_N = 4096  # analysis window
+WIN_MS = 40  # RMS window for the noise-floor scan
 CLIP_THRESH = 32000.0  # ~0.977 of int16 full scale
 
 
 def spectrum_at(mono: np.ndarray, center: int, sr: int) -> tuple[np.ndarray, np.ndarray]:
     """Hann-windowed magnitude spectrum (f, |S|) over FFT_N samples centred on `center`."""
     a = max(0, center - FFT_N // 2)
-    seg = mono[a:a + FFT_N]
+    seg = mono[a : a + FFT_N]
     if len(seg) < FFT_N:
         seg = np.concatenate([seg, np.zeros(FFT_N - len(seg))])
     return shrlib.spec(seg, sr, FFT_N)
@@ -64,7 +65,7 @@ def rms_windows(mono: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray]:
     if starts.size == 0:
         return np.zeros(0), np.zeros(0, dtype=int)
     frames = mono[starts[:, None] + np.arange(w)[None, :]]
-    return np.sqrt((frames ** 2).mean(axis=1)), starts + w // 2
+    return np.sqrt((frames**2).mean(axis=1)), starts + w // 2
 
 
 def measure(path: str) -> dict:
@@ -77,7 +78,7 @@ def measure(path: str) -> dict:
     rms, centers = rms_windows(mono, sr)
     if rms.size == 0:
         return {**base, "err": "too short"}
-    noise = float(np.sort(rms)[max(0, rms.size // 10)])   # 10th-percentile window RMS
+    noise = float(np.sort(rms)[max(0, rms.size // 10)])  # 10th-percentile window RMS
     pk = int(np.argmax(rms))
     peak_rms, peak_center = float(rms[pk]), int(centers[pk])
     snr = 20 * np.log10(peak_rms / noise) if noise > 0 else float("inf")
@@ -87,14 +88,23 @@ def measure(path: str) -> dict:
 
     # Quality guards within +/-60ms of the loud transient.
     hw = int(0.06 * sr)
-    seg = mono[max(0, peak_center - hw):peak_center + hw]
+    seg = mono[max(0, peak_center - hw) : peak_center + hw]
     speak = float(np.abs(seg).max()) if seg.size else 0.0
-    srms = float(np.sqrt((seg ** 2).mean())) if seg.size else 1.0
+    srms = float(np.sqrt((seg**2).mean())) if seg.size else 1.0
     crest = 20 * np.log10(speak / srms) if srms > 0 else 0.0
     clip_frac = float(np.count_nonzero(np.abs(mono) >= CLIP_THRESH)) / len(mono)
 
-    return {**base, "centroid": cen, "hf": hf, "snr": snr, "noise": noise, "peak": peak_rms,
-            "crest": crest, "clip": clip_frac, "err": None}
+    return {
+        **base,
+        "centroid": cen,
+        "hf": hf,
+        "snr": snr,
+        "noise": noise,
+        "peak": peak_rms,
+        "crest": crest,
+        "clip": clip_frac,
+        "err": None,
+    }
 
 
 def expand(args: list[str]) -> list[str]:
@@ -118,14 +128,20 @@ def main() -> int:
     ok.sort(key=lambda r: (r["centroid"], r["hf"], r["snr"]), reverse=True)
 
     print(f"{'file':<40} {'fmt':<12} {'dur':>6}  {'cen':>6} {'HF>':>5} {'SNR':>6} {'crest':>6} {'clip':>6}")
-    print(f"{'':<40} {'':<12} {'(s)':>6}  {'(Hz)':>6} {str(int(HF_SPLIT_HZ))+'Hz':>5} {'(dB)':>6} {'(dB)':>6} {'%':>6}")
+    print(
+        f"{'':<40} {'':<12} {'(s)':>6}  {'(Hz)':>6} {str(int(HF_SPLIT_HZ)) + 'Hz':>5} {'(dB)':>6} {'(dB)':>6} {'%':>6}"
+    )
     print("-" * 98)
     for r in ok:
-        print(f"{r['name']:<40} {str(r['sr'])+'Hz/'+str(r['ch'])+'ch':<12} {r['dur']:>6.1f}  "
-              f"{r['centroid']:>6.1f} {r['hf']*100:>4.0f}% {r['snr']:>6.1f} {r['crest']:>6.1f} {r['clip']*100:>5.2f}%")
+        print(
+            f"{r['name']:<40} {str(r['sr']) + 'Hz/' + str(r['ch']) + 'ch':<12} {r['dur']:>6.1f}  "
+            f"{r['centroid']:>6.1f} {r['hf'] * 100:>4.0f}% {r['snr']:>6.1f} {r['crest']:>6.1f} {r['clip'] * 100:>5.2f}%"
+        )
     for r in rows:
         if r["err"]:
-            print(f"{r['name']:<40} {str(r['sr'])+'Hz/'+str(r['ch'])+'ch':<12} {r['dur']:>6.1f}  -- {r['err']}")
+            print(
+                f"{r['name']:<40} {str(r['sr']) + 'Hz/' + str(r['ch']) + 'ch':<12} {r['dur']:>6.1f}  -- {r['err']}"
+            )
     print("\ncen   = S1 spectral centroid (higher = brighter)")
     print(f"HF>   = fraction of spectral energy above {int(HF_SPLIT_HZ)}Hz (what the muffle can act on)")
     print("SNR   = peak-window RMS over 10th-percentile-window RMS (higher = cleaner)")

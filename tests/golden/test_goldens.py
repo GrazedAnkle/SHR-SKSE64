@@ -3,6 +3,7 @@
 One case per domain in ``tools/golden_registry.py``, driven through that registry's surface, so this
 file names no domain individually.
 """
+
 from __future__ import annotations
 
 import json

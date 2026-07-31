@@ -7,6 +7,7 @@ own local specs and does not mirror this table.
 The values are regression inputs, not physiological claims. Changing one is a retune, and the manifest
 is regenerated with ``python tools/capture_goldens.py beat-renderer`` so the diff is reviewable.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

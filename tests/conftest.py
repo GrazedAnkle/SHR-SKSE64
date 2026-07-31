@@ -4,6 +4,7 @@ Must stay at ``tests/`` rather than in a subdirectory: ``pytest_addoption`` is h
 conftests - those in the ancestor chain of the invocation's arguments - so ``--module-dir`` registered
 further down is an unrecognized argument to any invocation that does not name that directory.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

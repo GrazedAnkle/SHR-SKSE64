@@ -31,11 +31,8 @@ class ReferenceStateSchemaTests(unittest.TestCase):
         self.measurements = {"ref1": {"groups": {"baseline": {"hr": 72.0}}}}
 
     def test_schema_vocabulary_has_descriptions(self):
-        self.assertEqual(
-            tuple(rs.MANDATORY_STATE_DIMENSION_DESCRIPTIONS), rs.MANDATORY_STATE_DIMENSIONS
-        )
-        self.assertEqual(tuple(rs.OPTIONAL_STATE_DIMENSION_DESCRIPTIONS),
-                         rs.OPTIONAL_STATE_DIMENSIONS)
+        self.assertEqual(tuple(rs.MANDATORY_STATE_DIMENSION_DESCRIPTIONS), rs.MANDATORY_STATE_DIMENSIONS)
+        self.assertEqual(tuple(rs.OPTIONAL_STATE_DIMENSION_DESCRIPTIONS), rs.OPTIONAL_STATE_DIMENSIONS)
         self.assertEqual(tuple(rs.STATE_DIMENSION_DESCRIPTIONS), rs.STATE_DIMENSIONS)
         self.assertEqual(frozenset(rs.KNOWN_STATUS_DESCRIPTIONS), rs.KNOWN_STATUSES)
         self.assertEqual(frozenset(rs.UNKNOWN_REASON_DESCRIPTIONS), rs.UNKNOWN_REASONS)
@@ -102,8 +99,7 @@ class ReferenceStateSchemaTests(unittest.TestCase):
             path = Path(tmp) / "states.toml"
             path.write_text(text, encoding="utf-8")
             rs.attach_reference_states(self.measurements, path)
-        self.assertEqual(self.measurements["ref1"]["groups"]["baseline"]["state"]["kind"],
-                         "reference_state")
+        self.assertEqual(self.measurements["ref1"]["groups"]["baseline"]["state"]["kind"], "reference_state")
 
     def test_embedded_mixed_state_requires_members(self):
         self.assertTrue(rs.validate_embedded_state({"kind": "mixed_reference_states", "members": []}))
@@ -112,15 +108,13 @@ class ReferenceStateSchemaTests(unittest.TestCase):
         state = rs.normalize_state(complete_record(), self.measurements)
         self.measurements["ref1"]["groups"]["baseline"]["state"] = state
         self.assertEqual(
-            citations.state_target_problems(
-                self.measurements, "ref1.groups.baseline.state", "fixture"
-            ),
+            citations.state_target_problems(self.measurements, "ref1.groups.baseline.state", "fixture"),
             [],
         )
         state["scope"] = "ref1.groups.wrong"
-        self.assertTrue(citations.state_target_problems(
-            self.measurements, "ref1.groups.baseline.state", "fixture"
-        ))
+        self.assertTrue(
+            citations.state_target_problems(self.measurements, "ref1.groups.baseline.state", "fixture")
+        )
 
     def test_mixed_calibration_state_checks_every_member(self):
         self.measurements["ref1"]["groups"]["baseline"]["state"] = rs.normalize_state(
@@ -132,13 +126,9 @@ class ReferenceStateSchemaTests(unittest.TestCase):
                 "members": ["ref1.groups.baseline.state"],
             }
         }
-        self.assertEqual(citations.state_target_problems(
-            self.measurements, "fit.state", "fixture"
-        ), [])
+        self.assertEqual(citations.state_target_problems(self.measurements, "fit.state", "fixture"), [])
         self.measurements["fit"]["state"]["members"].append("ref1.groups.missing.state")
-        self.assertTrue(citations.state_target_problems(
-            self.measurements, "fit.state", "fixture"
-        ))
+        self.assertTrue(citations.state_target_problems(self.measurements, "fit.state", "fixture"))
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ The extension must be built against the interpreter that will import it, so this
 ``-DPython_EXECUTABLE`` for the running interpreter rather than the ``.venv`` one the presets pin: that
 builds the binding from an interpreter in any location, activated or not.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -56,8 +57,10 @@ def main() -> None:
 
     configure = [
         "cmake",
-        "--preset", PRESET,
-        "-B", str(BUILD_DIR),
+        "--preset",
+        PRESET,
+        "-B",
+        str(BUILD_DIR),
         "-DSHR_BUILD_PYBIND=ON",
         f"-DPython_EXECUTABLE={sys.executable}",
     ]

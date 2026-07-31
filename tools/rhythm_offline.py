@@ -7,6 +7,7 @@ construction and the independent measurement rulers below.
 Retired late-S1 tail/tamer controls remain explicit counterfactuals: they alter the compiled renderer's
 post-onset source stage, then return it to C++ for transmission, mixing, and limiting.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,6 +30,7 @@ def ref8_peak_cv_target() -> tuple[float, float] | None:
     path = Path(__file__).resolve().parents[1] / "docs" / "references" / "measurements.json"
     try:
         import json
+
         group = json.loads(path.read_text(encoding="utf-8"))["ref8"]["groups"]["peak (~180)"]
         return float(group["s1_peak_cv"]), float(group["s1_peak_cv_se"])
     except (OSError, KeyError, ValueError):
@@ -116,9 +118,7 @@ def beat_sequence(
     tail_mode = options.get("tail_mode", "off")
     tamer_enabled = bool(options.get("tamer_enabled", False))
     if tail_mode not in legacy_s1.LEGACY_TAIL_MODES:
-        raise ValueError(
-            f"unknown tail mode {tail_mode!r}; expected one of {legacy_s1.LEGACY_TAIL_MODES}"
-        )
+        raise ValueError(f"unknown tail mode {tail_mode!r}; expected one of {legacy_s1.LEGACY_TAIL_MODES}")
 
     source, sample_rate = core_offline.prepare_source(module, path, coefficients)
     if sample_rate != SR:
@@ -210,15 +210,15 @@ def beat_sequence(
 def _s1_window(beat_audio: np.ndarray, systole_duration: float, dur_ms: float) -> np.ndarray:
     """Return an onset-aligned channel-zero S1 slice matching reference windows."""
     mono = analysis_channel(beat_audio)
-    region = mono[:int(systole_duration * SR)]
+    region = mono[: int(systole_duration * SR)]
     env = shrlib.env_analytic(region, SR)
     peak = int(np.argmax(env))
     onset = 0
     if peak > 0 and env[peak] > 0:
-        climb = np.maximum.accumulate(env[:peak + 1])
+        climb = np.maximum.accumulate(env[: peak + 1])
         above = np.flatnonzero(climb >= 0.10 * env[peak])
         onset = int(above[0]) if len(above) else 0
-    return region[onset:onset + int(dur_ms * 1.0e-3 * SR)]
+    return region[onset : onset + int(dur_ms * 1.0e-3 * SR)]
 
 
 BREATH_WIN_MS = shrlib.BREATH_WIN_MS
@@ -234,25 +234,25 @@ breath_swing_problems = shrlib.breath_swing_problems
 
 def _fixed_s1_window(beat_audio: np.ndarray) -> np.ndarray:
     """Fixed channel-zero S1-start window matching the ref20 breath calibration."""
-    return analysis_channel(beat_audio)[:int(BREATH_WIN_MS * 1.0e-3 * SR)]
+    return analysis_channel(beat_audio)[: int(BREATH_WIN_MS * 1.0e-3 * SR)]
 
 
 ESTIMATOR_METADATA = {
-    "peak":                  {"window": "onset+dur_ms", "width": "invariant", "converges": None},
-    "crest":                 {"window": "onset+dur_ms", "width": "sensitive", "converges": None},
-    "centroid":              {"window": "onset+dur_ms", "width": "sensitive", "converges": None},
-    "peak_cv":               {"window": "onset+dur_ms", "width": "invariant", "converges": None},
-    "peak_cv_slow":          {"window": "onset+dur_ms", "width": "invariant", "converges": None},
-    "peak_cv_fast":          {"window": "onset+dur_ms", "width": "invariant", "converges": None},
-    "centroid_cv":           {"window": "onset+dur_ms", "width": "sensitive", "converges": None},
-    "peak_mean":             {"window": "onset+dur_ms", "width": "invariant", "converges": None},
-    "crest_mean_db":         {"window": "onset+dur_ms", "width": "sensitive", "converges": None},
-    "aw_swing_db":           {"window": "beat+fixed",   "width": "sensitive", "converges": "breath-cycles"},
-    "centroid_ratio":        {"window": "beat+fixed",   "width": "sensitive", "converges": "breath-cycles"},
-    "inflation_exp_median":  {"window": "sequence",     "width": "invariant", "converges": "breath-cycles"},
-    "inflation_insp_median": {"window": "sequence",     "width": "invariant", "converges": "breath-cycles"},
-    "breath_cycles":         {"window": "sequence",     "width": "invariant", "converges": None},
-    "breath_problems":       {"window": "sequence",     "width": "invariant", "converges": None},
+    "peak": {"window": "onset+dur_ms", "width": "invariant", "converges": None},
+    "crest": {"window": "onset+dur_ms", "width": "sensitive", "converges": None},
+    "centroid": {"window": "onset+dur_ms", "width": "sensitive", "converges": None},
+    "peak_cv": {"window": "onset+dur_ms", "width": "invariant", "converges": None},
+    "peak_cv_slow": {"window": "onset+dur_ms", "width": "invariant", "converges": None},
+    "peak_cv_fast": {"window": "onset+dur_ms", "width": "invariant", "converges": None},
+    "centroid_cv": {"window": "onset+dur_ms", "width": "sensitive", "converges": None},
+    "peak_mean": {"window": "onset+dur_ms", "width": "invariant", "converges": None},
+    "crest_mean_db": {"window": "onset+dur_ms", "width": "sensitive", "converges": None},
+    "aw_swing_db": {"window": "beat+fixed", "width": "sensitive", "converges": "breath-cycles"},
+    "centroid_ratio": {"window": "beat+fixed", "width": "sensitive", "converges": "breath-cycles"},
+    "inflation_exp_median": {"window": "sequence", "width": "invariant", "converges": "breath-cycles"},
+    "inflation_insp_median": {"window": "sequence", "width": "invariant", "converges": "breath-cycles"},
+    "breath_cycles": {"window": "sequence", "width": "invariant", "converges": None},
+    "breath_problems": {"window": "sequence", "width": "invariant", "converges": None},
 }
 
 
@@ -260,9 +260,7 @@ def measure_sequence(seq: dict, dur_ms: float = 128.0, warmup: int = 4) -> dict:
     """Return the preserved per-beat S1 metrics over compiled native-layout renders."""
     native_run = np.concatenate([beat["audio"] for beat in seq["beats"]], axis=0)
     weighted_run = shrlib.a_weight(analysis_channel(native_run), SR)
-    starts = np.concatenate(
-        [[0], np.cumsum([len(beat["audio"]) for beat in seq["beats"][:-1]])]
-    )
+    starts = np.concatenate([[0], np.cumsum([len(beat["audio"]) for beat in seq["beats"][:-1]])])
     breath_win = int(BREATH_WIN_MS * 1.0e-3 * SR)
 
     peaks, crests, cents = [], [], []
@@ -270,7 +268,7 @@ def measure_sequence(seq: dict, dur_ms: float = 128.0, warmup: int = 4) -> dict:
     for index, (beat, start) in enumerate(zip(seq["beats"], starts)):
         s1 = _s1_window(beat["audio"], beat["systole_duration"], dur_ms)
         breath_cents.append(shrlib.centroid(_fixed_s1_window(beat["audio"]), SR))
-        aw_rms.append(shrlib.rms(weighted_run[start:start + breath_win]))
+        aw_rms.append(shrlib.rms(weighted_run[start : start + breath_win]))
         inflations.append(beat["lung_inflation"])
         if index >= warmup:
             peaks.append(shrlib.peak(s1))
@@ -310,7 +308,7 @@ def breath_period_beats(values: np.ndarray) -> int:
     """Return the dominant 2..len/3-beat period by autocorrelation."""
     values = np.asarray(values, float)
     centered = values - values.mean()
-    autocorrelation = np.correlate(centered, centered, "full")[len(centered) - 1:]
+    autocorrelation = np.correlate(centered, centered, "full")[len(centered) - 1 :]
     high = max(3, len(values) // 3)
     return 2 + int(np.argmax(autocorrelation[2:high])) if high > 2 else 3
 
@@ -421,10 +419,7 @@ def main() -> None:
         if target
         else ""
     )
-    print(
-        f"  S1 peak-amp: mean {measured['peak_mean']:.3f}  "
-        f"CV {measured['peak_cv'] * 100:.1f}%{note}"
-    )
+    print(f"  S1 peak-amp: mean {measured['peak_mean']:.3f}  CV {measured['peak_cv'] * 100:.1f}%{note}")
     print(
         f"  S1 brightness (centroid): CV {measured['centroid_cv'] * 100:.1f}%   "
         "(within-signal only - width-sensitive, no valid cross-recording target)"
@@ -446,6 +441,7 @@ def main() -> None:
     print("  per-beat peak-amp: " + " ".join(f"{peak:.3f}" for peak in measured["peak"]))
     if args.out:
         import soundfile as sf
+
         sf.write(args.out, np.clip(seq["audio"], -1, 1), SR, subtype="PCM_16")
         print(
             f"  wrote native-layout {args.out}  {len(seq['audio']) / SR:.2f}s  "

@@ -31,7 +31,7 @@ class LegacyTailCounterfactualTests(unittest.TestCase):
         self.assertEqual(relative, fixed)
 
     def test_dry_end_mode_preserves_the_handoff_when_the_source_shortens(self):
-        shortened = self.source[:-int(6.0e-3 * SR)]
+        shortened = self.source[: -int(6.0e-3 * SR)]
         fixed = legacy_s1.tail_splice_frame(
             len(shortened),
             self.baseline_frames,

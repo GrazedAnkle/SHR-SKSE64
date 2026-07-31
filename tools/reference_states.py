@@ -5,6 +5,7 @@ survive ``ref_analyze.py --all``.  This module normalizes those judgments into
 the measurement node named by each record's ``scope``. The exported description
 maps below are the schema vocabulary for authors and validators.
 """
+
 from __future__ import annotations
 
 import tomllib
@@ -17,9 +18,7 @@ SCHEMA_VERSION = 1
 # Mandatory dimensions. These describe the reference, not an engine fixture:
 # normalized engine coordinates belong in a calibration's state_compatibility.
 MANDATORY_STATE_DIMENSION_DESCRIPTIONS = {
-    "heart_rate": (
-        "Heart rate over this measurement scope, normally in beats/min from an adjacent leaf."
-    ),
+    "heart_rate": ("Heart rate over this measurement scope, normally in beats/min from an adjacent leaf."),
     "effort_phase": (
         "Protocol phase: rest, rising/steady exercise, recovery, breath hold, or another named maneuver."
     ),
@@ -35,9 +34,7 @@ MANDATORY_STATE_DIMENSION_DESCRIPTIONS = {
     ),
     "fatigue": "Acute or accumulated capacity-reducing fatigue relevant to the protocol.",
     "posture": "Body orientation or dynamic posture relevant to physiology and sensor coupling.",
-    "auscultation_site": (
-        "Anatomical sensor position or the smallest defensible set of possible positions."
-    ),
+    "auscultation_site": ("Anatomical sensor position or the smallest defensible set of possible positions."),
     "rhythm": (
         "Rhythm class or burden relevant to timing and morphology; 'regular' does not assert "
         "ECG-confirmed sinus rhythm."
@@ -101,12 +98,8 @@ UNKNOWN_REASONS = frozenset(UNKNOWN_REASON_DESCRIPTIONS)
 
 OBSERVATION_FIELD_DESCRIPTIONS = {
     "status": "One known-status enum or 'unknown'.",
-    "value": (
-        "Literal scalar, range, list, or qualitative class; mutually exclusive with value_from."
-    ),
-    "value_from": (
-        "Dotted path to a generated measurement leaf; resolved into value during regeneration."
-    ),
+    "value": ("Literal scalar, range, list, or qualitative class; mutually exclusive with value_from."),
+    "value_from": ("Dotted path to a generated measurement leaf; resolved into value during regeneration."),
     "source": "Committed evidence location or stable source description for a literal value.",
     "rationale": (
         "Required explanation for context_inferred; it must identify the independent context used."

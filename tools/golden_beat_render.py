@@ -12,6 +12,7 @@ human-readable review aids and are compared at a loose tolerance.
 
 One golden domain; tools/golden_registry.py describes the surface it exposes.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -103,9 +104,7 @@ def diff(expected: dict, actual: dict) -> list[str]:
                 problems.append(f"{name}/{stage}: present in only one of golden/core")
                 continue
             if exp["frames"] != act["frames"]:
-                problems.append(
-                    f"{name}/{stage}: frames golden {exp['frames']} != core {act['frames']}"
-                )
+                problems.append(f"{name}/{stage}: frames golden {exp['frames']} != core {act['frames']}")
             if exp["sha256"] != act["sha256"]:
                 problems.append(
                     f"{name}/{stage}: sha256 mismatch "
@@ -114,9 +113,7 @@ def diff(expected: dict, actual: dict) -> list[str]:
                 )
             for field in ("peak_abs", "rms"):
                 if abs(float(exp[field]) - float(act[field])) > STAT_ATOL:
-                    problems.append(
-                        f"{name}/{stage}: {field} golden {exp[field]} != core {act[field]}"
-                    )
+                    problems.append(f"{name}/{stage}: {field} golden {exp[field]} != core {act[field]}")
     return problems
 
 

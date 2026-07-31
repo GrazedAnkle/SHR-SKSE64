@@ -20,6 +20,7 @@ Stdlib-only so it can run in CI.
 
 Usage:  python tools/check_layering.py [--root .]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -112,8 +113,7 @@ def main() -> int:
                     )
             elif "/" not in target and target in header_names:
                 problems.append(
-                    f"{rel}:{lineno}: includes '{target}' unqualified; "
-                    f"name the layer, as in 'core/{target}'"
+                    f"{rel}:{lineno}: includes '{target}' unqualified; name the layer, as in 'core/{target}'"
                 )
 
     # Directory contents and CMake source lists must agree in both directions.

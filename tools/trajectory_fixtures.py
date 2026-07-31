@@ -4,6 +4,7 @@ Each scenario drives the compiled Runtime (shr_pybind) over a PlayerState profil
 events, at a fixed frame cadence and rhythm seed. Simulation is deterministic and only rhythm draws from
 the seeded RNG, so a scenario is fully reproducible. These are test inputs, not physiological claims.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -40,7 +41,12 @@ class TrajectoryScenario:
 TRAJECTORY_SCENARIOS: dict[str, TrajectoryScenario] = {
     # Classic exertion arc: rest -> sprint -> rest, exercising HR rise and recovery plus RSA.
     "rest_sprint_recovery": TrajectoryScenario(
-        seed=1, resting_hr=55.0, max_hr=195.0, seconds=60.0, fps=30.0, snapshot_interval_s=2.0,
+        seed=1,
+        resting_hr=55.0,
+        max_hr=195.0,
+        seconds=60.0,
+        fps=30.0,
+        snapshot_interval_s=2.0,
         segments=(
             Segment(start=0.0, player={}),
             Segment(start=15.0, player={"is_sprinting": True, "is_running": True}),
@@ -49,7 +55,12 @@ TRAJECTORY_SCENARIOS: dict[str, TrajectoryScenario] = {
     ),
     # Adrenaline path: resting body, combat entry then hits drive the adrenaline-mediated HR bump.
     "combat_adrenaline": TrajectoryScenario(
-        seed=2, resting_hr=58.0, max_hr=190.0, seconds=40.0, fps=30.0, snapshot_interval_s=2.0,
+        seed=2,
+        resting_hr=58.0,
+        max_hr=190.0,
+        seconds=40.0,
+        fps=30.0,
+        snapshot_interval_s=2.0,
         segments=(Segment(start=0.0, player={}),),
         events=(
             NotifyEvent(time=5.0, method="combat_entry"),

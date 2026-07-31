@@ -9,6 +9,7 @@ compiled-core clients, retired-effect counterfactuals, and reference analyzer:
 
 Metric rationale and the preferred-metric taxonomy live in docs/MEASUREMENT_METHODS.md.
 """
+
 from __future__ import annotations
 
 import re
@@ -37,10 +38,8 @@ def a_weight_gain(f: np.ndarray) -> np.ndarray:
     """
     f = np.asarray(f, dtype=float)
     f2 = f * f
-    ra = (12194.0 ** 2 * f2 ** 2) / (
-        (f2 + 20.6 ** 2)
-        * np.sqrt((f2 + 107.7 ** 2) * (f2 + 737.9 ** 2))
-        * (f2 + 12194.0 ** 2)
+    ra = (12194.0**2 * f2**2) / (
+        (f2 + 20.6**2) * np.sqrt((f2 + 107.7**2) * (f2 + 737.9**2)) * (f2 + 12194.0**2)
     )
     with np.errstate(divide="ignore"):
         a_db = 20.0 * np.log10(ra) + 2.00
@@ -64,7 +63,7 @@ def a_weight(x: np.ndarray, sr: int) -> np.ndarray:
 # Breath-swing Measurement
 # Shared by rhythm_offline and ref_analyze so engine and reference use one ruler.
 
-BREATH_WIN_MS = 75.0      # Fixed S1-onset window ending before S2.
+BREATH_WIN_MS = 75.0  # Fixed S1-onset window ending before S2.
 BREATH_GROUP_FRAC = 0.30  # Compare the top and bottom 30% by lung inflation.
 
 # Cycle count is necessary but not sufficient; phase coverage is checked separately.
@@ -81,15 +80,17 @@ def breath_groups(inflations: np.ndarray, group_frac: float = BREATH_GROUP_FRAC)
     return order[:group_n], order[-group_n:]
 
 
-def breath_group_ratio(values: np.ndarray, inflations: np.ndarray,
-                       group_frac: float = BREATH_GROUP_FRAC) -> float:
+def breath_group_ratio(
+    values: np.ndarray, inflations: np.ndarray, group_frac: float = BREATH_GROUP_FRAC
+) -> float:
     """Return inspiration median / expiration median."""
     expiration, inspiration = breath_groups(inflations, group_frac)
     return float(np.median(values[inspiration]) / np.median(values[expiration]))
 
 
-def breath_swing_db(aw_rms: np.ndarray, inflations: np.ndarray,
-                    group_frac: float = BREATH_GROUP_FRAC) -> float:
+def breath_swing_db(
+    aw_rms: np.ndarray, inflations: np.ndarray, group_frac: float = BREATH_GROUP_FRAC
+) -> float:
     """Return the breath loudness swing in dB.
 
     Negative means inspiration is quieter. This is the `BreathAmpDepth` ruler.
@@ -144,8 +145,9 @@ def breath_group_median_targets(curve: str, group_frac: float = BREATH_GROUP_FRA
     return float(lo), float(hi)
 
 
-def breath_group_bias(n_beats: int, beats_per_breath: float, curve: str,
-                      n_phases: int = 721) -> tuple[float, float]:
+def breath_group_bias(
+    n_beats: int, beats_per_breath: float, curve: str, n_phases: int = 721
+) -> tuple[float, float]:
     """Return SD and worst group-median phase-sampling error.
 
     Values are fractions of the metric's breath swing. Integrates over unknown
@@ -161,8 +163,9 @@ def breath_group_bias(n_beats: int, beats_per_breath: float, curve: str,
     return float(error.std()), float(np.abs(error).max())
 
 
-def breath_swing_problems(inflations: np.ndarray, hr: float, resp_rate: float, curve: str,
-                          group_frac: float = BREATH_GROUP_FRAC) -> list[str]:
+def breath_swing_problems(
+    inflations: np.ndarray, hr: float, resp_rate: float, curve: str, group_frac: float = BREATH_GROUP_FRAC
+) -> list[str]:
     """Return reasons a breath swing must not be trusted.
 
     Requires enough cycles and representative group-median phase coverage. Engine
@@ -173,8 +176,10 @@ def breath_swing_problems(inflations: np.ndarray, hr: float, resp_rate: float, c
     cycles = breath_cycles(len(inflations), hr, resp_rate)
     too_short = cycles < MIN_BREATH_CYCLES
     if too_short:
-        problems.append(f"only {cycles:.1f} respiratory cycles covered (< {MIN_BREATH_CYCLES:.0f}); "
-                        f"the swing has not converged - raise the beat count")
+        problems.append(
+            f"only {cycles:.1f} respiratory cycles covered (< {MIN_BREATH_CYCLES:.0f}); "
+            f"the swing has not converged - raise the beat count"
+        )
 
     expiration, inspiration = breath_groups(inflations, group_frac)
     realized = (float(np.median(inflations[expiration])), float(np.median(inflations[inspiration])))
@@ -184,15 +189,19 @@ def breath_swing_problems(inflations: np.ndarray, hr: float, resp_rate: float, c
         # Report the observation; name only the cause actually ruled in. A short run is under-covered for
         # the boring reason. A LONG run that is still under-covered is a phase lock - the one no beat
         # count can fix.
-        cause = ("raise the beat count first, then re-check - a run this short is under-covered for the "
-                 "boring reason" if too_short else
-                 f"MORE BEATS WILL NOT FIX THIS: at {hr / resp_rate:.3f} beats/breath the phase advance "
-                 f"revisits too few phases, and it is a rigid rotation whenever RSA is off (exertion 1). "
-                 f"Move the operating point off the lock, or measure where RSA is live (exertion < 1)")
+        cause = (
+            "raise the beat count first, then re-check - a run this short is under-covered for the "
+            "boring reason"
+            if too_short
+            else f"MORE BEATS WILL NOT FIX THIS: at {hr / resp_rate:.3f} beats/breath the phase advance "
+            f"revisits too few phases, and it is a rigid rotation whenever RSA is off (exertion 1). "
+            f"Move the operating point off the lock, or measure where RSA is live (exertion < 1)"
+        )
         problems.append(
             f"respiratory phase is under-covered: inflation-group medians "
             f"{realized[0]:.3f}/{realized[1]:.3f} vs {targets[0]:.3f}/{targets[1]:.3f} expected under "
-            f"uniform coverage (deviation {deviation:.3f} > {BREATH_MEDIAN_TOL}). {cause}")
+            f"uniform coverage (deviation {deviation:.3f} > {BREATH_MEDIAN_TOL}). {cause}"
+        )
     return problems
 
 
@@ -240,6 +249,7 @@ METRIC_METADATA = {
 
 # Signal IO
 
+
 def load(path: str | Path) -> tuple[np.ndarray, int]:
     """Load WAV channel 0 as a mono float signal and return its sample rate."""
     x, sr = sf.read(str(path), always_2d=True)
@@ -248,10 +258,11 @@ def load(path: str | Path) -> tuple[np.ndarray, int]:
 
 def sl(x: np.ndarray, sr: int, a: float, b: float) -> np.ndarray:
     """Return signal x from a to b seconds."""
-    return x[int(a * sr):int(b * sr)]
+    return x[int(a * sr) : int(b * sr)]
 
 
 # Metric battery
+
 
 def env(s: np.ndarray, sr: int, ms: float = 0.5) -> np.ndarray:
     """Rectified-and-box-smoothed envelope.
@@ -308,7 +319,7 @@ def rise_10_90_ms(s: np.ndarray, sr: int) -> float:
     pk = int(np.argmax(e))
     if pk <= 0 or e[pk] <= 0:
         return np.nan
-    climb = np.maximum.accumulate(e[:pk + 1])
+    climb = np.maximum.accumulate(e[: pk + 1])
     i10 = np.flatnonzero(climb >= 0.10 * e[pk])
     i90 = np.flatnonzero(climb >= 0.90 * e[pk])
     if not len(i10) or not len(i90):
@@ -384,14 +395,15 @@ def f0(s: np.ndarray, sr: int, lo: float = 25, hi: float = 140) -> float:
 def bands(s: np.ndarray, sr: int, edges: tuple[float, ...] = (20, 40, 80, 150, 300, 1200)) -> list[float]:
     """Energy fraction within each consecutive edge pair (of the total below the last edge)."""
     f, S = spec(s, sr)
-    p = S ** 2
+    p = S**2
     tot = p[f <= edges[-1]].sum()
-    return [float(p[(f >= lo) & (f < hi)].sum() / tot) if tot > 0 else np.nan
-            for lo, hi in zip(edges, edges[1:])]
+    return [
+        float(p[(f >= lo) & (f < hi)].sum() / tot) if tot > 0 else np.nan for lo, hi in zip(edges, edges[1:])
+    ]
 
 
 def rms(s: np.ndarray) -> float:
-    return float(np.sqrt(np.mean(s ** 2))) if len(s) else 0.0
+    return float(np.sqrt(np.mean(s**2))) if len(s) else 0.0
 
 
 def peak(s: np.ndarray) -> float:
@@ -413,13 +425,13 @@ def chirp(s: np.ndarray, sr: int) -> tuple[float, float]:
 
 def energy_conc(s: np.ndarray, sr: int) -> list[float]:
     """Return energy fractions in the first 0-20, 20-40, and 40-80 ms."""
-    e = s ** 2
+    e = s**2
     tot = e.sum()
     if tot == 0:
         return [np.nan] * 3
 
     def w(a, b):
-        return float(e[int(a * 1e-3 * sr):int(b * 1e-3 * sr)].sum() / tot)
+        return float(e[int(a * 1e-3 * sr) : int(b * 1e-3 * sr)].sum() / tot)
 
     return [w(0, 20), w(20, 40), w(40, 80)]
 
@@ -430,6 +442,7 @@ def db(ratio: float) -> float:
 
 # Rise/body HF contrast
 
+
 def hf_band(x: np.ndarray, sr: int, lo: float = HF_BAND_HZ[0], hi: float = HF_BAND_HZ[1]) -> np.ndarray:
     """Apply a zero-phase fourth-order Butterworth bandpass to the whole signal.
 
@@ -439,14 +452,16 @@ def hf_band(x: np.ndarray, sr: int, lo: float = HF_BAND_HZ[0], hi: float = HF_BA
     return sosfiltfilt(butter(4, [lo, hi], btype="band", fs=sr, output="sos"), x)
 
 
-def _lobe_peak_indices(s: np.ndarray, sr: int, frac: float = 0.45,
-                       min_gap_ms: float = 15.0) -> tuple[np.ndarray, np.ndarray]:
+def _lobe_peak_indices(
+    s: np.ndarray, sr: int, frac: float = 0.45, min_gap_ms: float = 15.0
+) -> tuple[np.ndarray, np.ndarray]:
     """Return the exact smoothed envelope and peak indices used by `lobe_count`.
 
     Private shared machinery for the metric and its diagnostic view; callers should report
     `lobe_count`, not treat these indices as anatomical component labels.
     """
     from scipy.signal import find_peaks
+
     e = env_analytic(s, sr, ms=5.0)
     if e.max() <= 0:
         return e, np.array([], dtype=int)
@@ -456,7 +471,9 @@ def _lobe_peak_indices(s: np.ndarray, sr: int, frac: float = 0.45,
     return e, p
 
 
-def lobe_count(s: np.ndarray, sr: int, frac: float = 0.45, min_gap_ms: float = 15.0) -> tuple[int, int, float]:
+def lobe_count(
+    s: np.ndarray, sr: int, frac: float = 0.45, min_gap_ms: float = 15.0
+) -> tuple[int, int, float]:
     """Return lobe count, tallest index, and runner-up/tallest ratio.
 
     Gate peak-anchored metrics with this: when the runner-up approaches the tallest, `argmax` can flip
@@ -474,7 +491,7 @@ def lobe_count(s: np.ndarray, sr: int, frac: float = 0.45, min_gap_ms: float = 1
 
 def _energy_temporal_centroid(s: np.ndarray) -> float:
     """Return the energy-weighted temporal centroid in samples, or NaN for zero energy."""
-    weights = s ** 2
+    weights = s**2
     total = weights.sum()
     if total <= 0:
         return np.nan
@@ -502,9 +519,15 @@ def hf_temporal_skew(lobe: np.ndarray, hf_slice: np.ndarray) -> float:
     return float((hf_centroid - broadband_centroid) / len(lobe))
 
 
-def rise_body_contrast(lobe: np.ndarray, hf_signal: np.ndarray, sr: int, t0: float,
-                       s2_onset: float | None = None, rise_ms: float = CONTRAST_RISE_MS,
-                       body_ms: float = CONTRAST_BODY_MS) -> tuple[float, float, float]:
+def rise_body_contrast(
+    lobe: np.ndarray,
+    hf_signal: np.ndarray,
+    sr: int,
+    t0: float,
+    s2_onset: float | None = None,
+    rise_ms: float = CONTRAST_RISE_MS,
+    body_ms: float = CONTRAST_BODY_MS,
+) -> tuple[float, float, float]:
     """Return contrast, rise density, and body density for one S1 lobe.
 
     Contrast divides mean 150-2000 Hz energy before the peak by mean energy after
@@ -526,7 +549,7 @@ def rise_body_contrast(lobe: np.ndarray, hf_signal: np.ndarray, sr: int, t0: flo
         return nan3
     if s2_onset is not None and i0 + pk + n_body > int(round(s2_onset * sr)):
         return nan3
-    y = hf_signal[i0 + pk - n_rise: i0 + pk + n_body]
+    y = hf_signal[i0 + pk - n_rise : i0 + pk + n_body]
     rise = float(np.mean(y[:n_rise] ** 2))
     body = float(np.mean(y[n_rise:] ** 2))
     a2 = peak(lobe) ** 2
@@ -733,15 +756,9 @@ def beats_hr(beats: list) -> float:
 
 
 _CONST_RE = re.compile(
-    r"constexpr" +
-    r"\s+" +
-    r"(?:float|double|int|std::uint32_t|std::int32_t)"
-    r"\s+" +
-    r"(\w+)" +
-    r"\s*" +
-    r"="
-    r"\s*" +
-    r"([^;]+);"
+    r"constexpr" + r"\s+" + r"(?:float|double|int|std::uint32_t|std::int32_t)"
+    r"\s+" + r"(\w+)" + r"\s*" + r"="
+    r"\s*" + r"([^;]+);"
 )
 
 
@@ -759,7 +776,7 @@ def parse_constants(hpp_path: str | Path) -> dict[str, float]:
         # Strip C++ float/long suffixes from numeric literals.
         expr = re.sub(r"(?<=[0-9.])[fFlL](?![A-Za-z0-9_])", "", expr)
         try:
-            ns[name] = eval(expr, {"__builtins__": {}}, ns) # noqa: S307 - trusted repo source
+            ns[name] = eval(expr, {"__builtins__": {}}, ns)  # noqa: S307 - trusted repo source
         except Exception:
             continue  # Skip non-numeric constants.
     return ns

@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SR = shrlib.SR
 SOURCE = ROOT / "contrib/Distribution/Sound/fx/SHR_HeartBeat/HeartBeat_Shortened.wav"
 
+
 # A monotone-decreasing stand-in for the breath muffle: the more inflated the lung, the quieter and duller
 # the beat. Its exact shape does not matter - only that it is monotone, which is what makes the estimator's
 # limit exactly computable (a median commutes with a monotone transform, so the true swing is just the
@@ -77,9 +78,10 @@ class InflationCurveTests(unittest.TestCase):
     """Engine and reference inflation curves have distinct coverage targets; callers must name one."""
 
     def test_each_curve_targets_match_ITS_OWN_dense_sample(self):
-        for curve, dense in ((shrlib.SINE, np.sin(np.pi * dense_phase())),
-                             (shrlib.RAISED_COSINE,
-                              0.5 * (1.0 - np.cos(2.0 * np.pi * dense_phase())))):
+        for curve, dense in (
+            (shrlib.SINE, np.sin(np.pi * dense_phase())),
+            (shrlib.RAISED_COSINE, 0.5 * (1.0 - np.cos(2.0 * np.pi * dense_phase()))),
+        ):
             expiration, inspiration = ro.breath_groups(dense)
             empirical = (np.median(dense[expiration]), np.median(dense[inspiration]))
             for measured, expected in zip(empirical, shrlib.breath_group_median_targets(curve)):
@@ -121,16 +123,20 @@ class ShortGroupBiasTests(unittest.TestCase):
     def test_bias_vanishes_when_the_group_spans_a_WHOLE_number_of_breaths(self):
         for n_beats, ratio in ((8, 8.0), (8, 4.0), (12, 6.0), (12, 4.0), (20, 10.0)):
             sd, _ = shrlib.breath_group_bias(n_beats, ratio, shrlib.RAISED_COSINE)
-            self.assertLess(sd, 0.01, f"{n_beats} beats at {ratio}/breath spans "
-                                      f"{n_beats / ratio:.0f} whole breaths - it must be unbiased")
+            self.assertLess(
+                sd,
+                0.01,
+                f"{n_beats} beats at {ratio}/breath spans "
+                f"{n_beats / ratio:.0f} whole breaths - it must be unbiased",
+            )
 
     def test_bias_is_WORST_when_the_group_spans_a_fraction_of_a_breath(self):
         """The controlling quantity is the SPAN, not the beat count: a group covering half a cycle is
         maximally biased however many beats it has."""
-        whole, _ = shrlib.breath_group_bias(8, 8.0, shrlib.RAISED_COSINE)      # spans 1.00 breaths
+        whole, _ = shrlib.breath_group_bias(8, 8.0, shrlib.RAISED_COSINE)  # spans 1.00 breaths
         fraction, _ = shrlib.breath_group_bias(8, 16.0, shrlib.RAISED_COSINE)  # spans 0.50 breaths
         self.assertGreater(fraction, 10 * max(whole, 1e-6))
-        self.assertGreater(fraction, 0.2)   # >= 20% of the metric's whole breath swing
+        self.assertGreater(fraction, 0.2)  # >= 20% of the metric's whole breath swing
 
     def test_ref20s_measured_group_is_predicted_to_be_nearly_unbiased(self):
         """The one case with real beats behind it: ref20's 8-beat groups sit at 8.47 beats/breath, spanning
@@ -138,15 +144,18 @@ class ShortGroupBiasTests(unittest.TestCase):
         over a random sample of the same size is ~0. This is why ref20 must NOT be read as the general case.
         """
         sd, worst = shrlib.breath_group_bias(8, 8.47, shrlib.RAISED_COSINE)
-        self.assertLess(sd * 7.65, 0.35)          # < 0.35 dB on ref20's 7.65 dB swing
+        self.assertLess(sd * 7.65, 0.35)  # < 0.35 dB on ref20's 7.65 dB swing
         self.assertLess(worst * 7.65, 0.40)
 
     def test_a_typical_group_carries_a_real_error_bar(self):
         """6-9 beats at 3-8.5 beats/breath is the plausible reference regime (HR and RR both rise with
         exertion, so the ratio stays in a narrow band). The bias there is NOT negligible: it is comparable
         to ref20's own 1.08 dB jackknife SE, which is what makes it worth an error bar at all."""
-        worst = max(shrlib.breath_group_bias(n, r, shrlib.RAISED_COSINE)[0]
-                    for n in (6, 8, 9) for r in np.arange(3.0, 8.51, 0.05))
+        worst = max(
+            shrlib.breath_group_bias(n, r, shrlib.RAISED_COSINE)[0]
+            for n in (6, 8, 9)
+            for r in np.arange(3.0, 8.51, 0.05)
+        )
         self.assertGreater(worst * 7.65, 1.0, "a typical short group should carry >1 dB of breath bias")
 
 
@@ -170,9 +179,9 @@ class BreathSwingConvergenceTests(unittest.TestCase):
             single = beat_sampled_inflations(beats_per_breath, n_beats)
             double = beat_sampled_inflations(beats_per_breath, 2 * n_beats)
             self.assertLess(
-                abs(ro.breath_swing_db(muffle(single), single)
-                    - ro.breath_swing_db(muffle(double), double)),
-                0.10)
+                abs(ro.breath_swing_db(muffle(single), single) - ro.breath_swing_db(muffle(double), double)),
+                0.10,
+            )
 
     def test_swing_is_NOT_stable_below_the_cycle_guard(self):
         """Characterization test: the guard is load-bearing, so it cannot be silently removed.
@@ -187,7 +196,7 @@ class BreathSwingConvergenceTests(unittest.TestCase):
         self.assertGreater(max(errors), 0.30)
 
     def test_short_runs_are_reported_as_unsound(self):
-        inflations = beat_sampled_inflations(6.77, 24)          # ~3.5 cycles: deliberately unsound
+        inflations = beat_sampled_inflations(6.77, 24)  # ~3.5 cycles: deliberately unsound
         problems = ro.breath_swing_problems(inflations, hr=176.0, resp_rate=26.0, curve=shrlib.SINE)
         self.assertTrue(any("respiratory cycles" in problem for problem in problems))
 
@@ -201,8 +210,8 @@ class BreathPhaseLockTests(unittest.TestCase):
     breath, an operating point the engine genuinely reaches.
     """
 
-    LOCKED = 4.0        # HR 200 / RR 50: the maximum-exertion operating point
-    UNLOCKED = 4.44     # a neighbouring ratio that equidistributes
+    LOCKED = 4.0  # HR 200 / RR 50: the maximum-exertion operating point
+    UNLOCKED = 4.44  # a neighbouring ratio that equidistributes
 
     def test_a_locked_ratio_never_converges_no_matter_how_many_beats(self):
         for cycles in (10, 30, 100, 400):
@@ -217,17 +226,18 @@ class BreathPhaseLockTests(unittest.TestCase):
         single = beat_sampled_inflations(self.LOCKED, 400)
         double = beat_sampled_inflations(self.LOCKED, 800)
         self.assertLess(
-            abs(ro.breath_swing_db(muffle(single), single)
-                - ro.breath_swing_db(muffle(double), double)),
-            0.01)
+            abs(ro.breath_swing_db(muffle(single), single) - ro.breath_swing_db(muffle(double), double)), 0.01
+        )
 
     def test_the_coverage_guard_catches_what_the_cycle_guard_misses(self):
-        n_beats = int(round(100 * self.LOCKED))                 # far past MIN_BREATH_CYCLES
+        n_beats = int(round(100 * self.LOCKED))  # far past MIN_BREATH_CYCLES
         inflations = beat_sampled_inflations(self.LOCKED, n_beats)
         problems = ro.breath_swing_problems(inflations, hr=200.0, resp_rate=50.0, curve=shrlib.SINE)
         self.assertTrue(any("under-covered" in problem for problem in problems))
-        self.assertFalse(any("respiratory cycles" in problem for problem in problems),
-                         "the cycle guard is satisfied here - only the coverage guard can see this")
+        self.assertFalse(
+            any("respiratory cycles" in problem for problem in problems),
+            "the cycle guard is satisfied here - only the coverage guard can see this",
+        )
 
     def test_the_coverage_guard_passes_a_well_covered_run(self):
         hr, resp_rate = 178.0, 178.0 / self.UNLOCKED
@@ -248,7 +258,9 @@ class BreathPhaseLockTests(unittest.TestCase):
         for beats_per_breath in np.arange(3.0, 15.001, 0.005):
             n_beats = int(round(ro.MIN_BREATH_CYCLES * beats_per_breath))
             inflations = beat_sampled_inflations(beats_per_breath, n_beats)
-            if ro.breath_swing_problems(inflations, hr=180.0, resp_rate=180.0 / beats_per_breath, curve=shrlib.SINE):
+            if ro.breath_swing_problems(
+                inflations, hr=180.0, resp_rate=180.0 / beats_per_breath, curve=shrlib.SINE
+            ):
                 continue
             worst = max(worst, abs(ro.breath_swing_db(muffle(inflations), inflations) - true_swing_db()))
         self.assertLess(worst, 0.30, f"guard now admits {worst:.3f} dB of aliasing error")
@@ -267,8 +279,9 @@ class WindowRuleTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.seq = ro.beat_sequence(SOURCE, hr=176.0, contractility=0.75, exertion=0.75,
-                                   n_beats=8, vigor_sigma=0.0, seed=0)
+        cls.seq = ro.beat_sequence(
+            SOURCE, hr=176.0, contractility=0.75, exertion=0.75, n_beats=8, vigor_sigma=0.0, seed=0
+        )
 
     def test_metadata_covers_every_measure_sequence_output(self):
         measured = ro.measure_sequence(self.seq, dur_ms=128.0, warmup=1)
@@ -289,8 +302,9 @@ class WindowRuleTests(unittest.TestCase):
         wide = ro.measure_sequence(self.seq, dur_ms=160.0, warmup=1)
         for key, metadata in ro.ESTIMATOR_METADATA.items():
             if metadata["window"] == "beat+fixed":
-                self.assertEqual(narrow[key], wide[key],
-                                 f"{key} is declared beat+fixed but moved with dur_ms")
+                self.assertEqual(
+                    narrow[key], wide[key], f"{key} is declared beat+fixed but moved with dur_ms"
+                )
 
     def test_brightness_is_measured_in_the_onset_window_not_the_breath_window(self):
         """Assert anchoring directly: per-beat centroid must exactly reproduce _s1_window and not the
@@ -337,10 +351,12 @@ class WindowRuleTests(unittest.TestCase):
             )
             envelope = shrlib.env_analytic(window, SR)
             peak = float(envelope.max())
-            self.assertLess(envelope[0], 0.15 * peak,
-                            "window opens at a loud sample - it started at/after the S1 peak")
-            self.assertGreater(int(np.argmax(envelope)) / SR * 1e3, 5.0,
-                               "window peaks immediately - the rise is outside it")
+            self.assertLess(
+                envelope[0], 0.15 * peak, "window opens at a loud sample - it started at/after the S1 peak"
+            )
+            self.assertGreater(
+                int(np.argmax(envelope)) / SR * 1e3, 5.0, "window peaks immediately - the rise is outside it"
+            )
 
 
 if __name__ == "__main__":

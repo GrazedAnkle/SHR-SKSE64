@@ -16,6 +16,7 @@ Usage:
     python tools/measure_clap.py 11      # all groups in timestamps/11.txt vs original/11.wav
     python tools/measure_clap.py 11 8 15
 """
+
 from __future__ import annotations
 
 import sys
@@ -31,12 +32,12 @@ ROOT = Path(__file__).resolve().parent.parent
 TS_DIR = ROOT / "docs" / "references" / "timestamps"
 ORIG_DIR = ROOT / "docs" / "references" / "original"
 
-FFT_N = 2048          # ~43 ms: ~50 Hz resolution while remaining within one sound.
+FFT_N = 2048  # ~43 ms: ~50 Hz resolution while remaining within one sound.
 BAND_MAX_HZ = 2000.0
-HF_SPLIT_HZ = 150.0   # S2 clap boundary; references put ~37-38% of S2 energy above it.
+HF_SPLIT_HZ = 150.0  # S2 clap boundary; references put ~37-38% of S2 energy above it.
 # Separates the clap energy from the low body.
 BANDS = [(40, 100), (100, 150), (150, 250), (250, 400), (400, 700), (700, 1200)]
-ONSET_FFT_MS = 12     # Capture the S2 onset transient instead of the body.
+ONSET_FFT_MS = 12  # Capture the S2 onset transient instead of the body.
 
 
 def avg_spectrum(signal: np.ndarray, centers: list[float], nfft: int) -> tuple[np.ndarray, np.ndarray]:
@@ -45,7 +46,7 @@ def avg_spectrum(signal: np.ndarray, centers: list[float], nfft: int) -> tuple[n
     freqs = None
     for c in centers:
         a = max(0, int(c) - nfft // 2)
-        seg = signal[a:a + nfft]
+        seg = signal[a : a + nfft]
         if len(seg) < nfft:
             seg = np.concatenate([seg, np.zeros(nfft - len(seg))])
         freqs, mag = shrlib.spec(seg, SR, nfft)
@@ -81,7 +82,7 @@ def onset_nfft() -> int:
 
 # A-weighted, peak-anchored S2 ruler. The committed pipeline uses a different metric.
 
-PEAK_WIN_MS = 18.0    # Capture the clap and body without the soft LF tail.
+PEAK_WIN_MS = 18.0  # Capture the clap and body without the soft LF tail.
 TAIL_PROBE_MS = 90.0  # Test invariance against ref11's ~90 ms tail.
 
 
@@ -100,7 +101,7 @@ def aw_peak_metrics(signal: np.ndarray, center: int) -> tuple[float, float]:
     and zero-padded to FFT_N.
     """
     half = int(PEAK_WIN_MS * 1e-3 * SR / 2)
-    seg = signal[max(0, center - half): center + half]
+    seg = signal[max(0, center - half) : center + half]
     if len(seg) < 2:
         return np.nan, np.nan
     mag = np.abs(np.fft.rfft(seg * np.hanning(len(seg)), FFT_N))
@@ -151,31 +152,51 @@ def measure(num: str) -> None:
         hr = shrlib.beats_hr(beats)
 
         print(f"\n=== ref{num}: {label}  ({len(beats)} beats, HR~{hr:.0f}) ===")
-        print(f"  S1: centroid {s1cen:5.0f}Hz  HF>{int(HF_SPLIT_HZ)} {s1hf*100:4.0f}%   attack {att1:5.1f}ms  decay {dec1:5.1f}ms")
-        print(f"  S2: centroid {s2cen:5.0f}Hz  HF>{int(HF_SPLIT_HZ)} {s2hf*100:4.0f}%   attack {att2:5.1f}ms  decay {dec2:5.1f}ms")
-        print(f"  S2/S1 centroid {s2cen/s1cen:4.2f}x   S2-onset transient: centroid {oncen:5.0f}Hz  HF>{int(HF_SPLIT_HZ)} {onhf*100:4.0f}%")
+        print(
+            f"  S1: centroid {s1cen:5.0f}Hz  HF>{int(HF_SPLIT_HZ)} {s1hf * 100:4.0f}%   attack {att1:5.1f}ms  decay {dec1:5.1f}ms"
+        )
+        print(
+            f"  S2: centroid {s2cen:5.0f}Hz  HF>{int(HF_SPLIT_HZ)} {s2hf * 100:4.0f}%   attack {att2:5.1f}ms  decay {dec2:5.1f}ms"
+        )
+        print(
+            f"  S2/S1 centroid {s2cen / s1cen:4.2f}x   S2-onset transient: centroid {oncen:5.0f}Hz  HF>{int(HF_SPLIT_HZ)} {onhf * 100:4.0f}%"
+        )
         hdr = "  band%   " + " ".join(f"{lo}-{hi}".rjust(8) for lo, hi in BANDS)
         print(hdr)
-        print("   S1     " + " ".join(f"{e*100:7.1f}%" for e in bands1))
-        print("   S2     " + " ".join(f"{e*100:7.1f}%" for e in bands2))
+        print("   S1     " + " ".join(f"{e * 100:7.1f}%" for e in bands1))
+        print("   S2     " + " ".join(f"{e * 100:7.1f}%" for e in bands2))
 
         # Verify peak-ruler tail immunity against the full-window ruler.
         peaks = [s2_peak_index(signal, s2a, s2b) for s1a, s1b, s2a, s2b in beats]
         aw = [aw_peak_metrics(signal, c) for c in peaks]
         aw_cen = float(np.nanmedian([c for c, _ in aw]))
         aw_hf = float(np.nanmedian([h for _, h in aw]))
-        full = float(np.nanmedian([full_window_centroid(signal, s2a, s2b)
-                                   for s1a, s1b, s2a, s2b in beats]))
-        full_tail = float(np.nanmedian([full_window_centroid(signal, s2a, s2b + TAIL_PROBE_MS * 1e-3)
-                                        for s1a, s1b, s2a, s2b in beats]))
+        full = float(np.nanmedian([full_window_centroid(signal, s2a, s2b) for s1a, s1b, s2a, s2b in beats]))
+        full_tail = float(
+            np.nanmedian(
+                [
+                    full_window_centroid(signal, s2a, s2b + TAIL_PROBE_MS * 1e-3)
+                    for s1a, s1b, s2a, s2b in beats
+                ]
+            )
+        )
         # Re-run the peak ruler on the extended annotation; its anchor should not move.
-        aw_cen_tail = float(np.nanmedian(
-            [aw_peak_metrics(signal, s2_peak_index(signal, s2a, s2b + TAIL_PROBE_MS * 1e-3))[0]
-             for s1a, s1b, s2a, s2b in beats]))
-        print(f"  S2 ruler: A-weighted peak-anchored centroid {aw_cen:5.0f}Hz  HF>{int(HF_SPLIT_HZ)} {aw_hf*100:4.0f}%")
-        print(f"    tail-immunity (+{int(TAIL_PROBE_MS)}ms s2b):  "
-              f"full-window {full:5.0f}->{full_tail:5.0f}Hz ({full_tail-full:+.0f})   "
-              f"peak-anchored {aw_cen:5.0f}->{aw_cen_tail:5.0f}Hz ({aw_cen_tail-aw_cen:+.0f})")
+        aw_cen_tail = float(
+            np.nanmedian(
+                [
+                    aw_peak_metrics(signal, s2_peak_index(signal, s2a, s2b + TAIL_PROBE_MS * 1e-3))[0]
+                    for s1a, s1b, s2a, s2b in beats
+                ]
+            )
+        )
+        print(
+            f"  S2 ruler: A-weighted peak-anchored centroid {aw_cen:5.0f}Hz  HF>{int(HF_SPLIT_HZ)} {aw_hf * 100:4.0f}%"
+        )
+        print(
+            f"    tail-immunity (+{int(TAIL_PROBE_MS)}ms s2b):  "
+            f"full-window {full:5.0f}->{full_tail:5.0f}Hz ({full_tail - full:+.0f})   "
+            f"peak-anchored {aw_cen:5.0f}->{aw_cen_tail:5.0f}Hz ({aw_cen_tail - aw_cen:+.0f})"
+        )
 
 
 def main() -> int:

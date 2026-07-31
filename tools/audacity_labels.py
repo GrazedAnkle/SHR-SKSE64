@@ -9,6 +9,7 @@ Examples:
   # ...review in Audacity, Export > Labels to 11.labels.txt...
   python tools/audacity_labels.py import docs/references/candidates/11.labels.txt -o reviewed_11.txt
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,9 +40,13 @@ def parse_annot_lines(path: str | Path) -> list[tuple[str, list]]:
             if not (m1 and m2):
                 continue
             note = _NOTE_RE.search(line)
-            beat = (shrlib.mmss(m1.group(1)), shrlib.mmss(m1.group(2)),
-                    shrlib.mmss(m2.group(1)), shrlib.mmss(m2.group(2)),
-                    note.group(1) if note else "")
+            beat = (
+                shrlib.mmss(m1.group(1)),
+                shrlib.mmss(m1.group(2)),
+                shrlib.mmss(m2.group(1)),
+                shrlib.mmss(m2.group(2)),
+                note.group(1) if note else "",
+            )
             if cur is None:
                 cur = []
                 groups.append((label, cur))
@@ -66,8 +71,10 @@ def export_labels(annot: str | Path, out: Path | None = None) -> int:
             lines.append(_lbl(s1a, s1b, f"S1 ({note})" if note else "S1"))
             lines.append(_lbl(s2a, s2b, "S2"))
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print(f"wrote {out}  ({sum(len(b) for _, b in parse_annot_lines(annot))} beats). "
-          f"In Audacity: File > Import > Labels.")
+    print(
+        f"wrote {out}  ({sum(len(b) for _, b in parse_annot_lines(annot))} beats). "
+        f"In Audacity: File > Import > Labels."
+    )
     return 0
 
 

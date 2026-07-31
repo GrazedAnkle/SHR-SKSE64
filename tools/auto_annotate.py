@@ -24,6 +24,7 @@ Examples:
   python tools/auto_annotate.py docs/references/original/9.wav --emit \
       --span 30 45 rest --span 120 138 post-exercise
 """
+
 from __future__ import annotations
 
 import argparse
@@ -38,41 +39,41 @@ from shrlib import SR
 import ref_analyze
 
 ROOT = Path(__file__).resolve().parent.parent
-TS_DIR = ROOT / "docs" / "references" / "timestamps"        # validated ground truth
+TS_DIR = ROOT / "docs" / "references" / "timestamps"  # validated ground truth
 ORIG_DIR = ROOT / "docs" / "references" / "original"
-CAND_DIR = ROOT / "docs" / "references" / "candidates"      # generated review candidates
+CAND_DIR = ROOT / "docs" / "references" / "candidates"  # generated review candidates
 VALIDATION_REFS = [8, 11, 13, 14, 15]  # validation set
 
 # Detector Tunables
-LP_HZ = 150.0           # low-pass corner for the onset envelope: cardiac LF vs HF noise floor
-ENV_MS = 20.0           # beat-scale envelope smoothing for peak-picking/HR (vs 0.5ms fine attack)
-LAND_MS = 4.0           # fine envelope smoothing for the onset/offset landmark walk (vs ENV_MS peaks)
-S1_FRAC = 0.008         # landmark = where the lobe meets the noise floor, as a fraction of above-floor
-S2_FRAC = 0.022         # height. Calibrated against the validation set: S1 edges sit ~0.7% above floor,
-                        # S2 edges ~2.2% (S2 is quieter/shorter, so its "departure from flat"
-                        # is a larger fraction of its own smaller peak). This is per-lobe, not
-                        # per-edge: onset and offset share a level (the 10%-decay asymmetry is not
-                        # the annotation target), but S1 and S2 do not. A single 2% level left
-                        # S1 onsets ~19ms late on the shallow high-HR rises (ref8/ref14) - the
-                        # residual systole drift.
-HR_LO, HR_HI = 40.0, 220.0   # physiological HR search range (bpm) for the autocorr IBI estimate
-HALFRATE_FRAC = 0.85         # a half-lag autocorr peak this tall (vs the chosen peak) => subharmonic
+LP_HZ = 150.0  # low-pass corner for the onset envelope: cardiac LF vs HF noise floor
+ENV_MS = 20.0  # beat-scale envelope smoothing for peak-picking/HR (vs 0.5ms fine attack)
+LAND_MS = 4.0  # fine envelope smoothing for the onset/offset landmark walk (vs ENV_MS peaks)
+S1_FRAC = 0.008  # landmark = where the lobe meets the noise floor, as a fraction of above-floor
+S2_FRAC = 0.022  # height. Calibrated against the validation set: S1 edges sit ~0.7% above floor,
+# S2 edges ~2.2% (S2 is quieter/shorter, so its "departure from flat"
+# is a larger fraction of its own smaller peak). This is per-lobe, not
+# per-edge: onset and offset share a level (the 10%-decay asymmetry is not
+# the annotation target), but S1 and S2 do not. A single 2% level left
+# S1 onsets ~19ms late on the shallow high-HR rises (ref8/ref14) - the
+# residual systole drift.
+HR_LO, HR_HI = 40.0, 220.0  # physiological HR search range (bpm) for the autocorr IBI estimate
+HALFRATE_FRAC = 0.85  # a half-lag autocorr peak this tall (vs the chosen peak) => subharmonic
 # Aggregate feature voting avoids loudest-lobe seeding failures when S2 is louder.
 # Duration and loudness identify S1 in 6/7 measured references; broadband centroid
 # identifies S2 in only 4/7 and inverts on ref8/13/14, so it is only a tie-breaker.
 PHASE_W_DUR, PHASE_W_LOUD, PHASE_W_CEN = 1.0, 0.6, 0.3
-SOURCE_HP_HZ = 20.0          # Strip drift below the 20-40 Hz S1/S2 fundamental. ref3 is >80%
-                             # sub-20 Hz energy; the validation-set systole medians move <=2 ms.
+SOURCE_HP_HZ = 20.0  # Strip drift below the 20-40 Hz S1/S2 fundamental. ref3 is >80%
+# sub-20 Hz energy; the validation-set systole medians move <=2 ms.
 
 # The LF floor walk owns S2 onset. If it never reaches the floor, `_walk_out`
 # returns the inter-lobe valley, which can sit inside an undecayed S1 tail. Only in
 # that case may a local HF attack move the boundary; clean LF crossings never
 # depend on HF character. See docs/MEASUREMENT_METHODS.md.
-S2_HF_HI_HZ = 400.0          # lower edge is the existing LP_HZ split
+S2_HF_HI_HZ = 400.0  # lower edge is the existing LP_HZ split
 S2_HF_ENV_MS = 1.0
-S2_HF_SEARCH_MS = 35.0       # candidate HF peak must be local to the already-found LF S2 peak
-S2_HF_BASELINE_MS = 50.0     # robust pre-candidate HF noise estimate
-S2_HF_SNR_MIN = 8.0          # only used after the LF walk has already failed
+S2_HF_SEARCH_MS = 35.0  # candidate HF peak must be local to the already-found LF S2 peak
+S2_HF_BASELINE_MS = 50.0  # robust pre-candidate HF noise estimate
+S2_HF_SNR_MIN = 8.0  # only used after the LF walk has already failed
 S2_HF_FALLBACK_GAP_MS = (20.0, 70.0)  # renewed attack after the false valley, still in one S2 complex
 
 # Whole-file clean-span tunables.
@@ -83,15 +84,15 @@ S2_HF_FALLBACK_GAP_MS = (20.0, 70.0)  # renewed attack after the false valley, s
 #   lf   - envelope-energy fraction surviving the 150 Hz low-pass
 # The thresholds favor inclusion: a loose span costs a manual trim, while a missed
 # span loses data. Semantic boundaries remain manual.
-SEG_WIN_S = 2.0             # Places span edges to about 1 s.
+SEG_WIN_S = 2.0  # Places span edges to about 1 s.
 SEG_HOP_S = 0.5
-SEG_FLOOR_PCT = 20          # Global LP-envelope quiet-floor percentile.
-SEG_LOUD_HI = 4.0           # Hysteresis entry threshold.
-SEG_LOUD_LO = 2.5           # Hysteresis continuation threshold.
-SEG_LF_MIN = 0.55           # Reject HF-dominated contact noise; squat motion remains above ~0.75.
-SEG_MIN_DUR_S = 4.0         # Too-short runs contain too few beats to annotate.
-SEG_MERGE_GAP_S = 2.0       # Bridge brief interruptions.
-SEG_PAD_S = 1.0             # Window-center uncertainty plus annotation headroom.
+SEG_FLOOR_PCT = 20  # Global LP-envelope quiet-floor percentile.
+SEG_LOUD_HI = 4.0  # Hysteresis entry threshold.
+SEG_LOUD_LO = 2.5  # Hysteresis continuation threshold.
+SEG_LF_MIN = 0.55  # Reject HF-dominated contact noise; squat motion remains above ~0.75.
+SEG_MIN_DUR_S = 4.0  # Too-short runs contain too few beats to annotate.
+SEG_MERGE_GAP_S = 2.0  # Bridge brief interruptions.
+SEG_PAD_S = 1.0  # Window-center uncertainty plus annotation headroom.
 
 
 def _lowpass(x: np.ndarray, fc: float) -> np.ndarray:
@@ -102,7 +103,7 @@ def _lowpass(x: np.ndarray, fc: float) -> np.ndarray:
     """
     if fc <= 0.0:
         return x
-    n = int(4 * SR / fc) | 1 # ~4 cutoff-periods, forced odd for symmetry
+    n = int(4 * SR / fc) | 1  # ~4 cutoff-periods, forced odd for symmetry
     t = np.arange(n) - (n - 1) / 2
     h = np.sinc(2 * fc / SR * t) * np.hanning(n)
     h /= h.sum()
@@ -117,7 +118,7 @@ def _highpass(x: np.ndarray, fc: float) -> np.ndarray:
 def _refine(ef: np.ndarray, pk: int, r: int) -> int:
     """Relocate a peak to the fine-envelope maximum within +/- r samples."""
     a = max(0, pk - r)
-    return a + int(np.argmax(ef[a:min(len(ef), pk + r + 1)]))
+    return a + int(np.argmax(ef[a : min(len(ef), pk + r + 1)]))
 
 
 def _estimate_ibi(e: np.ndarray) -> float:
@@ -133,15 +134,15 @@ def _estimate_ibi(e: np.ndarray) -> float:
     if hi <= lo:
         return np.nan
     d = e - e.mean()
-    n = 1 << int(np.ceil(np.log2(2 * len(d)))) # FFT autocorrelation: O(n log n), not O(n^2)
+    n = 1 << int(np.ceil(np.log2(2 * len(d))))  # FFT autocorrelation: O(n log n), not O(n^2)
     f = np.fft.rfft(d, n)
-    ac = np.fft.irfft(f * np.conj(f))[:len(d)]
-    k = lo + int(np.argmax(ac[lo:hi + 1]))
-    while k // 2 >= lo:                        # walk down subharmonic multiples to the fundamental
+    ac = np.fft.irfft(f * np.conj(f))[: len(d)]
+    k = lo + int(np.argmax(ac[lo : hi + 1]))
+    while k // 2 >= lo:  # walk down subharmonic multiples to the fundamental
         half = k // 2
-        w = max(1, int(0.1 * half))            # search +/-10% around half-lag for its local peak
+        w = max(1, int(0.1 * half))  # search +/-10% around half-lag for its local peak
         a = max(lo, half - w)
-        seg = ac[a:half + w + 1]
+        seg = ac[a : half + w + 1]
         if not len(seg) or seg.max() < HALFRATE_FRAC * ac[k]:
             break
         k = a + int(np.argmax(seg))
@@ -177,7 +178,7 @@ def _track_s1(e: np.ndarray, ibi: float) -> list[int]:
             if len(near):
                 anchor = int(near[np.argmax(e[near])])
                 out.append(anchor)
-                cur = float(anchor)          # re-phase the grid onto the real peak (tracks HR drift)
+                cur = float(anchor)  # re-phase the grid onto the real peak (tracks HR drift)
         return out
 
     return sorted(set([seed] + _walk(-1) + _walk(+1)))
@@ -207,7 +208,7 @@ def _walk_out(ef: np.ndarray, pk: int, floor: float, frac: float, lo: int, hi: i
 def _crossed_floor(ef: np.ndarray, pk: int, floor: float, frac: float, lo: int) -> bool:
     """Return whether the onset walk crossed its threshold before `lo`."""
     threshold = floor + frac * (ef[pk] - floor)
-    return bool(np.any(ef[lo:pk + 1] < threshold))
+    return bool(np.any(ef[lo : pk + 1] < threshold))
 
 
 def _hf_fallback_onset(ehf: np.ndarray, s2_pk: int, valley: int, hi: int, sr: int = SR) -> int | None:
@@ -228,7 +229,7 @@ def _hf_fallback_onset(ehf: np.ndarray, s2_pk: int, valley: int, hi: int, sr: in
 
     baseline_lo = max(valley, q_lo - int(S2_HF_BASELINE_MS * 1e-3 * sr))
     baseline = ehf[baseline_lo:q_lo]
-    if len(baseline) < int(0.005 * sr):               # too little quiet context for a noise estimate
+    if len(baseline) < int(0.005 * sr):  # too little quiet context for a noise estimate
         return None
     floor = float(np.percentile(baseline, 20))
     noise = float(np.median(baseline))
@@ -259,18 +260,18 @@ def detect_s1s2(signal: np.ndarray, sr: int) -> list[dict]:
     following systole window. The inter-lobe valley bounds both landmark walks.
     """
     assert sr == SR, sr
-    signal = _highpass(signal, SOURCE_HP_HZ)          # strip sub-20Hz drift/rumble (ref3) before analysis
+    signal = _highpass(signal, SOURCE_HP_HZ)  # strip sub-20Hz drift/rumble (ref3) before analysis
     lp = _lowpass(signal, LP_HZ)
     hf = _lowpass(signal, S2_HF_HI_HZ) - lp
-    e = shrlib.env(lp, SR, ENV_MS)                    # coarse: peak-picking / grid / valley
-    ef = shrlib.env(lp, SR, LAND_MS)                  # fine: landmark walks
-    ehf = shrlib.env_analytic(hf, SR, S2_HF_ENV_MS)   # fine HF evidence for fused LF S1/S2 only
+    e = shrlib.env(lp, SR, ENV_MS)  # coarse: peak-picking / grid / valley
+    ef = shrlib.env(lp, SR, LAND_MS)  # fine: landmark walks
+    ehf = shrlib.env_analytic(hf, SR, S2_HF_ENV_MS)  # fine HF evidence for fused LF S1/S2 only
     ibi = _estimate_ibi(e)
     if not (ibi == ibi):
         return []
     s1_peaks = _track_s1(e, ibi)
-    r = int(0.010 * SR)                               # fine-peak refine radius (~10ms)
-    lobes = []                                        # per-cycle (S1,S2) lobes in SAMPLE units, pre-score
+    r = int(0.010 * SR)  # fine-peak refine radius (~10ms)
+    lobes = []  # per-cycle (S1,S2) lobes in SAMPLE units, pre-score
     for i, s1_pk in enumerate(s1_peaks):
         # systole search window: S2 sits ~0.2-0.65 cycle after S1, before the next S1
         w_lo = s1_pk + int(0.18 * ibi * SR)
@@ -280,12 +281,12 @@ def detect_s1s2(signal: np.ndarray, sr: int) -> list[dict]:
         if w_hi <= w_lo:
             continue
         s2_pk = w_lo + int(np.argmax(e[w_lo:w_hi]))
-        valley = s1_pk + int(np.argmin(e[s1_pk:s2_pk + 1]))
+        valley = s1_pk + int(np.argmin(e[s1_pk : s2_pk + 1]))
         prev = lobes[-1]["s2b"] if lobes else 0
         # A low percentile avoids high-HR diastolic decay inflating the floor and
         # clipping S1 onset late.
-        floor = float(np.percentile(ef[max(0, prev):nxt], 10))
-        s1f = _refine(ef, s1_pk, r)                   # relocate the peak on the fine envelope
+        floor = float(np.percentile(ef[max(0, prev) : nxt], 10))
+        s1f = _refine(ef, s1_pk, r)  # relocate the peak on the fine envelope
         s2f = _refine(ef, s2_pk, r)
 
         s1a, s1b = _walk_out(ef, s1f, floor, S1_FRAC, lo=prev, hi=valley)
@@ -294,11 +295,11 @@ def detect_s1s2(signal: np.ndarray, sr: int) -> list[dict]:
             hf_onset = _hf_fallback_onset(ehf, s2f, valley, nxt - 1, sr)
             if hf_onset is not None:
                 s2a = hf_onset
-        if s1b <= s1a or s2b <= s2a:                 # degenerate lobe (walk collapsed) -> skip
+        if s1b <= s1a or s2b <= s2a:  # degenerate lobe (walk collapsed) -> skip
             continue
         lobes.append({"s1a": s1a, "s1b": s1b, "s2a": s2a, "s2b": s2b, "s1_pk": s1f, "s2_pk": s2f})
 
-    lobes = _fix_phase(lobes, signal)                 # decide which lobe-class is S1 (may re-pair)
+    lobes = _fix_phase(lobes, signal)  # decide which lobe-class is S1 (may re-pair)
 
     beats = []
     for i, lb in enumerate(lobes):
@@ -323,22 +324,34 @@ def _fix_phase(lobes: list[dict], signal: np.ndarray) -> list[dict]:
     transitions. See WI-016.
     """
     if len(lobes) < 3:
-        return lobes                                  # too few to vote reliably; trust the seed
+        return lobes  # too few to vote reliably; trust the seed
+
     def med(a: str, b: str, fn) -> float:
-        return float(np.median([fn(signal[lb[a]:lb[b]]) for lb in lobes]))
+        return float(np.median([fn(signal[lb[a] : lb[b]]) for lb in lobes]))
+
     dur_s1 = np.median([lb["s1b"] - lb["s1a"] for lb in lobes])
     dur_s2 = np.median([lb["s2b"] - lb["s2a"] for lb in lobes])
     rms_s1, rms_s2 = med("s1a", "s1b", shrlib.rms), med("s2a", "s2b", shrlib.rms)
     cen_s1 = med("s1a", "s1b", lambda x: shrlib.centroid(x, SR))
     cen_s2 = med("s2a", "s2b", lambda x: shrlib.centroid(x, SR))
-    vote = (PHASE_W_DUR * np.sign(dur_s1 - dur_s2)    # + supports current assignment (S1 longer,
-            + PHASE_W_LOUD * np.sign(rms_s1 - rms_s2) #   S1 louder, S2 brighter); - says inverted
-            + PHASE_W_CEN * np.sign(cen_s2 - cen_s1))
+    vote = (
+        PHASE_W_DUR * np.sign(dur_s1 - dur_s2)  # + supports current assignment (S1 longer,
+        + PHASE_W_LOUD * np.sign(rms_s1 - rms_s2)  #   S1 louder, S2 brighter); - says inverted
+        + PHASE_W_CEN * np.sign(cen_s2 - cen_s1)
+    )
     if vote >= 0:
         return lobes
-    return [{"s1a": a["s2a"], "s1b": a["s2b"], "s1_pk": a["s2_pk"],
-             "s2a": b["s1a"], "s2b": b["s1b"], "s2_pk": b["s1_pk"]}
-            for a, b in zip(lobes, lobes[1:])]
+    return [
+        {
+            "s1a": a["s2a"],
+            "s1b": a["s2b"],
+            "s1_pk": a["s2_pk"],
+            "s2a": b["s1a"],
+            "s2b": b["s1b"],
+            "s2_pk": b["s1_pk"],
+        }
+        for a, b in zip(lobes, lobes[1:])
+    ]
 
 
 def _score_beat(signal, e, s1_pk, s2_pk, land, ibi) -> dict:
@@ -347,8 +360,8 @@ def _score_beat(signal, e, s1_pk, s2_pk, land, ibi) -> dict:
     `land` contains (s1a, s1b, s2a, s2b) sample indices.
     """
     s1a, s1b, s2a, s2b = land
-    s1 = signal[s1a:s1b] if s1b > s1a else signal[s1_pk:s1_pk + 1]
-    s2 = signal[s2a:s2b] if s2b > s2a else signal[s2_pk:s2_pk + 1]
+    s1 = signal[s1a:s1b] if s1b > s1a else signal[s1_pk : s1_pk + 1]
+    s2 = signal[s2a:s2b] if s2b > s2a else signal[s2_pk : s2_pk + 1]
     flags, score = [], 1.0
 
     # S2 SNR against the surrounding cycle's median envelope.
@@ -389,17 +402,17 @@ def _activity_track(signal: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndar
     `loud` is the LP-envelope 90th percentile relative to the file's quiet
     floor. `lf` is the envelope-energy fraction inside the 150 Hz low-pass.
     """
-    signal = _highpass(signal, SOURCE_HP_HZ)         # same drift strip as the detector front-end
+    signal = _highpass(signal, SOURCE_HP_HZ)  # same drift strip as the detector front-end
     env_lp = shrlib.env(_lowpass(signal, LP_HZ), SR, ENV_MS)
     env_bb = shrlib.env(signal, SR, ENV_MS)
     floor = float(np.percentile(env_lp, SEG_FLOOR_PCT)) + 1e-9
     w, hop = int(SEG_WIN_S * SR), int(SEG_HOP_S * SR)
     ts, loud, lf = [], [], []
     for a in range(0, max(1, len(env_lp) - w), hop):
-        el, eb = env_lp[a:a + w], env_bb[a:a + w]
+        el, eb = env_lp[a : a + w], env_bb[a : a + w]
         ts.append((a + w / 2) / SR)
         loud.append(float(np.percentile(el, 90)) / floor)
-        lf.append(float(np.mean(el ** 2) / (np.mean(eb ** 2) + 1e-9)))
+        lf.append(float(np.mean(el**2) / (np.mean(eb**2) + 1e-9)))
     return np.array(ts), np.array(loud), np.array(lf)
 
 
@@ -417,7 +430,7 @@ def segment_clean(signal: np.ndarray) -> list[tuple[float, float]]:
         on = (loud[i] >= (SEG_LOUD_LO if on else SEG_LOUD_HI)) and bool(good[i])
         clean[i] = on
 
-    runs: list[list[float]] = []                     # Contiguous clean windows.
+    runs: list[list[float]] = []  # Contiguous clean windows.
     i = 0
     while i < len(clean):
         if clean[i]:
@@ -429,7 +442,7 @@ def segment_clean(signal: np.ndarray) -> list[tuple[float, float]]:
         else:
             i += 1
 
-    merged: list[list[float]] = []                   # Runs separated only by a brief interruption.
+    merged: list[list[float]] = []  # Runs separated only by a brief interruption.
     for r in runs:
         if merged and r[0] - merged[-1][1] <= SEG_MERGE_GAP_S:
             merged[-1][1] = r[1]
@@ -437,8 +450,7 @@ def segment_clean(signal: np.ndarray) -> list[tuple[float, float]]:
             merged.append(r)
 
     dur = len(signal) / SR
-    return [(max(0.0, a - SEG_PAD_S), min(dur, b + SEG_PAD_S))
-            for a, b in merged if b - a >= SEG_MIN_DUR_S]
+    return [(max(0.0, a - SEG_PAD_S), min(dur, b + SEG_PAD_S)) for a, b in merged if b - a >= SEG_MIN_DUR_S]
 
 
 # Breath landmark candidates for manual review.
@@ -456,8 +468,8 @@ def segment_clean(signal: np.ndarray) -> list[tuple[float, float]]:
 # `breath_inflation` extrapolates toward an unverified turnaround. Extend the beat
 # span or drop the cycle; `--check-breath` enforces this.
 BREATH_AXES = ("amp", "cen")
-BREATH_DETREND_BEATS = 21   # window of the running median removed before extrema-finding (kills drift)
-BREATH_SMOOTH_BEATS = 3     # light smoothing; must stay well under a half-cycle so shape is not imposed
+BREATH_DETREND_BEATS = 21  # window of the running median removed before extrema-finding (kills drift)
+BREATH_SMOOTH_BEATS = 3  # light smoothing; must stay well under a half-cycle so shape is not imposed
 BREATH_MIN_PROMINENCE = 0.5  # in robust sigma of the detrended series - rejects ripple, keeps real swings
 
 # Swing tolerance is the reference's 1.08 dB jackknife SE. RR controls phase
@@ -473,8 +485,8 @@ def _breath_series(signal: np.ndarray, sr: int, onsets: np.ndarray) -> dict[str,
     amp, cen = [], []
     for t in onsets:
         i = int(t * sr)
-        amp.append(20.0 * np.log10(shrlib.rms(weighted[i:i + width]) + 1e-12))
-        cen.append(shrlib.centroid(signal[i:i + width], sr))
+        amp.append(20.0 * np.log10(shrlib.rms(weighted[i : i + width]) + 1e-12))
+        cen.append(shrlib.centroid(signal[i : i + width], sr))
     return {"amp": np.asarray(amp), "cen": np.asarray(cen)}
 
 
@@ -491,7 +503,7 @@ def _breath_baseline(x: np.ndarray) -> np.ndarray:
         return np.full(n, np.median(x))
     pad = win // 2
     padded = np.pad(x, pad, mode="edge")
-    return np.array([np.median(padded[i:i + win]) for i in range(n)])
+    return np.array([np.median(padded[i : i + win]) for i in range(n)])
 
 
 def _detrend_beats(x: np.ndarray) -> np.ndarray:
@@ -507,6 +519,7 @@ def _detrend_beats(x: np.ndarray) -> np.ndarray:
 def _alternating_extrema(y: np.ndarray) -> list[tuple[int, str]]:
     """Return prominence-ranked extrema with alternating maxima and minima."""
     from scipy.signal import find_peaks
+
     hi, _ = find_peaks(y, prominence=BREATH_MIN_PROMINENCE, distance=2)
     lo, _ = find_peaks(-y, prominence=BREATH_MIN_PROMINENCE, distance=2)
     marks = sorted([(int(i), "max") for i in hi] + [(int(i), "min") for i in lo])
@@ -532,7 +545,7 @@ def detect_breaths(signal: np.ndarray, sr: int, onsets: np.ndarray) -> dict[str,
         marks = _alternating_extrema(y)
         cycles = []
         for (i, kind), (j, nxt) in zip(marks, marks[1:]):
-            if kind == "max" and nxt == "min":      # end-expiration -> end-inspiration
+            if kind == "max" and nxt == "min":  # end-expiration -> end-inspiration
                 cycles.append((float(onsets[i]), float(onsets[j])))
         out[axis] = cycles
     return out
@@ -561,7 +574,9 @@ def emit_breath_labels(wav: str | Path, annot: str | Path, out: Path | None = No
     for axis in BREATH_AXES:
         for trough, peak in candidates[axis]:
             # Inspiration region tagged with its source axis.
-            lines.append(f"{trough:.6f}\t{peak:.6f}\t{axis} BR={shrlib.fmt_mmss(trough)}-{shrlib.fmt_mmss(peak)}")
+            lines.append(
+                f"{trough:.6f}\t{peak:.6f}\t{axis} BR={shrlib.fmt_mmss(trough)}-{shrlib.fmt_mmss(peak)}"
+            )
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     print(f"wrote {out}  (" + ", ".join(f"{a}: {len(candidates[a])} cycles" for a in BREATH_AXES) + ")")
@@ -572,7 +587,7 @@ def emit_breath_labels(wav: str | Path, annot: str | Path, out: Path | None = No
             print(f"  {axis}: RR ~{rr:.1f}/min")
     print("In Audacity: File > Import > Labels. Review, then write BR=<trough>-<peak> lines manually.")
     print("NOTE landmarks are quantized to S1 onsets (+/- half an IBI) - nudge them against the waveform.")
-    for v in breath_span_violations(annot):     # Surface existing truncated cycles.
+    for v in breath_span_violations(annot):  # Surface existing truncated cycles.
         print(f"  WARN {v}", file=sys.stderr)
     return 0
 
@@ -582,15 +597,14 @@ _VIEW_TROUGH = dict(color="tab:green")
 _VIEW_PEAK = dict(color="tab:red")
 
 
-def plot_breath_view(wav: str | Path, annot: str | Path,
-                     save: Path | None = None, show: bool = True) -> int:
+def plot_breath_view(wav: str | Path, annot: str | Path, save: Path | None = None, show: bool = True) -> int:
     """Plot both breath-modulated axes with candidate extrema.
 
     This is a read-only companion to the Audacity editing path. Each subplot shows
     the other axis's candidates as faint verticals, making disagreements visible.
     Validated BR= landmarks overlay when available.
     """
-    import matplotlib.pyplot as plt          # lazy: label-only runs must not need matplotlib
+    import matplotlib.pyplot as plt  # lazy: label-only runs must not need matplotlib
     from matplotlib.ticker import FuncFormatter
 
     wav, annot = Path(wav), Path(annot)
@@ -604,9 +618,9 @@ def plot_breath_view(wav: str | Path, annot: str | Path,
 
     series = _breath_series(signal, sr, onsets)
     candidates = detect_breaths(signal, sr, onsets)
-    hand = shrlib.parse_breaths(annot)           # Validated target where available.
-    vent = shrlib.parse_vent_tags(annot)         # Legacy coarse phase tags.
-    for v in breath_span_violations(annot):      # Reject marks outside the beat span.
+    hand = shrlib.parse_breaths(annot)  # Validated target where available.
+    vent = shrlib.parse_vent_tags(annot)  # Legacy coarse phase tags.
+    for v in breath_span_violations(annot):  # Reject marks outside the beat span.
         print(f"  WARN {v}", file=sys.stderr)
     axis_labels = {"amp": "A-weighted S1 level (dB)", "cen": "S1 centroid (Hz)"}
 
@@ -617,8 +631,7 @@ def plot_breath_view(wav: str | Path, annot: str | Path,
         other = [a for a in BREATH_AXES if a != name][0]
 
         ax.plot(onsets, y, "-o", color="0.4", lw=0.9, ms=3, zorder=3)
-        ax.plot(onsets, _breath_baseline(y), "--", color="0.7", lw=1.0, zorder=1,
-                label="drift baseline")
+        ax.plot(onsets, _breath_baseline(y), "--", color="0.7", lw=1.0, zorder=1, label="drift baseline")
 
         # This axis's candidates are bold markers on the curve.
         for trough, peak in candidates[name]:
@@ -641,17 +654,21 @@ def plot_breath_view(wav: str | Path, annot: str | Path,
         ax.grid(True, alpha=0.2)
         ax.format_coord = lambda x, _y: f"t={shrlib.fmt_mmss(x)}   y={_y:.1f}"
 
-    rr = {a: (60.0 / np.diff([t for t, _ in candidates[a]]).mean()
-              if len(candidates[a]) >= 2 else float("nan")) for a in BREATH_AXES}
+    rr = {
+        a: (60.0 / np.diff([t for t, _ in candidates[a]]).mean() if len(candidates[a]) >= 2 else float("nan"))
+        for a in BREATH_AXES
+    }
     hand_note = f"   validated BR= (dotted): {len(hand)} cycles" if hand else ""
     axes[0].set_title(
         f"{wav.stem}  breath modulation view   -   amp RR ~{rr['amp']:.1f}/min, cen RR ~{rr['cen']:.1f}/min"
         f"{hand_note}\n^ trough (expire/loud)   v peak (inspire/muffle)   "
-        f"bold = this axis, faint vertical = other axis")
+        f"bold = this axis, faint vertical = other axis"
+    )
     axes[-1].set_xlabel("time (mm:ss)")
     axes[-1].xaxis.set_major_formatter(FuncFormatter(lambda x, _pos: shrlib.fmt_mmss(x)))
 
     from matplotlib.lines import Line2D
+
     legend_handles = [
         Line2D([], [], marker="^", ls="", color=_VIEW_TROUGH["color"], label="trough candidate (this axis)"),
         Line2D([], [], marker="v", ls="", color=_VIEW_PEAK["color"], label="peak candidate (this axis)"),
@@ -695,11 +712,15 @@ def breath_span_violations(annot: str | Path) -> list[str]:
     for t, p in breaths:
         for kind, x in (("trough", t), ("peak", p)):
             if x < lo:
-                out.append(f"{annot.name}: BR {shrlib.fmt_mmss(t)}-{shrlib.fmt_mmss(p)}: {kind} "
-                           f"{shrlib.fmt_mmss(x)} is {lo - x:.3f}s BEFORE the first beat {shrlib.fmt_mmss(lo)}")
+                out.append(
+                    f"{annot.name}: BR {shrlib.fmt_mmss(t)}-{shrlib.fmt_mmss(p)}: {kind} "
+                    f"{shrlib.fmt_mmss(x)} is {lo - x:.3f}s BEFORE the first beat {shrlib.fmt_mmss(lo)}"
+                )
             elif x > hi:
-                out.append(f"{annot.name}: BR {shrlib.fmt_mmss(t)}-{shrlib.fmt_mmss(p)}: {kind} "
-                           f"{shrlib.fmt_mmss(x)} is {x - hi:.3f}s PAST the last beat {shrlib.fmt_mmss(hi)}")
+                out.append(
+                    f"{annot.name}: BR {shrlib.fmt_mmss(t)}-{shrlib.fmt_mmss(p)}: {kind} "
+                    f"{shrlib.fmt_mmss(x)} is {x - hi:.3f}s PAST the last beat {shrlib.fmt_mmss(hi)}"
+                )
     return out
 
 
@@ -721,12 +742,16 @@ def check_breath_spans(target: str | Path | None) -> int:
         violations.extend(breath_span_violations(f))
     checked = len(files)
     if violations:
-        print(f"BR= span check: {len(violations)} out-of-span landmark(s) across {with_br} annotated file(s):")
+        print(
+            f"BR= span check: {len(violations)} out-of-span landmark(s) across {with_br} annotated file(s):"
+        )
         for v in violations:
             print(f"  {v}")
         return 1
-    print(f"BR= span check: OK - every landmark bracketed by beats ({with_br} file(s) with BR=, "
-          f"{checked} scanned)")
+    print(
+        f"BR= span check: OK - every landmark bracketed by beats ({with_br} file(s) with BR=, "
+        f"{checked} scanned)"
+    )
     return 0
 
 
@@ -745,7 +770,7 @@ def validate_breath() -> int:
     hand = shrlib.parse_breaths(annot)
     weighted = shrlib.a_weight(signal, sr)
     width = int(shrlib.BREATH_WIN_MS * 1e-3 * sr)
-    levels = np.array([shrlib.rms(weighted[int(t * sr):int(t * sr) + width]) for t in onsets])
+    levels = np.array([shrlib.rms(weighted[int(t * sr) : int(t * sr) + width]) for t in onsets])
 
     def swing(cycles):
         infl = shrlib.breath_inflation(onsets, cycles)
@@ -756,9 +781,11 @@ def validate_breath() -> int:
         return 60.0 / np.diff([t for t, _ in cycles]).mean() if len(cycles) >= 2 else float("nan")
 
     hand_swing, hand_rr = swing(hand), rate(hand)
-    print(f"Validating the breath detector against ref20's validated BR= landmarks\n"
-          f"(gate: RR within {BREATH_GATE_RR_PCT:.0%}, swing within {BREATH_GATE_SWING_DB} dB - the "
-          f"reference's OWN jackknife SE, so we cannot ask the detector to beat the ruler)\n")
+    print(
+        f"Validating the breath detector against ref20's validated BR= landmarks\n"
+        f"(gate: RR within {BREATH_GATE_RR_PCT:.0%}, swing within {BREATH_GATE_SWING_DB} dB - the "
+        f"reference's OWN jackknife SE, so we cannot ask the detector to beat the ruler)\n"
+    )
     print(f"  target {len(hand)} cycles  RR {hand_rr:5.2f}/min  swing {hand_swing:6.2f} dB\n")
 
     candidates = detect_breaths(signal, sr, onsets)
@@ -769,12 +796,16 @@ def validate_breath() -> int:
         rr_err = abs(rr - hand_rr) / hand_rr
         sw_err = abs(sw - hand_swing)
         passed = rr_err <= BREATH_GATE_RR_PCT and sw_err <= BREATH_GATE_SWING_DB
-        ok &= passed if axis == "amp" else True     # Amplitude gates; centroid is advisory.
-        print(f"  {axis:4}   {len(cycles)} cycles  RR {rr:5.2f}/min ({rr_err:+.1%})  "
-              f"swing {sw:6.2f} dB ({sw - hand_swing:+.2f})  "
-              f"{'PASS' if passed else 'FAIL'}{'' if axis == 'amp' else '  (advisory)'}")
-    print(f"\n{'PASS' if ok else 'FAIL'} - the amp axis is the gated one; cen is an independent second "
-          f"opinion for manual review, not a ruler.")
+        ok &= passed if axis == "amp" else True  # Amplitude gates; centroid is advisory.
+        print(
+            f"  {axis:4}   {len(cycles)} cycles  RR {rr:5.2f}/min ({rr_err:+.1%})  "
+            f"swing {sw:6.2f} dB ({sw - hand_swing:+.2f})  "
+            f"{'PASS' if passed else 'FAIL'}{'' if axis == 'amp' else '  (advisory)'}"
+        )
+    print(
+        f"\n{'PASS' if ok else 'FAIL'} - the amp axis is the gated one; cen is an independent second "
+        f"opinion for manual review, not a ruler."
+    )
     return 0 if ok else 1
 
 
@@ -812,7 +843,7 @@ def annotate_span(signal: np.ndarray, a: float | None = None, b: float | None = 
     noise but does not split HR, site, or other semantic transitions.
     """
     a0 = int((a or 0.0) * SR)
-    seg = signal[a0:int(b * SR)] if b is not None else signal[a0:]
+    seg = signal[a0 : int(b * SR)] if b is not None else signal[a0:]
     beats = annotate(seg, SR)
     for bt in beats:
         for k in ("s1a", "s1b", "s2a", "s2b"):
@@ -827,8 +858,7 @@ _CAND_HEADER = (
 )
 
 
-def emit_candidate(wav: str | Path, spans: list[tuple], out: Path | None = None,
-                   force: bool = False) -> int:
+def emit_candidate(wav: str | Path, spans: list[tuple], out: Path | None = None, force: bool = False) -> int:
     """Write candidate landmarks for labelled recording spans.
 
     `spans` contains (from_s, to_s, label). Output matches the validated annotation
@@ -852,7 +882,7 @@ def emit_candidate(wav: str | Path, spans: list[tuple], out: Path | None = None,
         n_flag += sum(1 for bt in beats if bt["conf"] < 1.0 or bt["flags"])
         hr = shrlib.beats_hr(_beats_tuples(beats))
         head = label or f"{a:g}-{b:g}s"
-        if hr == hr and "(~" not in head:            # Append HR unless already present.
+        if hr == hr and "(~" not in head:  # Append HR unless already present.
             head += f" (~{hr:.0f})"
         blocks.append(f"{head}:\n{format_beats(beats)}")
 
@@ -876,7 +906,7 @@ def _beats_tuples(beats: list[dict]) -> list:
 GATE_RECALL, GATE_PRECISION = 0.95, 0.95
 GATE_S1_ONSET_MS = 10.0
 GATE_S2_ONSET_MS = 10.0
-MATCH_TOL_MS = 60.0            # Candidate-to-target S1 onset match tolerance.
+MATCH_TOL_MS = 60.0  # Candidate-to-target S1 onset match tolerance.
 # Gate S2 onset directly. Full-window centroid moves with the soft S2 tail and is
 # not a proxy for onset accuracy.
 DRIFT_TOL = {"systole_ms": 10.0, "s1_centroid_hz": 0.10}  # abs ms / relative fraction
@@ -885,10 +915,10 @@ DRIFT_TOL = {"systole_ms": 10.0, "s1_centroid_hz": 0.10}  # abs ms / relative fr
 # Otherwise self-flagged low-SNR or contact-like beats measure noise rather than
 # annotation disagreement.
 _DRIFT_FLAGS = {
-    "systole_ms":     {"low-snr-s2", "hf-s2", "s1s2-ambiguous", "systole-oob"},  # Depends on S2 onset.
+    "systole_ms": {"low-snr-s2", "hf-s2", "s1s2-ambiguous", "systole-oob"},  # Depends on S2 onset.
     "s1_centroid_hz": {"hf-s1"},
 }
-MIN_CONF_BEATS = 4            # Fewer candidates cannot form a stable gated median.
+MIN_CONF_BEATS = 4  # Fewer candidates cannot form a stable gated median.
 
 # ref11's 05:23.951 candidate is 61.8 ms from the 05:24.013 validated S1 and
 # misses the fixed matcher. The other eight beats and every drift ruler pass.
@@ -927,9 +957,9 @@ def _validate_group(ref: int, signal, label, hand, results: list) -> None:
     span_a = hand[0][0] - 1.0
     span_b = hand[-1][3] + 1.0
     a0 = max(0, int(span_a * SR))
-    seg = signal[a0:int(span_b * SR)]
+    seg = signal[a0 : int(span_b * SR)]
     auto = annotate(seg, SR)
-    for b in auto:                                   # Restore absolute recording time.
+    for b in auto:  # Restore absolute recording time.
         for k in ("s1a", "s1b", "s2a", "s2b"):
             b[k] += a0 / SR
 
@@ -947,27 +977,30 @@ def _validate_group(ref: int, signal, label, hand, results: list) -> None:
         for k, hv in zip(("s1a", "s1b", "s2a", "s2b"), h):
             lm_err[k].append((a[k] - hv) * 1e3)
 
-    print(f"\n  group '{label}': {len(hand)} target beats, {len(auto)} detected"
-          f"  (HR~{shrlib.beats_hr(hand):.0f})")
-    print(f"    recall {recall:.2f}  precision {precision:.2f}"
-          f"  (missed {missed}, spurious {spurious})")
+    print(
+        f"\n  group '{label}': {len(hand)} target beats, {len(auto)} detected"
+        f"  (HR~{shrlib.beats_hr(hand):.0f})"
+    )
+    print(f"    recall {recall:.2f}  precision {precision:.2f}  (missed {missed}, spurious {spurious})")
     print("    landmark |err| ms   median / p95:")
     for k in ("s1a", "s1b", "s2a", "s2b"):
-        print(f"      {k}: {_pct(lm_err[k],50):5.1f} / {_pct(lm_err[k],95):5.1f}")
+        print(f"      {k}: {_pct(lm_err[k], 50):5.1f} / {_pct(lm_err[k], 95):5.1f}")
 
     # The decisive test is whether tuning-loop medians move. Each metric uses
     # candidates confident in the lobe it measures.
-    mh = ref_analyze.measure_group(signal, hand)                      # All-target reporting baseline.
+    mh = ref_analyze.measure_group(signal, hand)  # All-target reporting baseline.
     ma = ref_analyze.measure_group(signal, _beats_tuples(auto))
     print("    measurement drift (candidate - target):")
     drift_ok = True
     for key, tol in DRIFT_TOL.items():
         kept = [(a, h) for a, h in pairs if not (set(a["flags"]) & _DRIFT_FLAGS[key])]
-        unit = "ms" if tol >= 1.0 else "Hz"                           # Raw unit for the ungated line.
-        base = ma[key] - mh[key]                                      # All-beat contextual drift.
-        if len(kept) < MIN_CONF_BEATS:                               # Report but do not gate.
-            print(f"      {key:16s} target {mh[key]:8.1f}  candidate {ma[key]:8.1f}  d {base:+7.1f} {unit}"
-                  f"  [conf {len(kept)}/{len(pairs)}: low-SNR, not gated]")
+        unit = "ms" if tol >= 1.0 else "Hz"  # Raw unit for the ungated line.
+        base = ma[key] - mh[key]  # All-beat contextual drift.
+        if len(kept) < MIN_CONF_BEATS:  # Report but do not gate.
+            print(
+                f"      {key:16s} target {mh[key]:8.1f}  candidate {ma[key]:8.1f}  d {base:+7.1f} {unit}"
+                f"  [conf {len(kept)}/{len(pairs)}: low-SNR, not gated]"
+            )
             continue
         mh_c = ref_analyze.measure_group(signal, [h for _, h in kept])
         ma_c = ref_analyze.measure_group(signal, [_beats_tuples([a])[0] for a, _ in kept])
@@ -978,20 +1011,32 @@ def _validate_group(ref: int, signal, label, hand, results: list) -> None:
         drift_ok &= ok
         conf = f"[conf {len(kept)}/{len(pairs)}]" if len(kept) < len(pairs) else ""
         shown = f"{d:+.1f} ms" if tol >= 1.0 else f"{d:+.1f} ({rel:+.0%})"
-        print(f"      {key:16s} target {hv:8.1f}  candidate {av:8.1f}  d {shown} {conf}"
-              f"  {'ok' if ok else 'DRIFT'}")
+        print(
+            f"      {key:16s} target {hv:8.1f}  candidate {av:8.1f}  d {shown} {conf}"
+            f"  {'ok' if ok else 'DRIFT'}"
+        )
 
     s1_ok = _pct(lm_err["s1a"], 50) <= GATE_S1_ONSET_MS
     s2_ok = _pct(lm_err["s2a"], 50) <= GATE_S2_ONSET_MS
-    passed = (recall >= GATE_RECALL and precision >= GATE_PRECISION and s1_ok and s2_ok and drift_ok)
-    residual = ((ref, label) == KNOWN_RESIDUAL and missed == 1 and spurious == 1
-                and s1_ok and s2_ok and drift_ok)
-    results.append({"label": label, "recall": recall, "precision": precision,
-                    "s1_med": _pct(lm_err["s1a"], 50), "s2_med": _pct(lm_err["s2a"], 50),
-                    "drift_ok": drift_ok, "pass": passed, "residual": residual})
+    passed = recall >= GATE_RECALL and precision >= GATE_PRECISION and s1_ok and s2_ok and drift_ok
+    residual = (
+        (ref, label) == KNOWN_RESIDUAL and missed == 1 and spurious == 1 and s1_ok and s2_ok and drift_ok
+    )
+    results.append(
+        {
+            "label": label,
+            "recall": recall,
+            "precision": precision,
+            "s1_med": _pct(lm_err["s1a"], 50),
+            "s2_med": _pct(lm_err["s2a"], 50),
+            "drift_ok": drift_ok,
+            "pass": passed,
+            "residual": residual,
+        }
+    )
 
 
-SEG_COVER_MIN = 0.85    # Required coverage of each validated group span.
+SEG_COVER_MIN = 0.85  # Required coverage of each validated group span.
 
 
 def validate_segmentation() -> int:
@@ -1001,9 +1046,11 @@ def validate_segmentation() -> int:
     Precision is not gated because unlabeled clean beats are not false positives;
     a loose span only costs manual trimming.
     """
-    print("Validating clean-span segmenter against the validated set "
-          f"{VALIDATION_REFS}\n(gate: each target group's beat-span >= {SEG_COVER_MIN:.0%} covered by a "
-          "detected clean span)")
+    print(
+        "Validating clean-span segmenter against the validated set "
+        f"{VALIDATION_REFS}\n(gate: each target group's beat-span >= {SEG_COVER_MIN:.0%} covered by a "
+        "detected clean span)"
+    )
     results = []
     for n in VALIDATION_REFS:
         wav, annot = ORIG_DIR / f"{n}.wav", TS_DIR / f"{n}.txt"
@@ -1015,8 +1062,10 @@ def validate_segmentation() -> int:
             print(f"\nref{n}: {sr}Hz != {SR}, skipping")
             continue
         spans = segment_clean(signal)
-        print(f"\n=== ref{n} === {len(spans)} clean span(s), "
-              f"{sum(b-a for a,b in spans):.0f}s of {len(signal)/SR:.0f}s")
+        print(
+            f"\n=== ref{n} === {len(spans)} clean span(s), "
+            f"{sum(b - a for a, b in spans):.0f}s of {len(signal) / SR:.0f}s"
+        )
         for label, hand in shrlib.parse_annotations(annot).items():
             if len(hand) < 2:
                 continue
@@ -1025,8 +1074,10 @@ def validate_segmentation() -> int:
             frac = cov / (gb - ga) if gb > ga else 0.0
             ok = frac >= SEG_COVER_MIN
             results.append(ok)
-            print(f"    {label:32s} {shrlib.fmt_mmss(ga)}-{shrlib.fmt_mmss(gb)}  "
-                  f"cover {frac:4.0%}  {'ok' if ok else 'MISS'}")
+            print(
+                f"    {label:32s} {shrlib.fmt_mmss(ga)}-{shrlib.fmt_mmss(gb)}  "
+                f"cover {frac:4.0%}  {'ok' if ok else 'MISS'}"
+            )
 
     n_ok = sum(results)
     print("\n" + "=" * 60)
@@ -1036,10 +1087,12 @@ def validate_segmentation() -> int:
 
 def validate() -> int:
     """Gate the detector against every group in the validated set."""
-    print("Validating S1/S2 detector against the validated set "
-          f"{VALIDATION_REFS}\n(gate: recall>={GATE_RECALL}, precision>={GATE_PRECISION}, "
-          f"S1/S2-onset median<={GATE_S1_ONSET_MS:g}/{GATE_S2_ONSET_MS:g}ms, "
-          "key medians within tolerance)")
+    print(
+        "Validating S1/S2 detector against the validated set "
+        f"{VALIDATION_REFS}\n(gate: recall>={GATE_RECALL}, precision>={GATE_PRECISION}, "
+        f"S1/S2-onset median<={GATE_S1_ONSET_MS:g}/{GATE_S2_ONSET_MS:g}ms, "
+        "key medians within tolerance)"
+    )
     results: list[dict] = []
     for n in VALIDATION_REFS:
         wav = ORIG_DIR / f"{n}.wav"
@@ -1060,13 +1113,17 @@ def validate() -> int:
     # Confidence filtering drops individual lobes, not whole groups.
     for r in results:
         status = "PASS" if r["pass"] else ("RESIDUAL" if r["residual"] else "FAIL")
-        print(f"  {status:9s}{r['label']:28s}"
-              f"  R={r['recall']:.2f} P={r['precision']:.2f}"
-              f"  S1med={r['s1_med']:.1f}ms S2med={r['s2_med']:.1f}ms"
-              f"  drift={'ok' if r['drift_ok'] else 'X'}")
+        print(
+            f"  {status:9s}{r['label']:28s}"
+            f"  R={r['recall']:.2f} P={r['precision']:.2f}"
+            f"  S1med={r['s1_med']:.1f}ms S2med={r['s2_med']:.1f}ms"
+            f"  drift={'ok' if r['drift_ok'] else 'X'}"
+        )
         if r["residual"]:
-            print("           ref11 05:23.951 candidate S1 is 61.8ms before the 05:24.013 target S1; "
-                  "one miss + one spurious, matched-beat rulers pass")
+            print(
+                "           ref11 05:23.951 candidate S1 is 61.8ms before the 05:24.013 target S1; "
+                "one miss + one spurious, matched-beat rulers pass"
+            )
     accepted = sum(r["pass"] or r["residual"] for r in results)
     residuals = sum(r["residual"] for r in results)
     print(f"\ngroups accepted: {accepted}/{len(results)} ({residuals} named residual)")
@@ -1086,28 +1143,61 @@ def main() -> int:
     ap.add_argument("--from", dest="a", type=float, help="span start (seconds)")
     ap.add_argument("--to", dest="b", type=float, help="span end (seconds)")
     ap.add_argument("--validate", action="store_true", help="run the detector validation harness (the gate)")
-    ap.add_argument("--validate-seg", dest="validate_seg", action="store_true",
-                    help="run the clean-span segmenter validation harness")
-    ap.add_argument("--validate-breath", dest="validate_breath", action="store_true",
-                    help="gate the breath (BR=) candidate detector against ref20's validated landmarks")
-    ap.add_argument("--check-breath", dest="check_breath", nargs="?", const="__ALL__", metavar="ANNOT",
-                    help="check that every BR= landmark is bracketed by annotated beats (the extrapolation "
-                         "guard); no arg sweeps docs/references/timestamps/*.txt")
-    ap.add_argument("--breath", metavar="ANNOT",
-                    help="emit candidate breath landmarks (both axes) as an Audacity label track for "
-                         "manual review; ANNOT is the S1/S2 annotation file supplying the beat grid")
-    ap.add_argument("--view", action="store_true",
-                    help="with --breath: also open the breath-modulation review plot")
-    ap.add_argument("--view-out", type=Path, metavar="PNG",
-                    help="with --breath: save the modulation view to a PNG (on its own, saves without "
-                         "opening a window; combine with --view to do both)")
-    ap.add_argument("--emit", action="store_true",
-                    help="write a reviewable candidate file (default docs/references/candidates/<stem>.txt)")
-    ap.add_argument("--auto", action="store_true",
-                    help="auto-find the clean spans worth annotating across the whole file (rejects "
-                         "silence/noise); pair with --emit to write them as reviewable candidate groups")
-    ap.add_argument("--span", action="append", nargs="+", metavar="FROM TO [LABEL]",
-                    help="a labelled span to annotate (repeatable); with --emit each becomes a group")
+    ap.add_argument(
+        "--validate-seg",
+        dest="validate_seg",
+        action="store_true",
+        help="run the clean-span segmenter validation harness",
+    )
+    ap.add_argument(
+        "--validate-breath",
+        dest="validate_breath",
+        action="store_true",
+        help="gate the breath (BR=) candidate detector against ref20's validated landmarks",
+    )
+    ap.add_argument(
+        "--check-breath",
+        dest="check_breath",
+        nargs="?",
+        const="__ALL__",
+        metavar="ANNOT",
+        help="check that every BR= landmark is bracketed by annotated beats (the extrapolation "
+        "guard); no arg sweeps docs/references/timestamps/*.txt",
+    )
+    ap.add_argument(
+        "--breath",
+        metavar="ANNOT",
+        help="emit candidate breath landmarks (both axes) as an Audacity label track for "
+        "manual review; ANNOT is the S1/S2 annotation file supplying the beat grid",
+    )
+    ap.add_argument(
+        "--view", action="store_true", help="with --breath: also open the breath-modulation review plot"
+    )
+    ap.add_argument(
+        "--view-out",
+        type=Path,
+        metavar="PNG",
+        help="with --breath: save the modulation view to a PNG (on its own, saves without "
+        "opening a window; combine with --view to do both)",
+    )
+    ap.add_argument(
+        "--emit",
+        action="store_true",
+        help="write a reviewable candidate file (default docs/references/candidates/<stem>.txt)",
+    )
+    ap.add_argument(
+        "--auto",
+        action="store_true",
+        help="auto-find the clean spans worth annotating across the whole file (rejects "
+        "silence/noise); pair with --emit to write them as reviewable candidate groups",
+    )
+    ap.add_argument(
+        "--span",
+        action="append",
+        nargs="+",
+        metavar="FROM TO [LABEL]",
+        help="a labelled span to annotate (repeatable); with --emit each becomes a group",
+    )
     ap.add_argument("--out", type=Path, help="candidate output path (with --emit)")
     ap.add_argument("--force", action="store_true", help="overwrite an existing candidate file")
     args = ap.parse_args()
@@ -1133,10 +1223,12 @@ def main() -> int:
         signal, sr = shrlib.load(args.wav)
         assert sr == SR, sr
         clean = segment_clean(signal)
-        print(f"found {len(clean)} clean span(s) in {Path(args.wav).name} "
-              f"({len(signal)/SR:.0f}s):", file=sys.stderr)
+        print(
+            f"found {len(clean)} clean span(s) in {Path(args.wav).name} ({len(signal) / SR:.0f}s):",
+            file=sys.stderr,
+        )
         for a, b in clean:
-            print(f"  {shrlib.fmt_mmss(a)}-{shrlib.fmt_mmss(b)}  ({b-a:.0f}s)", file=sys.stderr)
+            print(f"  {shrlib.fmt_mmss(a)}-{shrlib.fmt_mmss(b)}  ({b - a:.0f}s)", file=sys.stderr)
         if not clean:
             return 0
         spans = [(a, b, "") for a, b in clean]

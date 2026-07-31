@@ -4,6 +4,7 @@ These frozen transforms are not a renderer and never define current engine behav
 the active post-onset source stage from ``shr_core``, apply one explicitly selected transform here, and
 return the result to the compiled renderer for transmission, mixing, and limiting.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -120,9 +121,7 @@ def apply_tail(
     ramp = max(1, int(LEGACY_TAIL_RAMP_MS * 1.0e-3 * SR))
     window[:splice] = 0.0
     ramp_frames = min(ramp, max(0, len(window) - splice))
-    window[splice:splice + ramp_frames] = (
-        0.5 - 0.5 * np.cos(np.pi * np.arange(ramp_frames) / ramp)
-    )
+    window[splice : splice + ramp_frames] = 0.5 - 0.5 * np.cos(np.pi * np.arange(ramp_frames) / ramp)
     ring *= window[:, None]
     ring_peak = np.max(np.abs(ring), initial=0.0)
     if ring_peak > 0.0:

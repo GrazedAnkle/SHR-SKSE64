@@ -1,4 +1,5 @@
 """Shared plumbing for thin offline clients of the compiled ``shr_core`` binding."""
+
 from __future__ import annotations
 
 import importlib

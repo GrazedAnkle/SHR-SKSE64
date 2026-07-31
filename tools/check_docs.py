@@ -11,6 +11,7 @@ Stdlib-only so it can run in CI.
 
 Usage:  python tools/check_docs.py [--root .]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -179,7 +180,9 @@ def main() -> int:
                 if fname not in src_by_name:
                     problems.append(f"{doc.name}:{lineno}: cites source file '{fname}' not in src/")
                 if sym not in src_words:
-                    problems.append(f"{doc.name}:{lineno}: symbol '{sym}' (cited as {fname}: {sym}) not found in src/")
+                    problems.append(
+                        f"{doc.name}:{lineno}: symbol '{sym}' (cited as {fname}: {sym}) not found in src/"
+                    )
             for qualified in QUALIFIED_RE.findall(line):
                 leaf = qualified.split("::")[-1]
                 if leaf not in src_words:
@@ -200,14 +203,18 @@ def main() -> int:
             # Script references, including fenced command examples.
             for ref in PYREF_RE.findall(line):
                 if ref not in tool_scripts:
-                    problems.append(f"{doc.name}:{lineno}: references Python script '{ref}' not in tools/ or tests/")
+                    problems.append(
+                        f"{doc.name}:{lineno}: references Python script '{ref}' not in tools/ or tests/"
+                    )
 
     # Also check references in tool docstrings and comments.
     for tool in sorted(tools_dir.glob("*.py")):
         for lineno, line in lines_of(tool.read_text(encoding="utf-8")):
             for ref in PYREF_RE.findall(line):
                 if ref not in tool_scripts:
-                    problems.append(f"{tool.name}:{lineno}: references Python script '{ref}' not in tools/ or tests/")
+                    problems.append(
+                        f"{tool.name}:{lineno}: references Python script '{ref}' not in tools/ or tests/"
+                    )
 
     problems.extend(tools_index_problems(tools_dir, tool_scripts))
 

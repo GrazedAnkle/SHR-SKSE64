@@ -9,6 +9,7 @@ Usage:
   python tools/sim_offline.py --resting 50 --max 195
   python tools/sim_offline.py --set SlowRecoveryTau=90
 """
+
 from __future__ import annotations
 
 import argparse
@@ -32,10 +33,9 @@ def _player_state(module, state: dict):
     unknown = set(state) - set(_PLAYER_KEYS)
     if unknown:
         raise ValueError(f"unknown player-state fields: {sorted(unknown)}")
-    return module.PlayerState(**{
-        target: bool(state.get(source, False))
-        for source, target in _PLAYER_KEYS.items()
-    })
+    return module.PlayerState(
+        **{target: bool(state.get(source, False)) for source, target in _PLAYER_KEYS.items()}
+    )
 
 
 def _systoles(module, snapshot, coefficients) -> tuple[float, float]:
@@ -115,11 +115,7 @@ def run(
                     "slowHR": float(snapshot.slow_heart_rate),
                     "HR": float(snapshot.heart_rate),
                     "contractility": float(snapshot.contractility),
-                    "hrImplied": (
-                        float(snapshot.contractility) - excess
-                        if excess > 0.0
-                        else None
-                    ),
+                    "hrImplied": (float(snapshot.contractility) - excess if excess > 0.0 else None),
                     "contractilityExcess": excess,
                     "nominalSystole_ms": nominal * 1000.0,
                     "sinusSystole_ms": sinus * 1000.0,
@@ -150,10 +146,7 @@ def summarize(rows: list[dict], recovery_start_t: float) -> None:
         below = [row for row in recovery if row["HR"] <= hr_target]
         if below:
             row = below[0]
-            print(
-                f"  {row['HR']:6.0f}  {row['contractilityExcess']:7.3f}  "
-                f"{row['systoleDev_ms']:7.1f}"
-            )
+            print(f"  {row['HR']:6.0f}  {row['contractilityExcess']:7.3f}  {row['systoleDev_ms']:7.1f}")
 
 
 def main() -> None:
@@ -201,6 +194,7 @@ def main() -> None:
 
     if args.csv:
         import csv
+
         with open(args.csv, "w", newline="") as handle:
             writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()))
             writer.writeheader()

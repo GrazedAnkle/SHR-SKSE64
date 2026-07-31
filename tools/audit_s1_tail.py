@@ -19,6 +19,7 @@ source-stage transforms:
 the compiled post-onset source stage and returns to C++ for the active downstream
 stages.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -40,7 +41,9 @@ from shrlib import SR, analysis_channel
 
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_SOURCE = ROOT / "contrib" / "Distribution" / "Sound" / "fx" / "SHR_HeartBeat" / "HeartBeat_Shortened.wav"
+DEFAULT_SOURCE = (
+    ROOT / "contrib" / "Distribution" / "Sound" / "fx" / "SHR_HeartBeat" / "HeartBeat_Shortened.wav"
+)
 REFERENCE_DIR = ROOT / "docs" / "references"
 LF_BAND_HZ = (20.0, 100.0)
 BODY_WINDOW_S = (0.040, 0.080)
@@ -258,7 +261,7 @@ def measure_engine_beats(beats: list[np.ndarray], states: list[dict]) -> dict:
     native_run = np.concatenate(beats, axis=0)
     run = analysis_channel(native_run)
     pad = SR
-    lf = _lf_filter(np.pad(run, (pad, pad)))[pad:pad + len(run)]
+    lf = _lf_filter(np.pad(run, (pad, pad)))[pad : pad + len(run)]
     starts = np.concatenate([[0], np.cumsum([len(b) for b in beats[:-1]])])
 
     late_80_100: list[float] = []
@@ -270,13 +273,13 @@ def measure_engine_beats(beats: list[np.ndarray], states: list[dict]) -> dict:
         systole_s = state["systole_duration"]
 
         def wrms(lo: float, hi: float) -> float:
-            return _rms(lf[start + int(lo * SR):start + int(hi * SR)])
+            return _rms(lf[start + int(lo * SR) : start + int(hi * SR)])
 
         body = wrms(*BODY_WINDOW_S)
         late_80_100.append(_db_ratio(wrms(0.080, 0.100), body))
         late_100_120.append(_db_ratio(wrms(0.100, 0.120), body))
         post_120_gap.append(_db_ratio(wrms(0.120, systole_s), body))
-        s1 = analysis_channel(beat)[:int(round(systole_s * SR))]
+        s1 = analysis_channel(beat)[: int(round(systole_s * SR))]
         peaks.append(shrlib.peak(s1))
         crests.append(20.0 * np.log10(shrlib.crest(s1)))
 
@@ -316,18 +319,20 @@ def splice_geometry(module, source, coefficients) -> list[dict]:
         fixed = legacy_s1.tail_splice_frame(len(dry), source.s1_frames, "fixed")
         relative = legacy_s1.tail_splice_frame(len(dry), source.s1_frames, "dry-end")
         ramp = int(legacy_s1.LEGACY_TAIL_RAMP_MS * 1.0e-3 * SR)
-        out.append({
-            "contractility": contractility,
-            "compression_k": float(render.onset_compression),
-            "dry_ms": len(dry) / SR * 1.0e3,
-            "analytic_peak_ms": peak / SR * 1.0e3,
-            "fixed_splice_ms": fixed / SR * 1.0e3,
-            "fixed_ramp_end_minus_dry_end_ms": (fixed + ramp - len(dry)) / SR * 1.0e3,
-            "dry_end_splice_ms": relative / SR * 1.0e3,
-            "dry_end_ramp_end_minus_dry_end_ms": (relative + ramp - len(dry)) / SR * 1.0e3,
-            "fixed_peak_to_splice_ms": (fixed - peak) / SR * 1.0e3,
-            "dry_end_peak_to_splice_ms": (relative - peak) / SR * 1.0e3,
-        })
+        out.append(
+            {
+                "contractility": contractility,
+                "compression_k": float(render.onset_compression),
+                "dry_ms": len(dry) / SR * 1.0e3,
+                "analytic_peak_ms": peak / SR * 1.0e3,
+                "fixed_splice_ms": fixed / SR * 1.0e3,
+                "fixed_ramp_end_minus_dry_end_ms": (fixed + ramp - len(dry)) / SR * 1.0e3,
+                "dry_end_splice_ms": relative / SR * 1.0e3,
+                "dry_end_ramp_end_minus_dry_end_ms": (relative + ramp - len(dry)) / SR * 1.0e3,
+                "fixed_peak_to_splice_ms": (fixed - peak) / SR * 1.0e3,
+                "dry_end_peak_to_splice_ms": (relative - peak) / SR * 1.0e3,
+            }
+        )
     return out
 
 
@@ -351,8 +356,7 @@ def _write_markdown_readme(path: Path, mapping: dict[str, str], sections: list[d
     ]
     for section in sections:
         lines.append(
-            f"- {section['name']}: starts {section['start_s']:.2f} s, "
-            f"duration {section['duration_s']:.2f} s"
+            f"- {section['name']}: starts {section['start_s']:.2f} s, duration {section['duration_s']:.2f} s"
         )
     lines += [
         "",

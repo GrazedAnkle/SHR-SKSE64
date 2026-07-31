@@ -10,6 +10,7 @@ Outputs are small structured values, stored rounded and compared at a loose tole
 
 One golden domain; tools/golden_registry.py describes the surface it exposes.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -111,9 +112,7 @@ def diff(expected: dict, actual: dict) -> list[str]:
         exp_beats = exp_rhythm.get(name, [])
         act_beats = act_rhythm.get(name, [])
         if len(exp_beats) != len(act_beats):
-            problems.append(
-                f"rhythm/{name}: beat count golden {len(exp_beats)} != core {len(act_beats)}"
-            )
+            problems.append(f"rhythm/{name}: beat count golden {len(exp_beats)} != core {len(act_beats)}")
             continue
         for i, (exp_beat, act_beat) in enumerate(zip(exp_beats, act_beats)):
             if exp_beat.get("frame") != act_beat.get("frame"):
@@ -145,9 +144,7 @@ def diff(expected: dict, actual: dict) -> list[str]:
 
 def summary(manifest: dict) -> list[str]:
     total = sum(len(beats) for beats in manifest["rhythm"].values())
-    lines = [
-        f"{len(RHYTHM_SCENARIOS)} scenarios / {total} beats, {len(MAPPING_CASES)} mapping cases"
-    ]
+    lines = [f"{len(RHYTHM_SCENARIOS)} scenarios / {total} beats, {len(MAPPING_CASES)} mapping cases"]
     for name, beats in manifest["rhythm"].items():
         kinds = ", ".join(sorted({beat["kind"] for beat in beats})) or "none"
         lines.append(f"rhythm/{name}: {len(beats)} beats ({kinds})")

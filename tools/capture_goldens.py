@@ -12,6 +12,7 @@ Build the binding first (any preset enabling SHR_BUILD_PYBIND publishes it). The
 float bytes, so capture with the compiler .github/workflows/offline-goldens.yml pins - a manifest captured
 with a different toolchain will not verify there.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -47,8 +48,7 @@ def main() -> None:
     unknown = [name for name in args.domains if name not in domains]
     if unknown:
         parser.error(
-            f"unknown golden domain(s): {', '.join(unknown)}; expected one or more of: "
-            f"{', '.join(domains)}"
+            f"unknown golden domain(s): {', '.join(unknown)}; expected one or more of: {', '.join(domains)}"
         )
 
     selected = [domains[name] for name in args.domains] if args.domains else golden_registry.DOMAINS

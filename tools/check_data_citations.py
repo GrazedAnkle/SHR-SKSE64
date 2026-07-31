@@ -10,6 +10,7 @@ Stdlib-only so it can run in CI (Python 3.11+ for tomllib).
 
 Usage: python tools/check_data_citations.py [--root .]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -93,8 +94,13 @@ def float_constants(root: Path) -> dict[str, float]:
 
 
 _LEAF_RE = re.compile(r"\{([^{}]+)\}")
-_BINOPS = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul,
-           ast.Div: operator.truediv, ast.Pow: operator.pow}
+_BINOPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.Pow: operator.pow,
+}
 _UNARYOPS = {ast.UAdd: operator.pos, ast.USub: operator.neg}
 
 
@@ -167,13 +173,13 @@ def state_target_problems(measurements: Any, key: Any, prefix: str) -> list[str]
             except (KeyError, ValueError) as exc:
                 problems.append(f"{prefix} / {key}: member '{member}' does not resolve ({exc})")
                 continue
-            expected_scope = member[:-len(".state")] if member.endswith(".state") else None
+            expected_scope = member[: -len(".state")] if member.endswith(".state") else None
             problems.extend(
                 f"{prefix} / {key} / {member}: {problem}"
                 for problem in validate_embedded_state(member_state, expected_scope=expected_scope)
             )
     else:
-        expected_scope = key[:-len(".state")] if key.endswith(".state") else None
+        expected_scope = key[: -len(".state")] if key.endswith(".state") else None
         problems = [
             f"{prefix} / {key}: {problem}"
             for problem in validate_embedded_state(state, expected_scope=expected_scope)
@@ -209,9 +215,11 @@ def check_calibrations(root: Path, manifest: dict, measurements: Any) -> list[st
         try:
             leaf = resolve(measurements, key)
         except (KeyError, ValueError) as exc:
-            problems.append(f"{prefix} / {name} / calibration target '{key}' does not resolve "
-                            f"in measurements.json ({exc}) - a target with no leaf behind it is exactly "
-                            f"the self-referential bug this relation exists to catch")
+            problems.append(
+                f"{prefix} / {name} / calibration target '{key}' does not resolve "
+                f"in measurements.json ({exc}) - a target with no leaf behind it is exactly "
+                f"the self-referential bug this relation exists to catch"
+            )
             continue
         engine, engine_err = eval_spec(entry.get("engine"), fconstants, measurements)
         tolerance, tol_err = eval_spec(entry.get("tolerance"), fconstants, measurements)
@@ -221,8 +229,10 @@ def check_calibrations(root: Path, manifest: dict, measurements: Any) -> list[st
             problems.append(f"{prefix} / {name}: tolerance {tol_err}")
         if isinstance(leaf, (int, float)) and engine is not None and tolerance is not None:
             if abs(engine - leaf) > tolerance:
-                problems.append(f"{prefix} / {name}: engine reads {engine:.3f} against reference {leaf} "
-                                f"({key}), a gap of {abs(engine - leaf):.3f} > tolerance {tolerance:.3f}")
+                problems.append(
+                    f"{prefix} / {name}: engine reads {engine:.3f} against reference {leaf} "
+                    f"({key}), a gap of {abs(engine - leaf):.3f} > tolerance {tolerance:.3f}"
+                )
 
     for index, entry in enumerate(manifest.get("uncited", []), start=1):
         name = entry.get("constant")
@@ -230,8 +240,10 @@ def check_calibrations(root: Path, manifest: dict, measurements: Any) -> list[st
             problems.append(f"manifest uncited[{index}]: 'constant' must be a string")
             continue
         if not entry.get("reason"):
-            problems.append(f"manifest uncited[{index}] / {name}: needs a 'reason' - "
-                            f"declaring a constant uncited is a decision, not an omission")
+            problems.append(
+                f"manifest uncited[{index}] / {name}: needs a 'reason' - "
+                f"declaring a constant uncited is a decision, not an omission"
+            )
         if name in declared:
             problems.append(f"{name}: declared both calibrated and uncited")
         state_keys = entry.get("state_keys", [])
@@ -245,8 +257,10 @@ def check_calibrations(root: Path, manifest: dict, measurements: Any) -> list[st
         declared.add(name)
 
     for name in sorted(set(constants) - declared):
-        problems.append(f"Constants.hpp / {name}: tuned ([ref]/[dsp]) but neither bound to a reference "
-                        f"leaf ([[calibrate]]) nor declared uncited ([[uncited]]) in data_citations.toml")
+        problems.append(
+            f"Constants.hpp / {name}: tuned ([ref]/[dsp]) but neither bound to a reference "
+            f"leaf ([[calibrate]]) nor declared uncited ([[uncited]]) in data_citations.toml"
+        )
     return problems
 
 
@@ -306,7 +320,9 @@ def main() -> int:
             problems.append(f"manifest / {key} / expected source value / found-instead: unresolved ({exc})")
             continue
         if not isinstance(value, (int, float)) or isinstance(value, bool):
-            problems.append(f"manifest / {key} / expected numeric source value / found-instead: {type(value).__name__}")
+            problems.append(
+                f"manifest / {key} / expected numeric source value / found-instead: {type(value).__name__}"
+            )
             continue
         expected = f"{value:.{precision}f}"
         pattern = re.compile(rf"(?<![\w.]){re.escape(expected)}(?![\w.])")
@@ -332,8 +348,10 @@ def main() -> int:
     else:
         cited = len(manifest.get("calibrate", []))
         uncited = len(manifest.get("uncited", []))
-        print(f"data citations: all guarded figures match measurements.json; "
-              f"{cited} constant(s) bound to a reference leaf, {uncited} declared uncited")
+        print(
+            f"data citations: all guarded figures match measurements.json; "
+            f"{cited} constant(s) bound to a reference leaf, {uncited} declared uncited"
+        )
     return len(problems)
 
 

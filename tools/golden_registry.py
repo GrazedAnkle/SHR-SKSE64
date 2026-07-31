@@ -14,6 +14,7 @@ tree or names ``shr_pybind``: the caller decides which binding is under test.
 
 ARCHITECTURE.md (offline execution) owns the verify/author split these domains are consumed through.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

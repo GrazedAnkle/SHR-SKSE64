@@ -7,6 +7,7 @@ execution) owns the coefficient surface.
 
 Beside the goldens because it shares their built-binding prerequisite, not because it has a manifest.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -117,38 +118,24 @@ def test_the_final_batch_is_validated_once(shr_pybind: ModuleType) -> None:
             ("unknown model coefficient", "NoSuchCoefficient"),
             id="unknown-name",
         ),
-        pytest.param(
-            {"FitnessAbsoluteMin": 2.0}, ("FitnessAbsoluteMin", "derived"), id="derived-value"
-        ),
-        pytest.param(
-            {"S1OnsetFrames": 0}, ("S1OnsetFrames", "source asset"), id="source-asset-bound"
-        ),
+        pytest.param({"FitnessAbsoluteMin": 2.0}, ("FitnessAbsoluteMin", "derived"), id="derived-value"),
+        pytest.param({"S1OnsetFrames": 0}, ("S1OnsetFrames", "source asset"), id="source-asset-bound"),
         pytest.param(
             {"VoiceOutputGain": 1.0},
             ("VoiceOutputGain", "game-mix integration"),
             id="game-mix-integration",
         ),
-        pytest.param(
-            {"SecondsPerHour": 1.0}, ("SecondsPerHour", "unit conversion"), id="unit-conversion"
-        ),
-        pytest.param(
-            {"InspirationFraction": 0.5}, ("InspirationFraction", "dormant"), id="dormant"
-        ),
+        pytest.param({"SecondsPerHour": 1.0}, ("SecondsPerHour", "unit conversion"), id="unit-conversion"),
+        pytest.param({"InspirationFraction": 0.5}, ("InspirationFraction", "dormant"), id="dormant"),
         pytest.param({"PVCRunMaxLength": 2.5}, ("PVCRunMaxLength", "integer"), id="non-integer"),
-        pytest.param(
-            {"BreathLowPassPoles": True}, ("BreathLowPassPoles", "integer"), id="bool-for-integer"
-        ),
-        pytest.param(
-            {"SoftClipKnee": float("nan")}, ("SoftClipKnee", "finite"), id="non-finite"
-        ),
+        pytest.param({"BreathLowPassPoles": True}, ("BreathLowPassPoles", "integer"), id="bool-for-integer"),
+        pytest.param({"SoftClipKnee": float("nan")}, ("SoftClipKnee", "finite"), id="non-finite"),
     ],
 )
 def test_rejection_paths_are_actionable(
     shr_pybind: ModuleType, overrides: dict, expected_text: tuple[str, ...]
 ) -> None:
-    expect_error(
-        lambda: shr_pybind.default_model_coefficients.with_overrides(overrides), *expected_text
-    )
+    expect_error(lambda: shr_pybind.default_model_coefficients.with_overrides(overrides), *expected_text)
 
 
 def test_construction_rejects_a_coefficient_conflicting_with_its_arguments(

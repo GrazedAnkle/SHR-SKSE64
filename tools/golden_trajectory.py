@@ -12,6 +12,7 @@ recorded in full. Values are stored rounded and compared at a tolerance.
 
 One golden domain; tools/golden_registry.py describes the surface it exposes.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -128,7 +129,9 @@ def diff(expected: dict, actual: dict) -> list[str]:
     for name in TRAJECTORY_SCENARIOS:
         exp = exp_scenarios.get(name, {})
         act = act_scenarios.get(name, {})
-        _diff_rows(f"{name}/snapshots", SNAPSHOT_FIELDS, exp.get("snapshots", []), act.get("snapshots", []), problems)
+        _diff_rows(
+            f"{name}/snapshots", SNAPSHOT_FIELDS, exp.get("snapshots", []), act.get("snapshots", []), problems
+        )
         _diff_rows(f"{name}/beats", BEAT_FIELDS, exp.get("beats", []), act.get("beats", []), problems)
     return problems
 

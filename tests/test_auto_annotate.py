@@ -7,8 +7,9 @@ import numpy as np
 import auto_annotate as aa
 
 
-def synthetic_hf_envelope(*, sr=aa.SR, level=1.0, onset_ms=60.0, peak_ms=80.0,
-                          decay_ms=25.0, duration_ms=160.0):
+def synthetic_hf_envelope(
+    *, sr=aa.SR, level=1.0, onset_ms=60.0, peak_ms=80.0, decay_ms=25.0, duration_ms=160.0
+):
     """Known-onset transient on a nonzero noise floor."""
     t_ms = np.arange(int(duration_ms * 1e-3 * sr)) * 1e3 / sr
     floor = np.full_like(t_ms, 0.01)
@@ -55,8 +56,9 @@ class S2OnsetTests(unittest.TestCase):
         onsets = []
         for decay_ms in (8.0, 25.0, 70.0):
             envelope = synthetic_hf_envelope(decay_ms=decay_ms)
-            onsets.append(aa._hf_fallback_onset(
-                envelope, int(0.090 * sr), int(0.020 * sr), len(envelope) - 1, sr))
+            onsets.append(
+                aa._hf_fallback_onset(envelope, int(0.090 * sr), int(0.020 * sr), len(envelope) - 1, sr)
+            )
         for onset in onsets:
             self.assertIsNotNone(onset)
             self.assertAlmostEqual(onset, expected, delta=2)
@@ -64,16 +66,14 @@ class S2OnsetTests(unittest.TestCase):
     def test_hf_fallback_rejects_a_valley_already_on_the_same_rise(self):
         sr = aa.SR
         envelope = synthetic_hf_envelope()
-        onset = aa._hf_fallback_onset(
-            envelope, int(0.090 * sr), int(0.050 * sr), len(envelope) - 1, sr)
+        onset = aa._hf_fallback_onset(envelope, int(0.090 * sr), int(0.050 * sr), len(envelope) - 1, sr)
         self.assertIsNone(onset)  # known onset is only 10ms after the valley, below the 20ms guard
 
     def test_hf_fallback_rejects_low_snr_activity(self):
         sr = aa.SR
         envelope = synthetic_hf_envelope()
-        envelope = 0.9 + 0.1 * envelope              # peak/background well below S2_HF_SNR_MIN
-        onset = aa._hf_fallback_onset(
-            envelope, int(0.090 * sr), int(0.020 * sr), len(envelope) - 1, sr)
+        envelope = 0.9 + 0.1 * envelope  # peak/background well below S2_HF_SNR_MIN
+        onset = aa._hf_fallback_onset(envelope, int(0.090 * sr), int(0.020 * sr), len(envelope) - 1, sr)
         self.assertIsNone(onset)
 
 

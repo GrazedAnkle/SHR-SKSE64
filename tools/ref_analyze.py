@@ -26,6 +26,7 @@ Examples:
   python tools/ref_analyze.py --all --md-table
   python tools/ref_analyze.py --check
 """
+
 from __future__ import annotations
 
 import argparse
@@ -112,8 +113,17 @@ def measure_group(signal: np.ndarray, beats: list) -> dict:
     segs = shrlib.beats_to_segments(signal, SR, beats)
     hf = shrlib.hf_band(signal, SR)
     acc: dict[str, list] = {k: [] for k in _BEAT_METRICS}
-    con: dict[str, list] = {k: [] for k in ("s1_contrast", "s1_hf_dens_rise", "s1_hf_dens_body",
-                                            "s1_hf_skew", "s1_lobes", "s1_lobe_runnerup")}
+    con: dict[str, list] = {
+        k: []
+        for k in (
+            "s1_contrast",
+            "s1_hf_dens_rise",
+            "s1_hf_dens_body",
+            "s1_hf_skew",
+            "s1_lobes",
+            "s1_lobe_runnerup",
+        )
+    }
     s1b = {lab: [] for lab in _BAND_LABELS}
     s2b = {lab: [] for lab in _BAND_LABELS}
     for (s1, s2, dia), lm in zip(segs, beats):
@@ -124,7 +134,7 @@ def measure_group(signal: np.ndarray, beats: list) -> dict:
         con["s1_hf_dens_rise"].append(dr)
         con["s1_hf_dens_body"].append(db_)
         i0 = int(round(lm[0] * SR))
-        con["s1_hf_skew"].append(shrlib.hf_temporal_skew(s1, hf[i0:i0 + len(s1)]))
+        con["s1_hf_skew"].append(shrlib.hf_temporal_skew(s1, hf[i0 : i0 + len(s1)]))
         n_lobes, _, runner = shrlib.lobe_count(s1, SR)
         con["s1_lobes"].append(n_lobes)
         con["s1_lobe_runnerup"].append(runner)
@@ -159,15 +169,19 @@ def measure_group(signal: np.ndarray, beats: list) -> dict:
 
     out["s1_peak_cv"] = cv(peaks)
     out["s1_centroid_cv"] = cv(cents)
-    if len(peaks) >= 4:                                  # leave-one-beat-out SE, so the CI is visible
+    if len(peaks) >= 4:  # leave-one-beat-out SE, so the CI is visible
         drops = np.array([cv(np.delete(peaks, k)) for k in range(len(peaks))])
         n = len(drops)
         out["s1_peak_cv_se"] = float(np.sqrt((n - 1) / n * ((drops - drops.mean()) ** 2).sum()))
     return out
 
 
-def _hf_skew_window_sweep(signal: np.ndarray, hf_signal: np.ndarray, beats: list,
-                          fractions: tuple[float, ...] = _HF_SKEW_AUDIT_FRACTIONS) -> dict[float, float]:
+def _hf_skew_window_sweep(
+    signal: np.ndarray,
+    hf_signal: np.ndarray,
+    beats: list,
+    fractions: tuple[float, ...] = _HF_SKEW_AUDIT_FRACTIONS,
+) -> dict[float, float]:
     """Return group-median HF skew across fractions of each beat's annotated S1 duration.
 
     This is an audit helper, not a family of alternative rulers. Fraction 1.0 is the complete-S1
@@ -184,8 +198,7 @@ def _hf_skew_window_sweep(signal: np.ndarray, hf_signal: np.ndarray, beats: list
             frames = min(int(round(fraction * annotated_frames)), before_s2_frames)
             if frames <= 0:
                 continue
-            values.append(shrlib.hf_temporal_skew(
-                signal[i0:i0 + frames], hf_signal[i0:i0 + frames]))
+            values.append(shrlib.hf_temporal_skew(signal[i0 : i0 + frames], hf_signal[i0 : i0 + frames]))
         out[fraction] = float(np.nanmedian(values)) if values else np.nan
     return out
 
@@ -246,8 +259,8 @@ def measure_breath(signal: np.ndarray, annot: Path, groups: dict) -> dict | None
         return None
     weighted = shrlib.a_weight(signal, SR)
     width = int(shrlib.BREATH_WIN_MS * 1e-3 * SR)
-    levels = np.array([shrlib.rms(weighted[int(t * SR):int(t * SR) + width]) for t in onsets])
-    centroids = np.array([shrlib.centroid(signal[int(t * SR):int(t * SR) + width], SR) for t in onsets])
+    levels = np.array([shrlib.rms(weighted[int(t * SR) : int(t * SR) + width]) for t in onsets])
+    centroids = np.array([shrlib.centroid(signal[int(t * SR) : int(t * SR) + width], SR) for t in onsets])
 
     breaths = shrlib.parse_breaths(annot)
     if breaths:
@@ -271,7 +284,7 @@ def measure_breath(signal: np.ndarray, annot: Path, groups: dict) -> dict | None
         full = result["aw_swing_db"]
         drops = []
         for k in range(len(breaths)):
-            sub = breaths[:k] + breaths[k + 1:]
+            sub = breaths[:k] + breaths[k + 1 :]
             f = shrlib.breath_inflation(onsets, sub)
             m = ~np.isnan(f)
             if m.sum() >= 4:
@@ -279,11 +292,12 @@ def measure_breath(signal: np.ndarray, annot: Path, groups: dict) -> dict | None
         if len(drops) >= 3:
             drops = np.array(drops)
             n = len(drops)
-            result["jackknife_se_db"] = float(
-                np.sqrt((n - 1) / n * ((drops - drops.mean()) ** 2).sum()))
+            result["jackknife_se_db"] = float(np.sqrt((n - 1) / n * ((drops - drops.mean()) ** 2).sum()))
         expiration, inspiration = shrlib.breath_groups(inflation[covered])
-        realized = (float(np.median(inflation[covered][expiration])),
-                    float(np.median(inflation[covered][inspiration])))
+        realized = (
+            float(np.median(inflation[covered][expiration])),
+            float(np.median(inflation[covered][inspiration])),
+        )
         targets = shrlib.breath_group_median_targets(shrlib.RAISED_COSINE)
         result["coverage_deviation"] = float(max(abs(r - t) for r, t in zip(realized, targets)))
         result["covered"] = result["coverage_deviation"] <= shrlib.BREATH_MEDIAN_TOL
@@ -294,24 +308,22 @@ def measure_breath(signal: np.ndarray, annot: Path, groups: dict) -> dict | None
             exp = [index[round(t, 3)] for t, p in tags if p == "expiration" and round(t, 3) in index]
             if ins and exp:
                 result["aw_swing_db_vent_tags"] = float(
-                    20.0 * np.log10(np.median(levels[ins]) / np.median(levels[exp])))
+                    20.0 * np.log10(np.median(levels[ins]) / np.median(levels[exp]))
+                )
         return result
 
     tags = shrlib.parse_vent_tags(annot)
     if len(tags) < 4:
         return None
     index = {round(t, 3): i for i, t in enumerate(onsets)}
-    inspiration = [index[round(t, 3)] for t, phase in tags
-                   if phase == "inspiration" and round(t, 3) in index]
-    expiration = [index[round(t, 3)] for t, phase in tags
-                  if phase == "expiration" and round(t, 3) in index]
+    inspiration = [index[round(t, 3)] for t, phase in tags if phase == "inspiration" and round(t, 3) in index]
+    expiration = [index[round(t, 3)] for t, phase in tags if phase == "expiration" and round(t, 3) in index]
     if not inspiration or not expiration:
         return None
     return {
         "method": "vent-tags",
         "n_beats": len(inspiration) + len(expiration),
-        "aw_swing_db": float(20.0 * np.log10(np.median(levels[inspiration])
-                                             / np.median(levels[expiration]))),
+        "aw_swing_db": float(20.0 * np.log10(np.median(levels[inspiration]) / np.median(levels[expiration]))),
         "centroid_ratio": float(np.median(centroids[inspiration]) / np.median(centroids[expiration])),
     }
 
@@ -321,9 +333,11 @@ SYSTOLE_LAW_KEY = "systole_law"
 # Exclude non-steady, non-free-breathing groups explicitly. ref11 contains deep
 # inspiration and breath-hold manipulations. ref14 is a post-hold release transient
 # confounded by excitation; PEP/Valsalva-release shortening is outside this law.
-SYSTOLE_FIT_EXCLUDE = {("ref11", "deeper inspiration (~79)"),
-                       ("ref11", "breath hold peak inspiration (~71)"),
-                       ("ref14", "high, post-hold release (~158)")}
+SYSTOLE_FIT_EXCLUDE = {
+    ("ref11", "deeper inspiration (~79)"),
+    ("ref11", "breath hold peak inspiration (~71)"),
+    ("ref14", "high, post-hold release (~158)"),
+}
 
 
 def fit_systole_law(data: dict) -> dict:
@@ -336,11 +350,15 @@ def fit_systole_law(data: dict) -> dict:
 
     Emitting the fit as a leaf keeps the target reproducible from committed groups.
     """
-    rows = [(rid, label, g["hr"], g["systole_ms"])
-            for rid, ref in data.items() if isinstance(ref, dict) and "groups" in ref
-            for label, g in ref["groups"].items()
-            if (rid, label) not in SYSTOLE_FIT_EXCLUDE
-            and g.get("hr") == g.get("hr") and g.get("systole_ms") == g.get("systole_ms")]
+    rows = [
+        (rid, label, g["hr"], g["systole_ms"])
+        for rid, ref in data.items()
+        if isinstance(ref, dict) and "groups" in ref
+        for label, g in ref["groups"].items()
+        if (rid, label) not in SYSTOLE_FIT_EXCLUDE
+        and g.get("hr") == g.get("hr")
+        and g.get("systole_ms") == g.get("systole_ms")
+    ]
     if len(rows) < 3:
         return {}
     hr = np.array([r[2] for r in rows])
@@ -411,9 +429,7 @@ def merge_derived_clips(data: dict) -> None:
         if parent_breath is not None:
             if len(parent["groups"]) - len(clip.get("groups", {})) != 1:
                 raise ValueError(f"{parent_id}: parent breath summary needs an unambiguous group")
-            parent_group = next(
-                label for label in parent["groups"] if label not in clip.get("groups", {})
-            )
+            parent_group = next(label for label in parent["groups"] if label not in clip.get("groups", {}))
             breath_scopes[parent_group] = parent_breath
         clip_breath = clip.get("breath")
         if clip_breath is not None:
@@ -472,7 +488,7 @@ def print_md_table(data: dict) -> None:
     print("| group | " + " | ".join(c[0] for c in _TABLE_COLS) + " |")
     print("|---|" + "|".join("---" for _ in _TABLE_COLS) + "|")
     for rid, ref in data.items():
-        if rid == SYSTOLE_LAW_KEY:      # a fit ACROSS the groups, not a recording
+        if rid == SYSTOLE_LAW_KEY:  # a fit ACROSS the groups, not a recording
             continue
         for label, m in ref["groups"].items():
             cells = [fmt.format(m[key]) for _, key, fmt in _TABLE_COLS]
@@ -532,11 +548,11 @@ def print_table(columns: list) -> None:
     print("\n  S1 band fractions (within-S1 shape) [~]")
     for lab in _BAND_LABELS:
         cells = "".join(f"{m['s1_bands'][lab]:>16.1%} " for _, m in columns)
-        print(f"  {'S1 '+lab+'Hz':<38}{cells}")
+        print(f"  {'S1 ' + lab + 'Hz':<38}{cells}")
     print("  S2 band fractions (within-S2 shape) [~]")
     for lab in _BAND_LABELS:
         cells = "".join(f"{m['s2_bands'][lab]:>16.1%} " for _, m in columns)
-        print(f"  {'S2 '+lab+'Hz':<38}{cells}")
+        print(f"  {'S2 ' + lab + 'Hz':<38}{cells}")
 
 
 def _flat(d: dict, prefix: str = "") -> dict:
@@ -564,28 +580,35 @@ def check(json_path: Path) -> int:
     problems = 0
     for rid, ref in fresh.items():
         if rid not in committed:
-            print(f"  {rid}: present in recompute, absent from JSON"); problems += 1; continue
-        if rid == SYSTOLE_LAW_KEY:      # a fit ACROSS the groups, not a recording
+            print(f"  {rid}: present in recompute, absent from JSON")
+            problems += 1
+            continue
+        if rid == SYSTOLE_LAW_KEY:  # a fit ACROSS the groups, not a recording
             for key, val in _flat(ref).items():
                 ov = _flat(committed[rid]).get(key)
                 if not _close(val, ov):
-                    print(f"  {rid}/{key}: JSON {ov} vs recompute {val}"); problems += 1
+                    print(f"  {rid}/{key}: JSON {ov} vs recompute {val}")
+                    problems += 1
             continue
         for label, m in ref["groups"].items():
             old = committed[rid]["groups"].get(label)
             if old is None:
-                print(f"  {rid}/{label}: new group not in JSON"); problems += 1; continue
+                print(f"  {rid}/{label}: new group not in JSON")
+                problems += 1
+                continue
             flat_old, flat_new = _flat(old), _flat(m)
             for key, val in flat_new.items():
                 ov = flat_old.get(key)
                 if not _close(val, ov):
-                    print(f"  {rid}/{label}/{key}: JSON {ov} vs recompute {val}"); problems += 1
+                    print(f"  {rid}/{label}/{key}: JSON {ov} vs recompute {val}")
+                    problems += 1
         # Breath leaves sit outside "groups" but are calibration inputs, so they require the same drift check.
         flat_old, flat_new = _flat(committed[rid].get("breath") or {}), _flat(ref.get("breath") or {})
         for key, val in flat_new.items():
             ov = flat_old.get(key)
             if not _close(val, ov):
-                print(f"  {rid}/breath/{key}: JSON {ov} vs recompute {val}"); problems += 1
+                print(f"  {rid}/breath/{key}: JSON {ov} vs recompute {val}")
+                problems += 1
     if problems == 0:
         print(f"measurements: {json_path.name} matches a fresh recompute")
     else:
@@ -606,7 +629,7 @@ def _round(obj, nd: int = 3):
     if isinstance(obj, float):
         if obj != obj or obj in (float("inf"), float("-inf")):
             return obj
-        return round(obj, nd) if abs(obj) >= 10 ** -nd else float(f"{obj:.4g}")
+        return round(obj, nd) if abs(obj) >= 10**-nd else float(f"{obj:.4g}")
     if isinstance(obj, dict):
         return {k: _round(v, nd) for k, v in obj.items()}
     return obj
@@ -621,11 +644,16 @@ def main() -> int:
     ap.add_argument("--hr", type=float, help="engine render HR (with --engine)")
     ap.add_argument("-c", "--contractility", type=float, default=1.0, help="label only (with --engine)")
     ap.add_argument("--all", action="store_true", help="measure every annotation -> measurements JSON")
-    ap.add_argument("--json", type=Path, default=DEFAULT_JSON, help=f"measurements file (default {DEFAULT_JSON.name})")
+    ap.add_argument(
+        "--json", type=Path, default=DEFAULT_JSON, help=f"measurements file (default {DEFAULT_JSON.name})"
+    )
     ap.add_argument("--md-table", action="store_true", help="print the REFERENCE_ANALYSIS markdown rows")
     ap.add_argument("--check", action="store_true", help="diff a fresh recompute against the committed JSON")
-    ap.add_argument("--hf-skew-window-sweep", action="store_true",
-                    help="audit HF lead/lag over fractions of each annotated S1 duration")
+    ap.add_argument(
+        "--hf-skew-window-sweep",
+        action="store_true",
+        help="audit HF lead/lag over fractions of each annotated S1 duration",
+    )
     a = ap.parse_args()
 
     if a.check:
@@ -642,10 +670,12 @@ def main() -> int:
             law = data.get(SYSTOLE_LAW_KEY, {})
             print(f"wrote {a.json.relative_to(ROOT).as_posix()}  ({len(refs)} recordings, {n} groups)")
             if law:
-                print(f"  systole law fit: {law['fit_intercept_ms']:.1f} - "
-                      f"{law['fit_slope_ms_per_bpm']:.3f}*HR ms  "
-                      f"(SE {law['fit_intercept_se_ms']:.1f} / {law['fit_slope_se_ms_per_bpm']:.3f}, "
-                      f"residual std {law['residual_std_ms']:.1f} ms, {law['n_groups']} groups)")
+                print(
+                    f"  systole law fit: {law['fit_intercept_ms']:.1f} - "
+                    f"{law['fit_slope_ms_per_bpm']:.3f}*HR ms  "
+                    f"(SE {law['fit_intercept_se_ms']:.1f} / {law['fit_slope_se_ms_per_bpm']:.3f}, "
+                    f"residual std {law['residual_std_ms']:.1f} ms, {law['n_groups']} groups)"
+                )
         return 0
 
     if not (a.ref and a.annot):
@@ -661,19 +691,27 @@ def main() -> int:
             ap.error("--hf-skew-window-sweep does not accept --engine")
         print_hf_skew_window_sweep(signal, groups)
         return 0
-    columns = [(f"{ref_id(a.annot)} {label}", measure_group(signal, beats)) for label, beats in groups.items()]
+    columns = [
+        (f"{ref_id(a.annot)} {label}", measure_group(signal, beats)) for label, beats in groups.items()
+    ]
 
     if a.engine:
         if a.hr is None:
             ap.error("--engine requires --hr")
         esig, esr = shrlib.load(a.engine)
         assert esr == SR, esr
-        columns.append((f"eng hr{a.hr:.0f} c{a.contractility:.2f}",
-                        measure_group(esig, engine_beats(esig, a.hr))))
+        columns.append(
+            (f"eng hr{a.hr:.0f} c{a.contractility:.2f}", measure_group(esig, engine_beats(esig, a.hr)))
+        )
 
     if a.md_table:
-        print_md_table({ref_id(a.annot): {"groups": {lab: m for lab, m in
-                        ((c[0].split(" ", 1)[-1], c[1]) for c in columns)}}})
+        print_md_table(
+            {
+                ref_id(a.annot): {
+                    "groups": {lab: m for lab, m in ((c[0].split(" ", 1)[-1], c[1]) for c in columns)}
+                }
+            }
+        )
     else:
         print_table(columns)
     return 0

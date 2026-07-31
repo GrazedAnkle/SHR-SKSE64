@@ -14,6 +14,7 @@ Stdlib-only so it can run in CI.
 
 Usage:  python tools/check_constants.py [--root .]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -32,15 +33,11 @@ NONLIVE_CLASSIFICATIONS = {
 }
 
 TAG_RE = re.compile(r"\[(" + "|".join(TAGS) + r")\]")
-CONSTEXPR_RE = re.compile(
-    r"^\s*constexpr\s+(?P<type>[A-Za-z_:][\w:]*)\s+(?P<name>[A-Za-z_]\w*)\s*="
-)
+CONSTEXPR_RE = re.compile(r"^\s*constexpr\s+(?P<type>[A-Za-z_:][\w:]*)\s+(?P<name>[A-Za-z_]\w*)\s*=")
 COMMENT_RE = re.compile(r"^\s*//")
 BANNER_RE = re.compile(r"=====")
 MACRO_START_RE = re.compile(r"^\s*#define\s+(SHR_[A-Z_]+)\(X\)\s*\\?\s*$")
-LIVE_ENTRY_RE = re.compile(
-    r"^\s*X\(\s*(?P<type>[^,]+),\s*(?P<name>[A-Za-z_]\w*)\s*\)\s*\\?\s*$"
-)
+LIVE_ENTRY_RE = re.compile(r"^\s*X\(\s*(?P<type>[^,]+),\s*(?P<name>[A-Za-z_]\w*)\s*\)\s*\\?\s*$")
 NONLIVE_ENTRY_RE = re.compile(
     r"^\s*X\(\s*(?P<classification>[A-Za-z_]\w*),\s*(?P<type>[^,]+),"
     r"\s*(?P<name>[A-Za-z_]\w*)\s*,"
@@ -143,11 +140,7 @@ def _registry(path: Path) -> tuple[dict[str, RegistryEntry], list[str], dict[str
             continue
         current_macro = None
 
-    live_owners = {
-        entry.Owner
-        for entry in entries.values()
-        if entry.Owner.startswith("SHR_")
-    }
+    live_owners = {entry.Owner for entry in entries.values() if entry.Owner.startswith("SHR_")}
     for owner in sorted(live_owners - set(groups)):
         problems.append(f"{path.name}: live field list '{owner}' is absent from SHR_MODEL_COEFFICIENT_GROUPS")
     for fields in sorted(set(groups) - live_owners):
@@ -238,9 +231,7 @@ def _check_negative_fixture(root: Path) -> list[str]:
     expected = ("duplicate registry entry 'Alpha'", "'Alpha' type int", "constant 'Count'")
     missing = [text for text in expected if not any(text in problem for problem in problems)]
     if missing:
-        return [
-            "negative model-registry fixture no longer proves: " + ", ".join(missing)
-        ]
+        return ["negative model-registry fixture no longer proves: " + ", ".join(missing)]
     return []
 
 

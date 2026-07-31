@@ -10,8 +10,7 @@ import shrlib
 SR = shrlib.SR
 
 
-def synthetic_lobe(f0_hz=80.0, rise_ms=40.0, level=1.0, null=False, lobes=1,
-                   noise_rms=0.0, seed=0):
+def synthetic_lobe(f0_hz=80.0, rise_ms=40.0, level=1.0, null=False, lobes=1, noise_rms=0.0, seed=0):
     """One deterministic S1-like lobe with known timing and optional white-noise floor.
 
     `noise_rms` is measured before `level`, so scaling the fixture preserves SNR. Tests that need a
@@ -28,7 +27,7 @@ def synthetic_lobe(f0_hz=80.0, rise_ms=40.0, level=1.0, null=False, lobes=1,
         signal += 0.72 * np.roll(signal, int(0.022 * SR))
     if noise_rms > 0.0:
         noise = np.random.default_rng(seed).standard_normal(len(signal))
-        noise *= noise_rms / np.sqrt(np.mean(noise ** 2))
+        noise *= noise_rms / np.sqrt(np.mean(noise**2))
         signal += noise
     return level * signal
 
@@ -59,10 +58,27 @@ def synthetic_hf_geometry(duration_ms=140.0, window_fraction=1.0):
 class MetricAuditTests(unittest.TestCase):
     def test_metadata_covers_the_metric_battery(self):
         expected = {
-            "env", "env_analytic", "onset_peak_idx", "attack_ms", "rise_10_90_ms",
-            "decay_ms", "centroid", "rolloff", "spread", "f0", "bands", "rms",
-            "peak", "crest", "chirp", "energy_conc", "hf_band", "lobe_count",
-            "hf_temporal_skew", "rise_body_contrast", "a_weight",
+            "env",
+            "env_analytic",
+            "onset_peak_idx",
+            "attack_ms",
+            "rise_10_90_ms",
+            "decay_ms",
+            "centroid",
+            "rolloff",
+            "spread",
+            "f0",
+            "bands",
+            "rms",
+            "peak",
+            "crest",
+            "chirp",
+            "energy_conc",
+            "hf_band",
+            "lobe_count",
+            "hf_temporal_skew",
+            "rise_body_contrast",
+            "a_weight",
         }
         self.assertEqual(set(shrlib.METRIC_METADATA), expected)
         for metadata in shrlib.METRIC_METADATA.values():
@@ -101,7 +117,8 @@ class MetricAuditTests(unittest.TestCase):
             noise_rms = shrlib.rms(clean) * 0.1
             noisy = synthetic_lobe(f0_hz, noise_rms=noise_rms)
             self.assertAlmostEqual(
-                shrlib.rise_10_90_ms(noisy, SR), shrlib.rise_10_90_ms(clean, SR), delta=1.1)
+                shrlib.rise_10_90_ms(noisy, SR), shrlib.rise_10_90_ms(clean, SR), delta=1.1
+            )
             self.assertAlmostEqual(shrlib.f0(noisy, SR, hi=220.0), f0_hz, delta=0.5)
 
     def test_rise_10_90_is_immune_to_a_pre_peak_null(self):
@@ -165,7 +182,7 @@ class MetricAuditTests(unittest.TestCase):
         tone = np.sin(2.0 * np.pi * 80.0 * np.arange(int(0.5 * SR)) / SR)
         weighted = shrlib.a_weight(tone, SR)
         mid = len(tone) // 2
-        levels = [shrlib.rms(weighted[mid:mid + int(ms * 1e-3 * SR)]) for ms in (55, 65, 75, 95)]
+        levels = [shrlib.rms(weighted[mid : mid + int(ms * 1e-3 * SR)]) for ms in (55, 65, 75, 95)]
         for level in levels[1:]:
             self.assertAlmostEqual(20.0 * np.log10(level / levels[0]), 0.0, delta=0.15)
 
@@ -176,16 +193,16 @@ class MetricAuditTests(unittest.TestCase):
         of rejecting it, so the level reads high. A clean periodic signal does not expose this failure.
         """
         t = np.arange(int(0.9 * SR)) / SR
-        signal = 0.5 * np.sin(2.0 * np.pi * 8.0 * t)                       # sub-audible rumble
+        signal = 0.5 * np.sin(2.0 * np.pi * 8.0 * t)  # sub-audible rumble
         lobe = synthetic_lobe()
-        signal[int(0.2 * SR):int(0.2 * SR) + len(lobe)] += lobe
+        signal[int(0.2 * SR) : int(0.2 * SR) + len(lobe)] += lobe
         start, width = int(0.2 * SR), int(0.075 * SR)
 
-        window = signal[start:start + width]
+        window = signal[start : start + width]
         spectrum = np.fft.rfft(window)
         freq = np.fft.rfftfreq(len(window), 1.0 / SR)
         circular = shrlib.rms(np.fft.irfft(spectrum * shrlib.a_weight_gain(freq), n=len(window)))
-        correct = shrlib.rms(shrlib.a_weight(signal, SR)[start:start + width])
+        correct = shrlib.rms(shrlib.a_weight(signal, SR)[start : start + width])
         self.assertGreater(20.0 * np.log10(circular / correct), 0.5)
 
     def test_level_invariant_shape_metrics(self):
@@ -198,8 +215,8 @@ class MetricAuditTests(unittest.TestCase):
     def test_hf_temporal_skew_has_known_anchor_free_value(self):
         lobe = np.zeros(100)
         hf = np.zeros(100)
-        lobe[[20, 80]] = 1.0       # broadband energy centroid = 0.50 of the window
-        hf[20] = 1.0               # HF energy centroid = 0.20 of the window
+        lobe[[20, 80]] = 1.0  # broadband energy centroid = 0.50 of the window
+        hf[20] = 1.0  # HF energy centroid = 0.20 of the window
         expected = -0.30
         self.assertAlmostEqual(shrlib.hf_temporal_skew(lobe, hf), expected, places=12)
         self.assertAlmostEqual(shrlib.hf_temporal_skew(7.0 * lobe, 0.2 * hf), expected, places=12)
@@ -244,21 +261,19 @@ class MetricAuditTests(unittest.TestCase):
             return np.exp(-0.5 * ((unit_time - center) / sigma) ** 2)
 
         for phase in (0.0, 0.3, 0.7, 1.4, 2.2):
-            low = (
-                0.45 * gaussian(0.22, 0.08) + gaussian(0.68, 0.13)
-            ) * np.sin(2.0 * np.pi * 60.0 * t + phase)
-            early_hf = 0.12 * gaussian(0.24, 0.05) * np.sin(
-                2.0 * np.pi * 320.0 * t + 0.7 + phase)
+            low = (0.45 * gaussian(0.22, 0.08) + gaussian(0.68, 0.13)) * np.sin(
+                2.0 * np.pi * 60.0 * t + phase
+            )
+            early_hf = 0.12 * gaussian(0.24, 0.05) * np.sin(2.0 * np.pi * 320.0 * t + 0.7 + phase)
             source = low + early_hf
             source /= np.max(np.abs(source))
             clean = np.pad(source, (padding, padding))
             saturated = np.clip(2.8 * clean, -0.42, 0.42)
 
-            clean_hf = shrlib.hf_band(clean, SR)[padding:padding + duration]
-            saturated_hf = shrlib.hf_band(saturated, SR)[padding:padding + duration]
+            clean_hf = shrlib.hf_band(clean, SR)[padding : padding + duration]
+            saturated_hf = shrlib.hf_band(saturated, SR)[padding : padding + duration]
             clean_skew = shrlib.hf_temporal_skew(source, clean_hf)
-            saturated_skew = shrlib.hf_temporal_skew(
-                saturated[padding:padding + duration], saturated_hf)
+            saturated_skew = shrlib.hf_temporal_skew(saturated[padding : padding + duration], saturated_hf)
 
             self.assertLess(clean_skew, -0.30)
             self.assertGreater(saturated_skew, 0.0)
