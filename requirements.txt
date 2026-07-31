@@ -9,3 +9,4 @@ pybind11>=3.0      # build-time only: offline core binding (SHR_BUILD_PYBIND); p
 pybind11-stubgen>=2.5  # build-time only: generates build/module/shr_pybind.pyi for Pylance/Pyright,
                    # invoked by the binding's post-build step (cmake/publish_pybind_module.cmake)
 pytest>=8.0        # golden regression suite over the compiled offline binding
+ruff==0.16.1       # formats tools/ and tests/; pinned exactly because CI checks its exact output

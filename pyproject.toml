@@ -5,6 +5,13 @@
 # Read by tools/build_pybind.py; .github/workflows/offline-goldens.yml pins the same version.
 requires-python = ">=3.13"
 
+# Formatting only; no lint rule set. docs/DOCUMENTATION_CONVENTIONS.md owns why.
+[tool.ruff]
+line-length = 110
+# Ruff reads this from [project] requires-python when one exists. There is none, so it is stated here
+# and has to be kept consistent with [tool.shr] requires-python above.
+target-version = "py313"
+
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
