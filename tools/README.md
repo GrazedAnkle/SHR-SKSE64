@@ -18,7 +18,9 @@ knowing before changing that file:
   repository, so a `[project]` table would add a build and versioning surface for no consumer.
 
 Test paths and the import root are declared once there, so `pytest` at the repository root needs no
-arguments. [README.md](../README.md) owns setup and the compiled binding's build and publish steps.
+arguments. `[tool.ruff]` sits beside them; run `ruff format` before pushing, or let CI name what differs.
+[DOCUMENTATION_CONVENTIONS.md](../docs/DOCUMENTATION_CONVENTIONS.md#source-formatting) owns formatting, and
+[README.md](../README.md) owns setup and the compiled binding's build and publish steps.
 
 ## Load-bearing
 

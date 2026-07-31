@@ -1,0 +1,44 @@
+name: python format
+
+on:
+  push:
+    paths:
+      - "tools/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "requirements.txt"
+      - ".github/workflows/python-format.yml"
+  pull_request:
+    paths:
+      - "tools/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "requirements.txt"
+      - ".github/workflows/python-format.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check-formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # requirements.txt owns the pin, so CI cannot drift from what a contributor runs locally. Ruff
+      # alone: nothing here imports the code it formats.
+      - name: Install the pinned formatter
+        run: |
+          pin="$(grep -oE '^ruff==[0-9.]+' requirements.txt)"
+          if [ -z "$pin" ]; then
+            echo "requirements.txt has no exact ruff== pin; this check needs one to be reproducible" >&2
+            exit 1
+          fi
+          python -m pip install --disable-pip-version-check "$pin"
+
+      - name: Check tools/ and tests/ formatting
+        run: ruff format --check --diff tools tests

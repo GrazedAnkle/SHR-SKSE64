@@ -69,6 +69,39 @@ To ensure code remains readable, and to minimize surface area for comment drift,
 implementation details or quirks necessary for local understanding. Detailed explanations go in appropriate owning docs,
 and should not be duplicated in comments.
 
+## Source formatting
+
+Python formatting is enforced by `ruff format`. `pyproject.toml` configures it, and
+`.github/workflows/python-format.yml` runs it as a check that reports and fails rather than as a mutation
+that rewrites. `requirements.txt` pins the version exactly, because a formatter whose output changes
+across a release would fail an unchanged branch, which is what gets such a gate disabled. Only the
+formatter is adopted: lint rules encode opinions that need individual judgment, and mixing them into a
+mechanical reformat makes neither reviewable. Where a hand-placed line break carries meaning, a trailing
+comma preserves it, since the formatter leaves a collection with one exploded across lines.
+
+C++ formatting is maintained by hand, and that is a decision rather than an omission. clang-format cannot
+express the style the sources use. This was measured rather than assumed: across the roughly ten thousand
+lines of C++, the closest-fitting configuration still rewrote about forty percent of them, and even a
+configuration reduced to indentation and brace placement rewrote about a quarter. Two properties are the
+reason, and both are load-bearing for reading the sources:
+
+- breaks are placed at logical boundaries rather than at a column limit. A multi-clause condition takes
+  one clause per line, and a call takes one argument per line, whether or not the joined form would fit.
+  clang-format packs to the column limit and offers no way to preserve an author's break; `ColumnLimit: 0`
+  suppresses the repacking only by abandoning enforcement, and C++ has no equivalent of the trailing-comma
+  escape hatch; and
+- alignment is applied to tabular data and withheld from statement runs. `Constants.hpp` aligns both the
+  assignment column and the numeric literals after it; a run of ordinary assignments is left unaligned.
+  clang-format aligns a contiguous run all or not at all, and never pads inside the right-hand side, so no
+  setting reproduces both.
+
+Adopting a formatter anyway would restyle the C++ rather than capture its style. Revisit only if the tool
+gains a way to preserve an author's breaks.
+
+Line endings are a separate concern from either formatter. `.gitattributes` declares the stored form as LF
+for every text file, so normalization is a property of the repository rather than of each contributor's
+`core.autocrlf`; checkout still converts to the platform convention.
+
 ## Constant provenance tags
 
 Every constant in `src/core/Constants.hpp` has one provenance tag answering what process is required to change

@@ -77,35 +77,6 @@ evidence links, and decision points.
   `NotificationPolicy`, which owns only message selection. That edge detection is untested logic sitting in
   the one file nothing can test; a small testable level tracker would close it.
 
-### Project maintainability
-
-Duplication, contract, and build-hygiene items. These are engineering maintenance rather than model or
-evidence work, and none of them changes runtime behavior.
-
-| ID | Outcome | Status | Blocker or dependency | Next action |
-|---|---|---|---|---|
-| [WI-040](work_items/WI-040-formatting-standards.md) | Formatting enforced by tool, not discipline | `[NEEDS DESIGN]` | None | Fit a C++ config and measure the resulting diff |
-
-The core/plugin dependency boundary is now expressed by the source layout rather than by convention:
-`src/core`, `src/adapter`, and `src/plugin` each back exactly one target, `src/` is the single include
-root so every include names the layer it crosses into, and `tools/check_layering.py` enforces the
-downward-only direction, the qualification, and agreement between each directory and its CMake list.
-[ARCHITECTURE.md](ARCHITECTURE.md#dependency-boundary) owns that boundary, including why shared value
-types stay in core and why the layers are flat rather than component trees.
-
-Offline execution now runs on the compiled core through the Python binding, with deterministic golden
-scenarios as the primary acceptance gate for physiology, rhythm, and DSP changes;
-[ARCHITECTURE.md](ARCHITECTURE.md#offline-execution) owns that boundary, including native-layout audition
-audio, explicit channel-zero analysis, thin rhythm/trajectory clients, retired-effect counterfactuals,
-immutable coefficient sweeps, the registry-backed coefficient surface, the registry-enumerated golden
-domains behind separate verify and capture entry points, single-definition domain fixtures, and their
-Windows CI gate.
-
-The Python side's project configuration is settled and needs no further work item:
-[../README.md](../README.md) owns setup and where a build publishes the compiled binding, and
-[../tools/README.md](../tools/README.md) owns the flat import root, the enforced tools index, and what the
-configuration deliberately omits.
-
 ## Untriaged ideas
 
 These are captured only so they are not lost. Promote one to a focused work item only after its outcome and
