@@ -20,7 +20,6 @@
 #include "adapter/NotificationPolicy.hpp"
 #include "core/Runtime.hpp"
 #include "plugin/PluginState.hpp"
-#include "plugin/ThreadTrace.hpp"
 
 #include <optional>
 
@@ -197,8 +196,6 @@ namespace
 
     void OnSave(SKSE::SerializationInterface *serde)
     {
-        SHR_TRACE_THREAD("serialization.OnSave");
-
         const SHR::SimulationState state = RuntimeInstance().GetState();
 
         const float heartRate = state.FastHeartRate + state.SlowHeartRate;
@@ -246,15 +243,11 @@ namespace
 
     void OnRevert([[maybe_unused]] SKSE::SerializationInterface *serde)
     {
-        SHR_TRACE_THREAD("serialization.OnRevert");
-
         SHR::PluginState::Get().Revert(RE::Calendar::GetSingleton()->GetHoursPassed());
     }
 
     void OnLoad(SKSE::SerializationInterface *serde)
     {
-        SHR_TRACE_THREAD("serialization.OnLoad");
-
         std::uint32_t recordType;
         std::uint32_t recordSize;
         std::uint32_t recordVersion;
@@ -363,9 +356,6 @@ namespace
 
     void Update(const RE::PlayerCharacter *player, float delta)
     {
-        // The reference row: every other site is interesting only relative to this one.
-        SHR_TRACE_THREAD("hook.PlayerCharacter::Update");
-
         s_OriginalUpdate(player, delta);
 
         SHR::PluginState &state = SHR::PluginState::Get();

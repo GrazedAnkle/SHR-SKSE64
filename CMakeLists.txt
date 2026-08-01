@@ -113,7 +113,6 @@ set(plugin_sources
     src/plugin/SinkBuffer.hpp
     src/plugin/SkyrimHeartRate.cpp
     src/plugin/SkyrimHeartRate.hpp
-    src/plugin/ThreadTrace.hpp
     src/plugin/pch.hpp
 )
 
