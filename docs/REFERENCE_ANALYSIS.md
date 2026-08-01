@@ -155,7 +155,7 @@ robust to a uniform onset bias, while the intercept is not. Both coefficients ar
 - Measured: cleanest window (04:51-04:55) rested HR ~65-67. Systole ~330-349ms (low-HR baseline).
   **Within-recording brightness and breath observations - directional only.** These are single windows
   across large temporal gaps (04:51 -> 10:39 is ~6 min); several figures are demoted pending the
-  [cross-gap claim audit](work_items/WI-005-cross-gap-audit.md).
+  [cross-gap claim audit](https://github.com/GrazedAnkle/SHR-SKSE64/issues/10).
   - *Contractility brightening (direction):* S1 centroid rises from rest (04:51) to post-exercise
     (10:39, same supine site), ~72 -> 90Hz. Two single windows ~6 min apart, so this anchors the
     *direction* of drive-brightening, not a calibrated ratio.
@@ -282,7 +282,7 @@ robust to a uniform onset bias, while the intercept is not. Both coefficients ar
 ### ref20 - in-exercise (bodyweight squats), strong breath swing, Erb's/tricuspid
 - Purpose: high-HR in-exercise breath modulation - the **breath-muffle calibration anchor** for the
   inspiratory low-pass and amplitude depth (see
-  [WI-008](work_items/WI-008-spectral-breath-muffle.md), `BreathLowPassMinHz`, and `BreathAmpDepth`).
+  [WI-008](https://github.com/GrazedAnkle/SHR-SKSE64/issues/12), `BreathLowPassMinHz`, and `BreathAmpDepth`).
 - Context: home recording, bodyweight squats, sustained ~178 bpm (in-exercise, not recovery)
 - Ventilation context: the five hand-labelled cycles span roughly **24 breaths/min**. The subject and
   protocol skew young/fit and may be below maximum ventilation even at this HR; without the subject's
@@ -396,7 +396,7 @@ are not comparable.
   establishes the *direction*, not a coefficient. The `peak ratio` and `t_floor` columns are
   absolute-level quantities read across a large within-recording gap, so they are AGC-exposed; the
   level-invariant 10-90% rise is the trusted column (see
-  [WI-005](work_items/WI-005-cross-gap-audit.md)).
+  [WI-005](https://github.com/GrazedAnkle/SHR-SKSE64/issues/10)).
 - **Multi-lobe S1 is the norm, and it destabilizes any peak-anchored metric.**
   S1 is physiologically multi-component (M1 mitral then T1 tricuspid closure). Median lobe count per
   group (5 ms analytic envelope, lobes >=45% of peak and >=15 ms apart), with the runner-up lobe's
@@ -432,7 +432,7 @@ are not comparable.
 - **Respiratory sinus arrhythmia:** ref6 (strong), ref9 (+/-10%), ref11
 - **PVCs:** ref9 (7+, full morphology), ref7 (3)
 - **Breath muffle observations:** ref11 deep-breath (indicative centroid -34%; the concurrent F0 -14%
-  is suspect under [WI-008](work_items/WI-008-spectral-breath-muffle.md)), ref8
+  is suspect under [WI-008](https://github.com/GrazedAnkle/SHR-SKSE64/issues/12)), ref8
   (centroid ~45% over 15-30s), ref6 (34% at rest), ref10 (40%), ref12a, **ref20** (in-exercise ~178 bpm,
   centroid ratio ~0.77 / A-weighted ~-8 dB - the strong *upper* end; the breath-muffle calibration
   anchor, see the ref20 entry above)
@@ -447,7 +447,7 @@ are not comparable.
 - **Frequency rises with HR = S1 brightening, not F0, and not S2** (within-recording, mic-controlled):
   ref15 provides the clean magnitude (S1 cen x1.16 with F0 and S2 flat). Ref11 moves in the same
   direction, but its x1.25 centroid magnitude is method-sensitive across the long gap and remains
-  directional under [WI-005](work_items/WI-005-cross-gap-audit.md).
+  directional under [WI-005](https://github.com/GrazedAnkle/SHR-SKSE64/issues/10).
   Confirmed on the **A-weighted peak-anchored HF ruler** (`tools/measure_clap.py`; a short window on
   the S2 envelope peak, so it is tail-immune - the soft LF S2 tail cannot pull it, unlike the
   full-window magnitude centroid): S1's A-weighted HF share roughly doubles/triples with drive

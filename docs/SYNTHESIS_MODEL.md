@@ -44,7 +44,7 @@ pressure rise and more abrupt blood/tissue deceleration can produce a sharper tr
 more HF. The source's post-peak lobes and decay remain intact. This is a physiologically compatible
 working mechanism, grounded directionally in the ref11 and ref15 within-recording drive pairs; those
 recordings do not isolate the exact causal decomposition or coefficient. The exact ref11 magnitude
-remains method-sensitive; see [WI-005](work_items/WI-005-cross-gap-audit.md).
+remains method-sensitive; see [WI-005](https://github.com/GrazedAnkle/SHR-SKSE64/issues/10).
 
 **Resampling is reserved for *pitch* motion** - the breath pitch-dip and PVC dulling - not for
 brightness: speeding the sample up shifts the fundamental, which reads as sped-up rather than forceful.
@@ -53,7 +53,7 @@ The cardiac-source chain has no **harmonic exciter**. A contractility-scaled tan
 manufacture 100-200 Hz harmonics even though the source low-cut already places S1 HF content in the
 reference range, and it would concentrate that HF in the lobe *body* rather than the rise. That temporal
 placement is the perceptual sign opposite a sharper attack. Breath muffle must be evaluated on this
-exciter-free spectrum under [WI-008](work_items/WI-008-spectral-breath-muffle.md).
+exciter-free spectrum under [WI-008](https://github.com/GrazedAnkle/SHR-SKSE64/issues/12).
 
 ## Signal-chain architecture
 
@@ -66,7 +66,7 @@ order.
    emits more high-frequency energy. These are real properties of the emitted sound and all scale
    with **contractility** (and per-beat preload via Frank-Starling). Grounding: ref11's centroid
    rises within the ref11 and ref15 drive pairs (same recording/site; directional, with the ref11
-   magnitude under [cross-gap audit](work_items/WI-005-cross-gap-audit.md)), so the brightening is cardiac,
+   magnitude under [cross-gap audit](https://github.com/GrazedAnkle/SHR-SKSE64/issues/10)), so the brightening is cardiac,
    not merely a cross-recording timbre difference; ref13's HR rise shows loudness and centroid climbing
    with exertion, and the attack sharpening is re-established on the within-recording drive pairs
    (ref11 -21.9 ms, ref14 -7.4 ms, measured as the null-immune 10-90% rise). These drive **S1**;
@@ -161,7 +161,7 @@ Subtle but real effects that separate synthetic from recorded. Capture as many a
 1. **Breath phase moves loudness, centroid, and pitch together.** Lung inflation makes each beat
    quieter, duller (a low-pass *muffle*), and slightly lower in *pitch* (`BreathPitchDipDepth`). The
    current pitch magnitude is weakly supported: the ref11 F0 drop is a suspect cross-gap/estimator
-   measurement (see [WI-008](work_items/WI-008-spectral-breath-muffle.md)); the muffle direction is
+   measurement (see [WI-008](https://github.com/GrazedAnkle/SHR-SKSE64/issues/12)); the muffle direction is
    well-grounded but the pitch dip may shrink or vanish, in
    which case re-tune the constant. The muffle and the pitch dip (if real) are layered, not alternatives. All share the same driver (`m_RespPhase`) and scale with
    the lagged breath depth state (`Simulation::m_RespDepth`), so they are correlated, not independent.

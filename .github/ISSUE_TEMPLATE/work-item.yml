@@ -7,17 +7,8 @@ body:
       value: |
         One work item owns **one independently closable outcome**. The sections below are the shape
         described in
-        [DOCUMENTATION_CONVENTIONS.md](https://github.com/GrazedAnkle/SHR-SKSE64/blob/trunk/docs/DOCUMENTATION_CONVENTIONS.md#focused-work-items);
+        [DOCUMENTATION_CONVENTIONS.md](https://github.com/GrazedAnkle/SHR-SKSE64/blob/trunk/docs/DOCUMENTATION_CONVENTIONS.md#work-items-are-issues);
         keep them even when a section is short.
-
-        Two conventions worth knowing before you start typing:
-
-        - **Identity is this issue's number.** Items migrated from `docs/work_items/` keep their
-          historical `WI-###:` title prefix so older commits, documents, and notes still resolve. New
-          items do not get one.
-        - **Status is a label, not body text** - `status:active`, `status:next`, `status:needs-design`,
-          `status:blocked`, `status:deferred`. Completed work is closed, and its durable result is folded
-          into the document that owns the topic rather than left here.
   - type: textarea
     id: outcome
     attributes:

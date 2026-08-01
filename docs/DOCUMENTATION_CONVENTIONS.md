@@ -1,8 +1,8 @@
 # Documentation Conventions
 
 These conventions keep the authoritative documentation current without turning it into a development
-log. The reader-facing map lives in [README.md](README.md); task status lives in
-[ROADMAP.md](ROADMAP.md).
+log. The reader-facing map lives in [README.md](README.md); task state lives in the issue tracker, and
+[ROADMAP.md](ROADMAP.md) carries the milestone and priority order.
 
 ## Document ownership
 
@@ -14,29 +14,15 @@ Each topic has one authoritative owner. Other documents link to it instead of re
 - [CONTRACTILITY_SPEC.md](CONTRACTILITY_SPEC.md) owns the current contractility signal in depth.
 - [REFERENCE_ANALYSIS.md](REFERENCE_ANALYSIS.md) owns findings from reference recordings.
 - [MEASUREMENT_METHODS.md](MEASUREMENT_METHODS.md) owns cross-cutting measurement methodology.
-- [ROADMAP.md](ROADMAP.md) owns priority, dependencies, and links to focused work items.
+- [ROADMAP.md](ROADMAP.md) owns the current milestone, priority order, and the groupings that say which
+  items must be designed or balanced together.
 
 Every authoritative document describes what is true now. There is no frozen documentation tier.
 
-## Status tags
+## Work items are issues
 
-- `[ACTIVE]` - being worked on now.
-- `[NEXT]` - specified and next in line.
-- `[NEEDS DESIGN]` - the outcome is known but its implementation is not yet settled.
-- `[BLOCKED]` - cannot progress until a named dependency or external input changes.
-- `[DEFERRED]` - deliberately postponed, with the reason recorded.
-- `[DONE]` - allowed only for a completed sub-step inside a still-open focused work item. Standalone
-  completed work moves to its authoritative owner and is removed from task tracking.
-
-## Completed work is atemporal
-
-When work completes, remove it from the roadmap or focused work item and fold the durable result into the
-owning document. State the problem, cause, and current solution so the "why" survives without retaining a
-chronological investigation log. Git history owns ordinary development history.
-
-## Focused work items
-
-One work item owns one independently closable outcome. It contains:
+Task state lives in the GitHub issue tracker. One work item is one issue with the
+`work-item` label, owning one independently closable outcome, and containing:
 
 - outcome and acceptance criteria;
 - current conclusion;
@@ -46,8 +32,31 @@ One work item owns one independently closable outcome. It contains:
 - next action and decision points; and
 - newly observed work that should be split out rather than silently added to scope.
 
-The filename begins with a stable `WI-###` ID. The roadmap points to that ID and never relies on line or
-nested-item numbers.
+`.github/ISSUE_TEMPLATE/work-item.yml` supplies that shape. Titles
+beginning `WI-###` are migrated items keeping a historical prefix so older commits and source comments
+still resolve, and no new one is ever assigned.
+
+## Status labels
+
+State is a `status:*` label, so an issue has exactly one status and it is filterable:
+
+- `status:active` - being worked on now.
+- `status:next` - specified and next in line.
+- `status:needs-design` - the outcome is known but its implementation is not yet settled.
+- `status:blocked` - cannot progress until a named dependency or external input changes.
+- `status:deferred` - deliberately postponed, with the reason recorded.
+
+Completed work has no label: the issue is closed.
+
+## Completed work is atemporal
+
+When work completes, close its issue and fold the durable result into the owning document. State the
+problem, cause, and current solution so the "why" survives without retaining a chronological
+investigation log. Git history owns ordinary development history, and the closed issue owns the rest.
+
+A document must not restate what an open issue owns. Cite the issue where a reader needs to know that a
+value or mechanism is under review; do not copy its acceptance criteria, dependencies, or next action
+into prose that will then drift.
 
 ## Tie prose to code and data
 
@@ -58,9 +67,10 @@ argument, such as a fitted law or calibration target, and keep the owning symbol
 Reference findings are owned by [REFERENCE_ANALYSIS.md](REFERENCE_ANALYSIS.md). Measurement-scope state is
 authored in `references/state_ledger.toml`; `tools/ref_analyze.py` embeds it with computed values in the
 generated `references/measurements.json`. [MEASUREMENT_METHODS.md](MEASUREMENT_METHODS.md#reference-state-ledger)
-owns the schema semantics. `tools/check_docs.py` validates links, anchors, symbols, coupling numbers, and
-tool references, and enforces that `tools/README.md` indexes every module in `tools/` so the
-load-bearing/exploratory distinction there cannot silently decay. `tools/check_data_citations.py` validates supported prose citations, calibration bindings,
+owns the schema semantics. `tools/check_docs.py` validates links, anchors, symbols, coupling numbers,
+tool references, and the issue number behind every `WI-###` citation, and enforces that
+`tools/README.md` indexes every module in `tools/` so the load-bearing/exploratory distinction there
+cannot silently decay. `tools/check_data_citations.py` validates supported prose citations, calibration bindings,
 and their structured state references.
 
 ## Keep in-source comments lean

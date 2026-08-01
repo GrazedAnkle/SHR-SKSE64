@@ -54,7 +54,7 @@ between heart rate and beat character observed in refs 7, 8, and 12.
 The current scalar cannot reproduce all of the reference systole shape by itself. Filling/preload and
 post-exercise afterload changes have distinct recovery signatures and are absent from the current systole
 correction. They must be rebalanced together with the sympathetic term; see
-[WI-012](work_items/WI-012-simulation-dynamics.md).
+[WI-012](https://github.com/GrazedAnkle/SHR-SKSE64/issues/15).
 
 ## Audio consumers
 
@@ -92,7 +92,7 @@ dulling is also separate and uses `ResamplePVCRatio`.
   exertion/adrenaline equilibrium.
 
 As-built values and provenance tags live in `src/core/Constants.hpp`. The focused provenance audit is
-[WI-015](work_items/WI-015-calibration-provenance.md).
+[WI-015](https://github.com/GrazedAnkle/SHR-SKSE64/issues/17).
 
 ## Deferred driver separation
 

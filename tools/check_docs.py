@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Validate project documentation cross-references.
 
-Checks docs/*.md for local links and anchors, source symbols, numbered coupling
-references, and Python script references. Python script references in tools/*.py
-are also checked, and tools/README.md must index every module in tools/.
+Checks docs/**/*.md for local links and anchors, source symbols, numbered coupling
+references, work-item issue links, and Python script references. Python script
+references in tools/*.py are also checked, and tools/README.md must index every
+module in tools/.
 
 Exit code is the number of problems found.
 
@@ -31,6 +32,31 @@ PYREF_RE = re.compile(r"\b([\w-]+\.py)\b")
 COUPLING_REF_RE = re.compile(r"coupling\s+(\d+)", re.IGNORECASE)
 NUMBERED_RE = re.compile(r"^(\d+)\.\s")
 FENCE_RE = re.compile(r"^\s*```")
+WORK_ITEM_LINK_RE = re.compile(r"\[WI-(\d{3})[^\]]*\]\(([^)]+)\)")
+
+ISSUE_URL = "https://github.com/GrazedAnkle/SHR-SKSE64/issues"
+# Work items migrated out of docs/work_items/ into GitHub issues. The WI-### prefix is historical and
+# this set is closed - new work is born as an issue and identified by its number alone - so a WI-###
+# link that does not resolve here is a typo rather than a missing entry.
+WORK_ITEM_ISSUES = {
+    "001": 9,
+    "005": 10,
+    "007": 11,
+    "008": 12,
+    "009": 13,
+    "010": 14,
+    "012": 15,
+    "014": 16,
+    "015": 17,
+    "016": 18,
+    "017": 19,
+    "018": 20,
+    "019": 21,
+    "022": 8,
+    "023": 6,
+    "026": 7,
+    "034": 4,
+}
 
 
 def slug(heading: str) -> str:
@@ -147,12 +173,23 @@ def main() -> int:
             where = ", ".join(sorted(p.relative_to(root).as_posix() for p in paths))
             problems.append(f"src/: '{name}' exists in more than one layer ({where})")
 
-    for doc in sorted(docs_dir.glob("*.md")):
+    for doc in sorted(docs_dir.rglob("*.md")):
         text = doc.read_text(encoding="utf-8")
         in_fence = False
         for lineno, line in lines_of(text):
             if FENCE_RE.match(line):
                 in_fence = not in_fence
+
+            # Work-item citations must point at the issue that owns them.
+            if not in_fence:
+                for wi, target in WORK_ITEM_LINK_RE.findall(line):
+                    expected = WORK_ITEM_ISSUES.get(wi)
+                    if expected is None:
+                        problems.append(f"{doc.name}:{lineno}: WI-{wi} is not a known work item")
+                    elif target.strip() != f"{ISSUE_URL}/{expected}":
+                        problems.append(
+                            f"{doc.name}:{lineno}: WI-{wi} links to '{target}', expected {ISSUE_URL}/{expected}"
+                        )
 
             # Links outside fenced blocks.
             if not in_fence:

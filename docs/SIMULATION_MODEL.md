@@ -62,8 +62,8 @@ parameter-level evidence audit. `SleepFraction` follows the common roughly 15% s
 `HRFastFraction` plus the onset/recovery taus were selected within broad reported response ranges (about
 10-20 s for the fitness-dependent fast onset, 30-60 s for fast recovery, 45-90 s for slow onset, and
 3-10 min for the slow recovery tail). These ranges justify the scale and ordering, not the exact
-setpoints. Revalidation belongs to [WI-012](work_items/WI-012-simulation-dynamics.md), with provenance
-closure under [WI-015](work_items/WI-015-calibration-provenance.md).
+setpoints. Revalidation belongs to [WI-012](https://github.com/GrazedAnkle/SHR-SKSE64/issues/15), with provenance
+closure under [WI-015](https://github.com/GrazedAnkle/SHR-SKSE64/issues/17).
 
 ## Exertion
 
@@ -138,7 +138,7 @@ threshold during heavy exercise) and then accelerates to `MaxRespRate`. The knot
 The demand normalization divides by effective fitness, so fitness already moves these curves in absolute
 workload: at the same MET demand, a fitter character breathes less. The knot fractions and the
 rate-versus-depth values are nevertheless shared across fitness levels. Auditing that remaining relative
-shape assumption belongs to [WI-012](work_items/WI-012-simulation-dynamics.md).
+shape assumption belongs to [WI-012](https://github.com/GrazedAnkle/SHR-SKSE64/issues/15).
 
 This partition follows young-adult exercise data: VT1 occurs around three-quarters of peak oxygen
 consumption, tidal volume supplies most of the earlier increase, and respiratory frequency becomes the
@@ -150,7 +150,7 @@ high HR corroborates the threshold-region target but is not an HR-to-demand cali
 `RestingRespRate`, `SleepRespRate`, and `MaxRespRate` sit within broad healthy-young-adult brackets of
 roughly 12-20, 8-10, and 47-50 breaths/min respectively. Individual spread is substantial, especially at
 maximum, so these are provisional population operating points. `InspirationFraction` preserves the
-resting shorter-inspiration premise but is currently dormant; [WI-009](work_items/WI-009-breath-curve-asymmetry.md)
+resting shorter-inspiration premise but is currently dormant; [WI-009](https://github.com/GrazedAnkle/SHR-SKSE64/issues/13)
 owns its state-dependent replacement and must coordinate that curve with WI-012's response kinetics.
 
 Rate uses onset `RespOnsetTau` and recovery `RespRecoveryTau`; depth uses
@@ -173,7 +173,7 @@ model. `PVCCouplingMax` sits in the reported benign 70-90% IBI range; `PVCCoupli
 sub-60% R-on-T danger region and matches the project's benign reference PVCs near 0.62. The probability
 span runs from a nominal healthy background rate (about 0.026% of beats at 70 bpm) to a deliberately
 pathological upper endpoint (about 2.6%). `PVCRunExtensionChance` remains disabled until
-[WI-010](work_items/WI-010-pvc-tuning.md); [WI-019](work_items/WI-019-pvc-compensatory-pause.md) owns the
+[WI-010](https://github.com/GrazedAnkle/SHR-SKSE64/issues/14); [WI-019](https://github.com/GrazedAnkle/SHR-SKSE64/issues/21) owns the
 known compensatory-pause scheduling defect.
 
 ## Events and time-skip
@@ -190,5 +190,5 @@ consistent. Fast travel assumes upright walking with no new adrenaline spikes du
 
 The heart-rate and exertion *dynamics* - recovery kinetics versus fitness, the exertion ramp feel, and
 the post-exercise systole hysteresis that needs preload and afterload terms - have a dedicated focused
-pass: [WI-012](work_items/WI-012-simulation-dynamics.md). Its accepted literature-backed model lands in
+pass: [WI-012](https://github.com/GrazedAnkle/SHR-SKSE64/issues/15). Its accepted literature-backed model lands in
 this document when that work is complete.

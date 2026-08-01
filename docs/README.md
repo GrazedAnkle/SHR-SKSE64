@@ -12,7 +12,8 @@ history.
    the system: state-to-sound and state evolution.
 4. [Measurement Methods](MEASUREMENT_METHODS.md) before trusting a number, then
    [Reference Analysis](REFERENCE_ANALYSIS.md) for the evidence.
-5. [Roadmap](ROADMAP.md) for current priorities, dependencies, and focused work items.
+5. [Roadmap](ROADMAP.md) for the current milestone and priority order; individual work items are GitHub
+   issues labeled `work-item`.
 
 ## Document map
 

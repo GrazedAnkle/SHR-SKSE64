@@ -5,35 +5,36 @@ S2 and breath-transmission gaps without letting an invalid ruler or mismatched p
 another retune. The settled S1 baseline remains fixed while those independent gaps are evaluated.
 
 The milestone succeeds when the S2 annotation convention is operational, breath spectral claims are
-either reproducible or demoted, and every changed
-coefficient has an auditable ruler, state, and provenance. Status meanings are defined in
-[DOCUMENTATION_CONVENTIONS.md](DOCUMENTATION_CONVENTIONS.md#status-tags).
+either reproducible or demoted, and every changed coefficient has an auditable ruler, state, and
+provenance.
 
 ## Current queue
 
-Rows are in dependency-aware rough priority order. Each linked work item owns its acceptance criteria,
-evidence links, and decision points.
+In dependency-aware rough priority order:
 
-| ID | Outcome | Status | Blocker or dependency | Next action |
-|---|---|---|---|---|
-| [WI-005](work_items/WI-005-cross-gap-audit.md) | Every distant-window reference claim classified and remeasured | `[NEXT]` | None | Rebuild ref11 comparisons on one window rule |
-| [WI-008](work_items/WI-008-spectral-breath-muffle.md) | Reproducible muffle evidence separated from suspect pitch motion | `[NEXT]` | WI-005; better reference may be needed | Validate F0 rulers on synthetic muffled signals |
-| [WI-015](work_items/WI-015-calibration-provenance.md) | No unaudited tuned-constant provenance placeholders | `[NEXT]` | State/tuning items for some constants | Audit `[[uncited]]` entries feature by feature |
-| [WI-007](work_items/WI-007-blunt-s2-attack.md) | A sharper S2 envelope with fundamental and timing intact | `[NEXT]` | None | Regenerate S2 rise targets on the settled onset convention |
-| [WI-001](work_items/WI-001-reference-breath-landmarks.md) | Defensible refs 11/14/15 breath landmarks | `[DEFERRED]` | More S1/S2 annotation is required for enough cycles | Resume with one manual beat-grid extension pass |
-| [WI-009](work_items/WI-009-breath-curve-asymmetry.md) | Smooth state-dependent inspiration/expiration curve | `[BLOCKED]` | Defensible resting inspiration-fraction anchor | Acquire or derive the resting anchor, then choose driver/kinetics |
+1. [WI-005: cross-gap reference-claim audit](https://github.com/GrazedAnkle/SHR-SKSE64/issues/10) -
+   classify and remeasure every distant-window reference claim.
+2. [WI-008: spectral breath-muffle evidence](https://github.com/GrazedAnkle/SHR-SKSE64/issues/12) -
+   separate reproducible muffle evidence from suspect pitch motion.
+3. [WI-015: calibration provenance audit](https://github.com/GrazedAnkle/SHR-SKSE64/issues/17) -
+   leave no unaudited tuned-constant provenance placeholder.
+4. [WI-007: blunt S2 attack](https://github.com/GrazedAnkle/SHR-SKSE64/issues/11) - a sharper S2 envelope
+   with fundamental and timing intact.
+5. [WI-001: reference breath landmarks](https://github.com/GrazedAnkle/SHR-SKSE64/issues/9) - defensible
+   refs 11/14/15 breath landmarks.
+6. [WI-009: breath-curve asymmetry](https://github.com/GrazedAnkle/SHR-SKSE64/issues/13) - a smooth
+   state-dependent inspiration/expiration curve.
 
 ## Later milestones
 
 ### Rhythm and simulation
 
-- [WI-010: PVC tuning](work_items/WI-010-pvc-tuning.md) is deferred behind the compensatory-pause fix and
-  PVC-parity fixture work; the baseline sinus envelope is settled.
-- [WI-019: PVC compensatory-pause scheduling](work_items/WI-019-pvc-compensatory-pause.md) removes an
-  extra normal interval after single PVCs and runs; land it before WI-010 neighbor-beat tuning.
-- [WI-012: bundled simulation/dynamics](work_items/WI-012-simulation-dynamics.md) groups preload/afterload
-  systole hysteresis, exertion response, HR-versus-demand validation, and ventilation kinetics so their
-  interactions are tested together.
+- [WI-019](https://github.com/GrazedAnkle/SHR-SKSE64/issues/21) lands before
+  [WI-010](https://github.com/GrazedAnkle/SHR-SKSE64/issues/14): neighbor-beat tuning needs correct
+  compensatory-pause scheduling under it.
+- [WI-012](https://github.com/GrazedAnkle/SHR-SKSE64/issues/15) deliberately bundles preload/afterload
+  systole hysteresis, exertion response, HR-versus-demand validation, and ventilation kinetics, because
+  their interactions have to be tested together rather than tuned as isolated constants.
 - Contractility-driver separation and fight-or-flight gameplay remain a later architectural milestone;
   [CONTRACTILITY_SPEC.md](CONTRACTILITY_SPEC.md#deferred-driver-separation) owns contractility v2, including
   replacement of the known v1 adrenaline double route.
@@ -44,9 +45,10 @@ evidence links, and decision points.
 
 ### Additional audio realism
 
-- [WI-017: breath-sound layer](work_items/WI-017-breath-sound-layer.md) and
-  [WI-018: breath-to-breath variability](work_items/WI-018-breath-variability.md) share the existing
-  respiratory envelope; design and balance them together after WI-009.
+- [WI-017](https://github.com/GrazedAnkle/SHR-SKSE64/issues/19) and
+  [WI-018](https://github.com/GrazedAnkle/SHR-SKSE64/issues/20) share the existing respiratory envelope;
+  design and balance them together, after
+  [WI-009](https://github.com/GrazedAnkle/SHR-SKSE64/issues/13) settles the curve they both build on.
 - S2 split and the site-dependent P2 valve clap remain deferred until position/site state or a defensible
   default exists.
 - S3/S4, murmurs, systolic-rumble characterization, subject age/posture, and alternate saturated sound
@@ -58,27 +60,23 @@ evidence links, and decision points.
 
 ### Evidence and engineering maintenance
 
-- [WI-014: annotation domain/regime validity](work_items/WI-014-annotation-validity.md) needs design before
-  flags, bracket-only beats, and transition regimes can be consumed systematically.
-- [WI-016: site-change detection](work_items/WI-016-site-change-detection.md) remains deferred until one
-  S2-louder base/pulmonary straddle supplies ground truth.
+- [WI-014](https://github.com/GrazedAnkle/SHR-SKSE64/issues/16) needs design before flags, bracket-only
+  beats, and transition regimes can be consumed systematically;
+  [WI-016](https://github.com/GrazedAnkle/SHR-SKSE64/issues/18) stays deferred until a hand-annotated
+  S2-louder straddle supplies ground truth.
 - Re-annotating lost prose-only reference windows, catalog cleanup, extreme-value testing, derived-value
   citation support, and prose-consistency invariants are maintenance candidates.
-- [WI-022: audio resource ownership](work_items/WI-022-audio-resource-ownership.md) makes source-voice and
-  submitted-buffer lifetime explicit, including failed submission and shutdown.
-- [WI-023: co-save record validation](work_items/WI-023-cosave-record-validation.md) defines malformed and
-  future-version fallback before changing the persisted-state representation.
-- [WI-026: runtime thread contract](work_items/WI-026-runtime-thread-contract.md) determines whether event
-  callbacks can forward directly or require a single-writer mailbox, and consolidates the adapter's
-  file-scope state into the one owner that settings updates are delivered into.
-- [WI-034: MCM capability](work_items/WI-034-mcm-capability.md) adds in-game editing for selected
-  subject/runtime and adapter settings. Its persistence scope, override semantics, and live-application
-  rules are settled; a feasibility spike decides how much packaging work it carries. It runs after
-  WI-022, WI-026, and WI-023, in that order.
+- The MCM capability chain runs in a fixed order:
+  [WI-022](https://github.com/GrazedAnkle/SHR-SKSE64/issues/8) gives the audio voice an owner, then
+  [WI-026](https://github.com/GrazedAnkle/SHR-SKSE64/issues/7) settles the thread contract and consolidates
+  the adapter's file-scope state into the owner that settings updates are delivered into, then
+  [WI-023](https://github.com/GrazedAnkle/SHR-SKSE64/issues/6) defines co-save record validation, and only
+  then [WI-034](https://github.com/GrazedAnkle/SHR-SKSE64/issues/4) adds the menu itself - beginning with a
+  feasibility spike that decides how much packaging work it carries.
 
 ## Untriaged ideas
 
-These are captured only so they are not lost. Promote one to a focused work item only after its outcome and
+These are captured only so they are not lost. Promote one to an issue only after its outcome and
 dependencies are understood.
 
 - Blood-pounding/whoosh over the whole mix near maximum HR or near death.

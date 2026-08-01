@@ -139,9 +139,11 @@ legacy-field defaults.
   policy, pause/resume integration, WAV/file I/O, and XAudio submission. The audio sink owns device
   volume and queue/resource behavior.
 
-Core event ingress is synchronous and typed. Whether an SKSE callback can forward directly or requires a
-single-writer mailbox remains a thread-contract decision under
-[WI-026](work_items/WI-026-runtime-thread-contract.md).
+Core event ingress is synchronous and typed. The threads on which SKSE callbacks arrive are not verified,
+and the ingress path reflects that: some notifications cross into simulation state through atomics while
+others mutate it directly. The boundary therefore has no stated threading contract, only a working
+assumption. Establishing one is owned by
+[WI-026](https://github.com/GrazedAnkle/SHR-SKSE64/issues/7).
 
 ## Offline execution
 
