@@ -69,13 +69,12 @@ evidence links, and decision points.
 - [WI-023: co-save record validation](work_items/WI-023-cosave-record-validation.md) defines malformed and
   future-version fallback before changing the persisted-state representation.
 - [WI-026: runtime thread contract](work_items/WI-026-runtime-thread-contract.md) determines whether event
-  callbacks can forward directly or require a single-writer mailbox.
+  callbacks can forward directly or require a single-writer mailbox, and consolidates the adapter's
+  file-scope state into the one owner that settings updates are delivered into.
 - [WI-034: MCM capability](work_items/WI-034-mcm-capability.md) adds in-game editing for selected
-  subject/runtime and adapter settings after persistence, live-application, thread-delivery, and packaging
-  semantics are settled.
-- The heart-rate-level change detection in `SkyrimHeartRate.cpp` decides *when* to consult
-  `NotificationPolicy`, which owns only message selection. That edge detection is untested logic sitting in
-  the one file nothing can test; a small testable level tracker would close it.
+  subject/runtime and adapter settings. Its persistence scope, override semantics, and live-application
+  rules are settled; a feasibility spike decides how much packaging work it carries. It runs after
+  WI-022, WI-026, and WI-023, in that order.
 
 ## Untriaged ideas
 
