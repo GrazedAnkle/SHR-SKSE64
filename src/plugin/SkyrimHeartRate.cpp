@@ -16,12 +16,10 @@
 #include "plugin/SkyrimHeartRate.hpp"
 
 #include "adapter/Config.hpp"
-#include "adapter/HeartRateLevelTracker.hpp"
 #include "core/Constants.hpp"
-#include "plugin/HeartbeatVoice.hpp"
-#include "plugin/InputHandler.hpp"
 #include "adapter/NotificationPolicy.hpp"
 #include "core/Runtime.hpp"
+#include "plugin/PluginState.hpp"
 #include "plugin/ThreadTrace.hpp"
 
 #include <optional>
@@ -123,19 +121,9 @@ namespace
 
     REL::Relocation<decltype(Update)> s_OriginalUpdate;
 
-    std::optional<SHR::Runtime> s_Runtime;
-
-    // Deliberately never destroyed: DestroyVoice waits on the XAudio2 audio thread, and at process
-    // exit the BSXAudio2Audio engine owning the voice may already be gone. Revisited by WI-026.
-    SHR::HeartbeatVoice &s_HeartbeatVoice = *new SHR::HeartbeatVoice();
-
-    float s_LastHoursPassed = 0.0F;
-
-    SHR::HeartRateLevelTracker s_HeartRateLevelTracker;
-
     SHR::Runtime &RuntimeInstance()
     {
-        return s_Runtime.value();
+        return SHR::PluginState::Get().GetRuntime();
     }
 }
 
@@ -160,17 +148,7 @@ void SHR::HeartRateManager::InstallHooks(SKSE::Trampoline &trampoline)
 void SHR::HeartRateManager::Init()
 {
     InitSerialization();
-    const auto &config = Config::Get();
-    s_Runtime.emplace(RuntimeSettings{
-        .Simulation = {
-            .RestingHeartRate = config.HeartRate.Resting,
-            .MaximumHeartRate = config.HeartRate.Max,
-        },
-        .ArrhythmiaSusceptibility = config.Arrhythmia.Susceptibility,
-    });
-    RuntimeInstance().Init();
-    s_HeartbeatVoice.Init(config.Audio.Volume);
-    s_LastHoursPassed = RE::Calendar::GetSingleton()->GetHoursPassed();
+    PluginState::Get().Init(Config::Get(), RE::Calendar::GetSingleton()->GetHoursPassed());
 }
 
 void SHR::HeartRateManager::NotifyJump()
@@ -270,9 +248,7 @@ namespace
     {
         SHR_TRACE_THREAD("serialization.OnRevert");
 
-        RuntimeInstance().Init();
-        s_HeartbeatVoice.FlushAndStop();
-        s_LastHoursPassed = RE::Calendar::GetSingleton()->GetHoursPassed();
+        SHR::PluginState::Get().Revert(RE::Calendar::GetSingleton()->GetHoursPassed());
     }
 
     void OnLoad(SKSE::SerializationInterface *serde)
@@ -392,23 +368,24 @@ namespace
 
         s_OriginalUpdate(player, delta);
 
+        SHR::PluginState &state = SHR::PluginState::Get();
         if (delta == 0.0F)
         {
-            s_HeartbeatVoice.Pause();
+            state.GetVoice().Pause();
             return;
         }
 
-        s_HeartbeatVoice.Resume();
+        state.GetVoice().Resume();
 
-        const float currentHours = RE::Calendar::GetSingleton()->GetHoursPassed();
-        const float gameHoursDelta = currentHours - s_LastHoursPassed;
-        s_LastHoursPassed = currentHours;
+        const float gameHoursDelta = state.ConsumeGameHoursDelta(
+            RE::Calendar::GetSingleton()->GetHoursPassed()
+        );
 
-        const SHR::StepResult result = RuntimeInstance().Step({
+        const SHR::StepResult result = state.GetRuntime().Step({
             .Player         = FromPlayer(player),
             .DeltaSeconds   = delta,
             .GameHoursDelta = gameHoursDelta,
-            .OutputEnabled  = SHR::InputHandler::IsListening(),
+            .OutputEnabled  = state.IsListening(),
         });
         HandleFeedback(player, result);
     }
@@ -444,10 +421,11 @@ namespace
             }
         }
 
-        s_HeartbeatVoice.Play(result.Beat->Render);
+        SHR::PluginState &state = SHR::PluginState::Get();
+        state.GetVoice().Play(result.Beat->Render);
 
         const float heartRate = result.Physiology.HeartRate;
-        if (s_HeartRateLevelTracker.Observe(heartRate))
+        if (state.GetLevelTracker().Observe(heartRate))
         {
             const auto notification = SHR::NotificationPolicy::SelectStatus(
                 SHR::Config::Get().Notification,

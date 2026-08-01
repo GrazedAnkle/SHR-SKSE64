@@ -173,6 +173,14 @@ text. `PhysiologySnapshot` is a wide non-atomic copy and tears if read during a 
 the last completed step's heart rate as an atomic that `GetPublishedHeartRate` serves. `GetSnapshot` remains
 same-thread only.
 
+`PluginState` owns the plugin's long-lived mutable state - the runtime, the heartbeat voice, the game-clock
+sample, the heart-rate level tracker, and the listening flag - as one emplaced instance with one lifetime,
+so each member's writer is stated once rather than per variable. It is deliberately leaked because
+destroying the voice at process exit would call into a possibly-dead `BSXAudio2Audio`, and it is
+non-movable because an initialized voice hands its callback pointer to XAudio. `Init` and `Revert` share
+one reset step, so a member cannot be silently exempt from the co-save revert the way the listening flag
+previously was. This is also the object a menu-driven settings update is delivered into.
+
 One row is still open. `Config::Get` returns a reference into mutable process-global storage whose
 `Notification` member owns heap strings, so a settings write that replaces the aggregate would free those
 buffers under a pool-thread reader. Nothing writes config at runtime today; the write path and its fix

@@ -17,23 +17,14 @@
 
 #include "adapter/Config.hpp"
 #include "adapter/NotificationPolicy.hpp"
+#include "plugin/PluginState.hpp"
 #include "plugin/SkyrimHeartRate.hpp"
 #include "plugin/ThreadTrace.hpp"
-
-namespace
-{
-    std::atomic_int s_IsListening = 0;
-}
 
 void SHR::InputHandler::Register()
 {
     auto *deviceManager = RE::BSInputDeviceManager::GetSingleton();
     deviceManager->AddEventSink(&GetInstance());
-}
-
-bool SHR::InputHandler::IsListening() noexcept
-{
-    return s_IsListening.load() != 0;
 }
 
 RE::BSEventNotifyControl SHR::InputHandler::ProcessEvent(
@@ -61,7 +52,7 @@ RE::BSEventNotifyControl SHR::InputHandler::ProcessEvent(
         {
             if (buttonEvent->IsDown())
             {
-                s_IsListening.fetch_xor(1);
+                PluginState::Get().ToggleListening();
 
                 const auto notification = NotificationPolicy::SelectStatus(
                     Config::Get().Notification,

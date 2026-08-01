@@ -30,8 +30,6 @@ namespace SHR
 
         static void Register();
 
-        static bool IsListening() noexcept;
-
         RE::BSEventNotifyControl ProcessEvent(
             RE::InputEvent *const *event,
             RE::BSTEventSource<RE::InputEvent *> *source

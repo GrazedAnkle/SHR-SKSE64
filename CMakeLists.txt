@@ -108,6 +108,8 @@ set(plugin_sources
     src/plugin/Logging.cpp
     src/plugin/Logging.hpp
     src/plugin/Main.cpp
+    src/plugin/PluginState.cpp
+    src/plugin/PluginState.hpp
     src/plugin/SinkBuffer.hpp
     src/plugin/SkyrimHeartRate.cpp
     src/plugin/SkyrimHeartRate.hpp
