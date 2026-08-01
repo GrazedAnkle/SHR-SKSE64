@@ -1,0 +1,81 @@
+name: Work item
+description: One independently closable outcome, in the project's six-section shape.
+labels: ["work-item"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One work item owns **one independently closable outcome**. The sections below are the shape
+        described in
+        [DOCUMENTATION_CONVENTIONS.md](https://github.com/GrazedAnkle/SHR-SKSE64/blob/trunk/docs/DOCUMENTATION_CONVENTIONS.md#focused-work-items);
+        keep them even when a section is short.
+
+        Two conventions worth knowing before you start typing:
+
+        - **Identity is this issue's number.** Items migrated from `docs/work_items/` keep their
+          historical `WI-###:` title prefix so older commits, documents, and notes still resolve. New
+          items do not get one.
+        - **Status is a label, not body text** - `status:active`, `status:next`, `status:needs-design`,
+          `status:blocked`, `status:deferred`. Completed work is closed, and its durable result is folded
+          into the document that owns the topic rather than left here.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome and acceptance criteria
+      description: >-
+        What is true when this closes, stated so someone else could check it. Use a task list for
+        discrete requirements; prose is fine when the criteria are not separable.
+      placeholder: |
+        <outcome in one or two sentences>
+
+        The implementation must:
+
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: conclusion
+    attributes:
+      label: Current conclusion
+      description: >-
+        What is known now and why the item is shaped this way - the settled decisions, the relevant
+        as-built behavior, and the reasoning a future reader would otherwise have to rederive. Name code
+        symbols rather than repeating their values.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and non-goals
+      description: >-
+        What this item does, and what it deliberately does not do. Non-goals are the half that keeps the
+        outcome independently closable.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: >-
+        Issues that must land first and why, plus the architectural boundaries this work must respect.
+        Say whether each dependency is hard or conditional.
+    validations:
+      required: true
+  - type: textarea
+    id: next
+    attributes:
+      label: Next action and decision points
+      description: >-
+        The single next step, and the questions that must be answered before or during the work. Mark
+        the ones that are the maintainer's call rather than an implementation detail.
+    validations:
+      required: true
+  - type: textarea
+    id: split
+    attributes:
+      label: Newly observed work to split out
+      description: >-
+        Work discovered while doing this that belongs in its own issue. Leave empty if none - the point
+        is that scope growth stays visible instead of being absorbed silently.
+    validations:
+      required: false
