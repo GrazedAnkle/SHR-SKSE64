@@ -18,6 +18,7 @@
 #include "core/HeartbeatSource.hpp"
 #include "core/RenderSpec.hpp"
 #include "plugin/SinkBuffer.hpp"
+#include "plugin/ThreadTrace.hpp"
 
 #include <RE/Skyrim.h>
 
@@ -63,7 +64,11 @@ namespace SHR
             void OnBufferStart(void *) override { }
             void OnLoopEnd(void *) override { }
             void OnVoiceError(void *, std::int32_t) override { }
-            void OnBufferEnd(void *pContext) override { DeleteSinkBuffer<BeatBuffer>(pContext); }
+            void OnBufferEnd(void *pContext) override
+            {
+                SHR_TRACE_THREAD("xaudio.OnBufferEnd");
+                DeleteSinkBuffer<BeatBuffer>(pContext);
+            }
         };
 
         BeatBufferCallback              m_Callback;

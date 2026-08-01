@@ -18,6 +18,7 @@
 #include "adapter/Config.hpp"
 #include "adapter/NotificationPolicy.hpp"
 #include "plugin/SkyrimHeartRate.hpp"
+#include "plugin/ThreadTrace.hpp"
 
 namespace
 {
@@ -40,6 +41,8 @@ RE::BSEventNotifyControl SHR::InputHandler::ProcessEvent(
     RE::BSTEventSource<RE::InputEvent *> *source
 )
 {
+    SHR_TRACE_THREAD("sink.InputEvent");
+
     if (!event || RE::UI::GetSingleton()->GameIsPaused())
     {
         return RE::BSEventNotifyControl::kContinue;

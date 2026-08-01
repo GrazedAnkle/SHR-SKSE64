@@ -17,6 +17,7 @@
 
 #include "core/Constants.hpp"
 #include "plugin/SkyrimHeartRate.hpp"
+#include "plugin/ThreadTrace.hpp"
 
 namespace
 {
@@ -40,6 +41,8 @@ RE::BSEventNotifyControl SHR::EventHandler::ProcessEvent(
     RE::BSTEventSource<RE::TESSleepStartEvent> *source
 )
 {
+    SHR_TRACE_THREAD("sink.TESSleepStartEvent");
+
     const float currentTime = RE::Calendar::GetSingleton()->GetHoursPassed();
     m_Timestamp = currentTime;
     return RE::BSEventNotifyControl::kContinue;
@@ -50,6 +53,8 @@ RE::BSEventNotifyControl SHR::EventHandler::ProcessEvent(
     RE::BSTEventSource<RE::TESSleepStopEvent> *source
 )
 {
+    SHR_TRACE_THREAD("sink.TESSleepStopEvent");
+
     const float currentTime = RE::Calendar::GetSingleton()->GetHoursPassed();
     const float durationHours = currentTime - m_Timestamp;
     m_Timestamp = currentTime;
@@ -62,6 +67,8 @@ RE::BSEventNotifyControl SHR::EventHandler::ProcessEvent(
     RE::BSTEventSource<RE::TESFastTravelEndEvent> *source
 )
 {
+    SHR_TRACE_THREAD("sink.TESFastTravelEndEvent");
+
     HeartRateManager::NotifyFastTravel(event->fastTravelEndHours * C::SecondsPerHour);
     return RE::BSEventNotifyControl::kContinue;
 }
@@ -71,6 +78,8 @@ RE::BSEventNotifyControl SHR::EventHandler::ProcessEvent(
     RE::BSTEventSource<RE::TESCombatEvent> *source
 )
 {
+    SHR_TRACE_THREAD("sink.TESCombatEvent");
+
     const auto *player = RE::PlayerCharacter::GetSingleton();
     if (event->actor.get() == player && event->newState != RE::ACTOR_COMBAT_STATE::kNone)
     {
@@ -84,6 +93,8 @@ RE::BSEventNotifyControl SHR::EventHandler::ProcessEvent(
     RE::BSTEventSource<RE::TESHitEvent> *source
 )
 {
+    SHR_TRACE_THREAD("sink.TESHitEvent");
+
     const auto *player = RE::PlayerCharacter::GetSingleton();
     if (event->target.get() == player)
     {
