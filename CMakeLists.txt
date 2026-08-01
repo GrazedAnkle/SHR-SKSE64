@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 ## Define project
 ########################################################################################################################
 project(SHR
-    VERSION     0.5.2.0
+    VERSION     0.5.3.0
     LANGUAGES   CXX
     DESCRIPTION "Physiological heart-rate simulation with synthesized heartbeat audio."
 )
@@ -77,6 +77,7 @@ set(core_sources
     src/core/RhythmRandom.hpp
     src/core/Runtime.cpp
     src/core/Runtime.hpp
+    src/core/RuntimeEventMailbox.hpp
     src/core/RuntimeSettings.hpp
     src/core/Simulation.cpp
     src/core/Simulation.hpp
@@ -90,6 +91,7 @@ set(adapter_sources
     src/adapter/Config.cpp
     src/adapter/Config.hpp
     src/adapter/HeartRate.hpp
+    src/adapter/HeartRateLevelTracker.hpp
     src/adapter/LoggingConfiguration.cpp
     src/adapter/LoggingConfiguration.hpp
     src/adapter/NotificationPolicy.cpp
@@ -118,6 +120,7 @@ set(test_sources
     tests/AudioBufferTests.cpp
     tests/BeatRendererTests.cpp
     tests/ConfigTests.cpp
+    tests/HeartRateLevelTrackerTests.cpp
     tests/HeartbeatSourceTests.cpp
     tests/LoggingTests.cpp
     tests/ModelCoefficientsTests.cpp
@@ -125,6 +128,7 @@ set(test_sources
     tests/Pcm16Tests.cpp
     tests/TestWav.hpp
     tests/RhythmEngineTests.cpp
+    tests/RuntimeEventMailboxTests.cpp
     tests/RuntimeTests.cpp
     tests/SinkBufferTests.cpp
     tests/SimulationCharacterizationTests.cpp

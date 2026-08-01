@@ -197,8 +197,9 @@ TEST_CASE("Runtime initialization resets simulation and rhythm together", "[runt
     SHR::Runtime runtime(Settings(), random.Callbacks());
     runtime.Init();
 
-    REQUIRE_FALSE(runtime.Step(Input(0.6F, true)).Beat.has_value());
+    // Before the step: notifications are applied by the step's drain, not at the call site.
     runtime.NotifyCombatEntry();
+    REQUIRE_FALSE(runtime.Step(Input(0.6F, true)).Beat.has_value());
     REQUIRE(runtime.GetState().Adrenaline > 0.0F);
 
     runtime.Init();

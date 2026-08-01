@@ -16,10 +16,13 @@
 #pragma once
 
 #include "core/RhythmEngine.hpp"
+#include "core/RuntimeEventMailbox.hpp"
 #include "core/RuntimeSettings.hpp"
 #include "core/Simulation.hpp"
 #include "core/StepInput.hpp"
 #include "core/StepResult.hpp"
+
+#include <atomic>
 
 namespace SHR
 {
@@ -39,13 +42,22 @@ namespace SHR
         void Init();
         StepResult Step(const StepInput &input);
 
+        // Any thread. Posts to the mailbox; takes effect at the top of the next Step, so a
+        // notification is not visible in GetState until then.
         void NotifyJump();
         void NotifySleep(float duration);
         void NotifyFastTravel(float duration);
         void NotifyCombatEntry();
         void NotifyHit();
 
+        // Expected to stay zero.
+        std::uint64_t GetDroppedEventCount() const;
+
+        // Update thread only: a wide non-atomic copy, so it tears if read during a step.
         PhysiologySnapshot GetSnapshot() const;
+
+        // The last completed step's heart rate. The one physiology value read off the update thread.
+        float GetPublishedHeartRate() const noexcept;
         float GetTargetHeartRate() const noexcept;
         float GetTargetRespirationRate() const;
         float GetTargetRespirationDepth() const;
@@ -56,9 +68,16 @@ namespace SHR
         void Restore(const SimulationState &state);
 
     private:
+        void DrainEvents();
+
         const RuntimeSettings   m_Settings;
         const ModelCoefficients m_Coefficients;
         HeartRateSimulation     m_Simulation;
         RhythmEngine            m_Rhythm;
+        RuntimeEventMailbox     m_Events;
+        std::atomic<float>      m_PublishedHeartRate = 0.0F;
+
+        // Reused so the drain never allocates.
+        std::array<RuntimeEvent, RuntimeEventMailbox::Capacity> m_DrainBuffer = { };
     };
 }

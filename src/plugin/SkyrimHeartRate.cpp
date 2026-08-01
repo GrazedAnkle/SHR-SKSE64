@@ -16,6 +16,7 @@
 #include "plugin/SkyrimHeartRate.hpp"
 
 #include "adapter/Config.hpp"
+#include "adapter/HeartRateLevelTracker.hpp"
 #include "core/Constants.hpp"
 #include "plugin/HeartbeatVoice.hpp"
 #include "plugin/InputHandler.hpp"
@@ -130,7 +131,7 @@ namespace
 
     float s_LastHoursPassed = 0.0F;
 
-    SHR::HeartRateLevel s_PreviousHeartRateLevel;
+    SHR::HeartRateLevelTracker s_HeartRateLevelTracker;
 
     SHR::Runtime &RuntimeInstance()
     {
@@ -199,7 +200,8 @@ void SHR::HeartRateManager::NotifyHit()
 
 float SHR::HeartRateManager::GetHeartRate()
 {
-    return RuntimeInstance().GetSnapshot().HeartRate;
+    // InputHandler calls this from the engine's worker pool, so it cannot read live state.
+    return RuntimeInstance().GetPublishedHeartRate();
 }
 
 namespace
@@ -445,10 +447,8 @@ namespace
         s_HeartbeatVoice.Play(result.Beat->Render);
 
         const float heartRate = result.Physiology.HeartRate;
-        const SHR::HeartRateLevel currentLevel = SHR::GetHeartRateLevel(heartRate);
-        if (currentLevel != s_PreviousHeartRateLevel)
+        if (s_HeartRateLevelTracker.Observe(heartRate))
         {
-            s_PreviousHeartRateLevel = currentLevel;
             const auto notification = SHR::NotificationPolicy::SelectStatus(
                 SHR::Config::Get().Notification,
                 player->IsDead(),

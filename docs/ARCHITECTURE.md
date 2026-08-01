@@ -139,11 +139,44 @@ legacy-field defaults.
   policy, pause/resume integration, WAV/file I/O, and XAudio submission. The audio sink owns device
   volume and queue/resource behavior.
 
-Core event ingress is synchronous and typed. The threads on which SKSE callbacks arrive are not verified,
-and the ingress path reflects that: some notifications cross into simulation state through atomics while
-others mutate it directly. The boundary therefore has no stated threading contract, only a working
-assumption. Establishing one is owned by
-[WI-026](https://github.com/GrazedAnkle/SHR-SKSE64/issues/7).
+### Thread contract
+
+Callback delivery threads were established by observation, not documentation: there is no published
+CommonLibSSE contract for sink dispatch, so a temporary instrumented build logged the thread id at every
+callback site across two in-game sessions on the supported runtime.
+
+| Site | Delivery thread | Confidence |
+| --- | --- | --- |
+| `PlayerCharacter::Update` hook | Update thread | Reference row for the table |
+| Serialization save/load/revert | Update thread | Both sessions |
+| `TESSleepStartEvent`, `TESSleepStopEvent` | Update thread | One session only |
+| `TESFastTravelEndEvent` | Update thread | Both sessions |
+| Plugin `Init` (`kDataLoaded`) | Its own thread | Strictly precedes any step |
+| `TESCombatEvent`, `TESHitEvent` | **Engine worker pool** | Six distinct threads, never the update thread |
+| Input events | **Engine worker pool**, plus update and menu threads | Overflowed an eight-thread cap |
+| XAudio `OnBufferEnd` | XAudio thread | Both sessions; touches only its own context |
+| Menu-driven settings change | Not yet observed | Owned by [WI-034](https://github.com/GrazedAnkle/SHR-SKSE64/issues/4)'s spike |
+
+Combat, hit, and input events all arrive from one shared worker pool, so notifications cannot touch
+simulation state where they land. `Runtime` therefore owns a `RuntimeEventMailbox`: every notification posts
+a typed event from whatever thread it arrives on, and the update thread drains the mailbox at the top of
+`Step` - the same point in the frame at which direct mutation used to take effect. The simulation's
+notification entry points are consequently single-writer and hold plain scalars rather than atomics.
+
+All five notification kinds route through the mailbox, including the ones observed on the update thread.
+Sleep and fast-travel were each seen only a handful of times, and combat looked equally settled after its
+first observation; uniform routing costs a few posts per second and removes the need for that sampling to
+have been representative.
+
+Physiology is read cross-thread in exactly one place: input events need a heart rate for their notification
+text. `PhysiologySnapshot` is a wide non-atomic copy and tears if read during a step, so `Runtime` publishes
+the last completed step's heart rate as an atomic that `GetPublishedHeartRate` serves. `GetSnapshot` remains
+same-thread only.
+
+One row is still open. `Config::Get` returns a reference into mutable process-global storage whose
+`Notification` member owns heap strings, so a settings write that replaces the aggregate would free those
+buffers under a pool-thread reader. Nothing writes config at runtime today; the write path and its fix
+belong to [WI-034](https://github.com/GrazedAnkle/SHR-SKSE64/issues/4).
 
 ## Offline execution
 

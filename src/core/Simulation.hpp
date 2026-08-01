@@ -20,8 +20,6 @@
 #include "core/SimulationSettings.hpp"
 #include "core/SimulationState.hpp"
 
-#include <atomic>
-
 namespace SHR
 {
     struct VentilationTargets
@@ -68,6 +66,7 @@ namespace SHR
         // realDelta is frame time in seconds; gameHoursDelta is elapsed in-game hours.
         void Step(PlayerState state, float realDelta, float gameHoursDelta = 0.0F);
 
+        // Update thread only: reached solely from Runtime's mailbox drain.
         void NotifyJump();
         // Durations are real seconds.
         void NotifySleep(float duration);
@@ -126,8 +125,9 @@ namespace SHR
 
         std::optional<float> m_MaybeDeathSeconds;
 
-        std::atomic_bool m_DidJump = false;
-        std::atomic<float> m_SleepDuration = Sentinel;
-        std::atomic<float> m_FastTravelDuration = Sentinel;
+        // Plain scalars: the mailbox makes the writer single, so these need no atomics.
+        bool  m_DidJump = false;
+        float m_SleepDuration = Sentinel;
+        float m_FastTravelDuration = Sentinel;
     };
 }

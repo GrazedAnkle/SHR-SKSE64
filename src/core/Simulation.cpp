@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#include <utility>
 
 namespace
 {
@@ -407,7 +408,7 @@ void SHR::HeartRateSimulation::UpdateExertion(PlayerState state, float delta)
     m_Exertion += std::copysign(std::min(std::abs(difference), rate * delta), difference);
 
     // A jump may exceed effective fitness, capped at the exertion that produces AbsoluteMaxHR.
-    if (m_DidJump.exchange(false))
+    if (std::exchange(m_DidJump, false))
     {
         const float effective = EffectiveFitness();
         const float effectiveResting = EffectiveRestingHR();
@@ -420,7 +421,7 @@ void SHR::HeartRateSimulation::UpdateExertion(PlayerState state, float delta)
     }
 
     // Sleep lasts at least one hour, so advance affected states analytically.
-    if (const float durationSeconds = m_SleepDuration.exchange(Sentinel); durationSeconds != Sentinel)
+    if (const float durationSeconds = std::exchange(m_SleepDuration, Sentinel); durationSeconds != Sentinel)
     {
         const float durationHours = durationSeconds / SHR::Constants::SecondsPerHour;
         m_Adrenaline = 0.0F;
@@ -437,7 +438,7 @@ void SHR::HeartRateSimulation::UpdateExertion(PlayerState state, float delta)
         UpdateContractility(durationSeconds);
     }
 
-    if (const float duration = m_FastTravelDuration.exchange(Sentinel); duration != Sentinel)
+    if (const float duration = std::exchange(m_FastTravelDuration, Sentinel); duration != Sentinel)
     {
         m_Adrenaline *= AdrenalineDecayFactor(duration, m_Coefficients.AdrenalineHalfLife);
 
