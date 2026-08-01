@@ -106,6 +106,7 @@ set(plugin_sources
     src/plugin/Logging.cpp
     src/plugin/Logging.hpp
     src/plugin/Main.cpp
+    src/plugin/SinkBuffer.hpp
     src/plugin/SkyrimHeartRate.cpp
     src/plugin/SkyrimHeartRate.hpp
     src/plugin/pch.hpp
@@ -124,6 +125,7 @@ set(test_sources
     tests/TestWav.hpp
     tests/RhythmEngineTests.cpp
     tests/RuntimeTests.cpp
+    tests/SinkBufferTests.cpp
     tests/SimulationCharacterizationTests.cpp
     tests/SimulationStateTests.cpp
     tests/SimulationTests.cpp

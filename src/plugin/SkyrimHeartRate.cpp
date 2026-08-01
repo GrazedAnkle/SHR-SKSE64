@@ -122,7 +122,10 @@ namespace
     REL::Relocation<decltype(Update)> s_OriginalUpdate;
 
     std::optional<SHR::Runtime> s_Runtime;
-    SHR::HeartbeatVoice s_HeartbeatVoice;
+
+    // Deliberately never destroyed: DestroyVoice waits on the XAudio2 audio thread, and at process
+    // exit the BSXAudio2Audio engine owning the voice may already be gone. Revisited by WI-026.
+    SHR::HeartbeatVoice &s_HeartbeatVoice = *new SHR::HeartbeatVoice();
 
     float s_LastHoursPassed = 0.0F;
 
@@ -164,7 +167,7 @@ void SHR::HeartRateManager::Init()
         .ArrhythmiaSusceptibility = config.Arrhythmia.Susceptibility,
     });
     RuntimeInstance().Init();
-    s_HeartbeatVoice.Init();
+    s_HeartbeatVoice.Init(config.Audio.Volume);
     s_LastHoursPassed = RE::Calendar::GetSingleton()->GetHoursPassed();
 }
 

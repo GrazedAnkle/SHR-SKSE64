@@ -16,7 +16,6 @@
 #include "plugin/HeartbeatVoice.hpp"
 
 #include "core/BeatRenderer.hpp"
-#include "adapter/Config.hpp"
 #include "core/Constants.hpp"
 #include "core/Pcm16.hpp"
 
@@ -134,7 +133,7 @@ bool SHR::HeartbeatVoice::LoadWav()
     return true;
 }
 
-bool SHR::HeartbeatVoice::Init()
+bool SHR::HeartbeatVoice::Init(float volume)
 {
     if (!LoadWav()) return false;
 
@@ -172,17 +171,22 @@ bool SHR::HeartbeatVoice::Init()
         return false;
     }
 
-    // Voice volume persists across Stop()/Start().
-    const float voiceVolume = Config::Get().Audio.Volume * C::VoiceOutputGain;
-    m_Voice->SetVolume(voiceVolume);
+    SetVolume(volume);
 
     m_Voice->Start();
     SKSE::log::info(
         "[HeartbeatVoice] Source voice ready (float renderer -> PCM16 sink, volume {} -> {})",
-        Config::Get().Audio.Volume,
-        voiceVolume
+        volume,
+        volume * C::VoiceOutputGain
     );
     return true;
+}
+
+void SHR::HeartbeatVoice::SetVolume(float volume)
+{
+    if (!m_Voice) return;
+    // Voice volume persists across Stop()/Start().
+    m_Voice->SetVolume(volume * C::VoiceOutputGain);
 }
 
 void SHR::HeartbeatVoice::Play(const RenderSpec &render)
@@ -191,15 +195,36 @@ void SHR::HeartbeatVoice::Play(const RenderSpec &render)
 
     const AudioBuffer rendered = RenderBeat(*m_Source, render);
 
-    // The sink quantizer runs once, immediately before the existing callback-owned XAudio buffer
-    // handoff. WI-022 owns failed-submission and shutdown lifetime.
-    auto *heapBuf = new std::vector<std::int16_t>(EncodePcm16(rendered.ConstView()));
+    // The sink quantizer runs once, immediately before the callback-owned XAudio buffer handoff.
+    auto samples = std::make_unique<BeatBuffer>(EncodePcm16(rendered.ConstView()));
 
-    RE::XAUDIO2_BUFFER buf = { };
-    buf.AudioBytes = static_cast<std::uint32_t>(heapBuf->size() * sizeof(std::int16_t));
-    buf.pAudioData = reinterpret_cast<const std::byte *>(heapBuf->data());
-    buf.pContext = heapBuf;
-    m_Voice->SubmitSourceBuffer(&buf);
+    const std::int32_t status = SubmitSinkBuffer(
+        std::move(samples),
+        [this](const BeatBuffer &buffer, void *context) {
+            RE::XAUDIO2_BUFFER buf = { };
+            buf.AudioBytes = static_cast<std::uint32_t>(buffer.size() * sizeof(BeatBuffer::value_type));
+            buf.pAudioData = reinterpret_cast<const std::byte *>(buffer.data());
+            buf.pContext   = context;
+            return m_Voice->SubmitSourceBuffer(&buf);
+        }
+    );
+
+    // A rejection recurs every beat while its cause persists, so report the edges, not each beat.
+    if ((status != 0) != m_SubmitFailing)
+    {
+        m_SubmitFailing = status != 0;
+        if (m_SubmitFailing)
+        {
+            SKSE::log::error(
+                "[HeartbeatVoice] SubmitSourceBuffer rejected a beat: {:08X}",
+                static_cast<std::uint32_t>(status)
+            );
+        }
+        else
+        {
+            SKSE::log::info("[HeartbeatVoice] SubmitSourceBuffer accepting beats again");
+        }
+    }
 }
 
 void SHR::HeartbeatVoice::Pause()
@@ -224,12 +249,12 @@ void SHR::HeartbeatVoice::FlushAndStop()
     m_Voice->Start();
 }
 
-void SHR::HeartbeatVoice::Shutdown()
+SHR::HeartbeatVoice::~HeartbeatVoice()
 {
     if (!m_Voice) return;
+    // Stop before flushing: a started voice keeps the buffer it is playing, and DestroyVoice returns
+    // none of them to the callback.
     m_Voice->Stop();
     m_Voice->FlushSourceBuffers();
     m_Voice->DestroyVoice();
-    m_Voice = nullptr;
-    m_Source.reset();
 }

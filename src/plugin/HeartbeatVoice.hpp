@@ -17,6 +17,7 @@
 
 #include "core/HeartbeatSource.hpp"
 #include "core/RenderSpec.hpp"
+#include "plugin/SinkBuffer.hpp"
 
 #include <RE/Skyrim.h>
 
@@ -30,17 +31,29 @@ namespace SHR
     class HeartbeatVoice
     {
     public:
-        bool Init();
-        void Shutdown();
+        HeartbeatVoice() = default;
+        ~HeartbeatVoice();
+
+        // Init hands &m_Callback to XAudio2, so an initialized voice cannot be relocated.
+        HeartbeatVoice(const HeartbeatVoice &)            = delete;
+        HeartbeatVoice &operator=(const HeartbeatVoice &) = delete;
+        HeartbeatVoice(HeartbeatVoice &&)                 = delete;
+        HeartbeatVoice &operator=(HeartbeatVoice &&)      = delete;
+
+        bool Init(float volume);
+        void SetVolume(float volume);
         void Play(const RenderSpec &render);
         void Pause();
         void Resume();
         void FlushAndStop();
 
     private:
+        // Encoded beat storage, owned by the sink between a successful submission and its callback.
+        using BeatBuffer = std::vector<std::int16_t>;
+
         bool LoadWav();
 
-        // Deletes the beat buffer when XAudio2 returns it, including during explicit flushes.
+        // Runs on the XAudio2 audio thread, and must touch only the context it is handed.
         class BeatBufferCallback final : public RE::IXAudio2VoiceCallback
         {
         public:
@@ -50,16 +63,14 @@ namespace SHR
             void OnBufferStart(void *) override { }
             void OnLoopEnd(void *) override { }
             void OnVoiceError(void *, std::int32_t) override { }
-            void OnBufferEnd(void *pContext) override
-            {
-                delete static_cast<std::vector<std::int16_t> *>(pContext);
-            }
+            void OnBufferEnd(void *pContext) override { DeleteSinkBuffer<BeatBuffer>(pContext); }
         };
 
         BeatBufferCallback              m_Callback;
-        RE::IXAudio2SourceVoice        *m_Voice    = nullptr;
+        RE::IXAudio2SourceVoice        *m_Voice         = nullptr;
         std::optional<HeartbeatSource>  m_Source;
-        RE::WAVEFORMATEX                m_Format   = { };
-        bool                            m_IsPaused = false;
+        RE::WAVEFORMATEX                m_Format        = { };
+        bool                            m_IsPaused      = false;
+        bool                            m_SubmitFailing = false;
     };
 }
