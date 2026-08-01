@@ -66,13 +66,23 @@ jobs:
           $installer = Join-Path $env:RUNNER_TEMP "LLVM-$env:LLVM_VERSION-win64.exe"
           $url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-$env:LLVM_VERSION/LLVM-$env:LLVM_VERSION-win64.exe"
           Invoke-WebRequest -Uri $url -OutFile $installer
+
+          # Native commands do not abort a pwsh step on a non-zero exit, and $LASTEXITCODE would be
+          # overwritten by the clang-cl call below, so gate the verification explicitly.
           gh attestation verify $installer --repo llvm/llvm-project
+          if ($LASTEXITCODE -ne 0) {
+            throw "attestation verification failed for $installer"
+          }
+
           $process = Start-Process -FilePath $installer -ArgumentList "/S" -Wait -PassThru
           if ($process.ExitCode -ne 0) {
             throw "LLVM installer exited with code $($process.ExitCode)"
           }
-          $version = & "C:\Program Files\LLVM\bin\clang-cl.exe" --version
-          if ($version -notmatch "clang version $env:LLVM_VERSION") {
+
+          # clang-cl prints four lines. Join them before matching: with an array on the left,
+          # -notmatch filters out matching elements and returns a truthy remainder even on success.
+          $version = (& "C:\Program Files\LLVM\bin\clang-cl.exe" --version) -join "`n"
+          if ($version -notmatch [regex]::Escape("clang version $env:LLVM_VERSION")) {
             throw "expected clang $env:LLVM_VERSION, got: $version"
           }
 
