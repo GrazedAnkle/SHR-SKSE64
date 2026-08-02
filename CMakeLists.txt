@@ -88,6 +88,8 @@ set(core_sources
 )
 
 set(adapter_sources
+    src/adapter/CoSave.cpp
+    src/adapter/CoSave.hpp
     src/adapter/Config.cpp
     src/adapter/Config.hpp
     src/adapter/HeartRate.hpp
@@ -120,6 +122,7 @@ set(test_sources
     tests/AcousticMapperTests.cpp
     tests/AudioBufferTests.cpp
     tests/BeatRendererTests.cpp
+    tests/CoSaveTests.cpp
     tests/ConfigTests.cpp
     tests/HeartRateLevelTrackerTests.cpp
     tests/HeartbeatSourceTests.cpp

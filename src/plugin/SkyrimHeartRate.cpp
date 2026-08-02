@@ -15,103 +15,22 @@
  */
 #include "plugin/SkyrimHeartRate.hpp"
 
+#include "adapter/CoSave.hpp"
 #include "adapter/Config.hpp"
-#include "core/Constants.hpp"
 #include "adapter/NotificationPolicy.hpp"
 #include "core/Runtime.hpp"
 #include "plugin/PluginState.hpp"
 
-#include <optional>
-
 namespace
 {
-    namespace C = SHR::Constants;
-
     constexpr std::uint32_t CoSaveId = std::byteswap('SHRS');
-
-    namespace Record
-    {
-        struct HeartRate
-        {
-            static constexpr std::uint32_t Type = std::byteswap('PCHR');
-            static constexpr std::uint32_t Version = 0;
-        };
-
-        struct Exertion
-        {
-            static constexpr std::uint32_t Type = std::byteswap('EXRT');
-            static constexpr std::uint32_t Version = 0;
-        };
-
-        struct Adrenaline
-        {
-            static constexpr std::uint32_t Type = std::byteswap('ADRL');
-            static constexpr std::uint32_t Version = 0;
-        };
-
-        struct Fitness
-        {
-            static constexpr std::uint32_t Type = std::byteswap('FTNS');
-            static constexpr std::uint32_t Version = 0;
-        };
-
-        struct AcuteFatigue
-        {
-            static constexpr std::uint32_t Type = std::byteswap('AFTG');
-            static constexpr std::uint32_t Version = 0;
-        };
-
-        struct LongTermFatigue
-        {
-            static constexpr std::uint32_t Type = std::byteswap('LFTG');
-            static constexpr std::uint32_t Version = 0;
-        };
-
-        struct FastHR
-        {
-            static constexpr std::uint32_t Type = std::byteswap('FAHR');
-            static constexpr std::uint32_t Version = 0;
-        };
-
-        struct RespRate
-        {
-            static constexpr std::uint32_t Type = std::byteswap('RRTE');
-            static constexpr std::uint32_t Version = 0;
-        };
-
-        struct Contractility
-        {
-            static constexpr std::uint32_t Type = std::byteswap('CTLY');
-            static constexpr std::uint32_t Version = 0;
-        };
-
-        struct RespDepth
-        {
-            static constexpr std::uint32_t Type = std::byteswap('RDPT');
-            static constexpr std::uint32_t Version = 0;
-        };
-    }
-
-    struct LegacyCoSaveState
-    {
-        std::optional<float> HeartRate;
-        std::optional<float> FastHeartRate;
-        std::optional<float> Exertion;
-        std::optional<float> Adrenaline;
-        std::optional<float> Fitness;
-        std::optional<float> AcuteFatigue;
-        std::optional<float> LongTermFatigue;
-        std::optional<float> RespirationRate;
-        std::optional<float> Contractility;
-        std::optional<float> RespirationDepth;
-    };
 
     void InitSerialization();
 
     void OnSave(SKSE::SerializationInterface *serde);
     void OnRevert(SKSE::SerializationInterface *serde);
     void OnLoad(SKSE::SerializationInterface *serde);
-    SHR::SimulationState FromLegacyCoSave(const LegacyCoSaveState &records);
+    void ReportRecord(const char *name, SHR::CoSave::RecordFamily family, SHR::CoSave::RecordVerdict verdict);
 
     void Update(const RE::PlayerCharacter *player, float delta);
     void HandleFeedback(const RE::PlayerCharacter *player, const SHR::StepResult &result);
@@ -198,46 +117,12 @@ namespace
     {
         const SHR::SimulationState state = RuntimeInstance().GetState();
 
-        const float heartRate = state.FastHeartRate + state.SlowHeartRate;
-        if (!serde->WriteRecord(Record::HeartRate::Type, Record::HeartRate::Version, heartRate))
+        for (const SHR::CoSave::RecordValue &record : SHR::CoSave::RecordsToWrite(state))
         {
-            SKSE::log::error("Failed to serialize heart rate");
-        }
-        if (!serde->WriteRecord(Record::FastHR::Type, Record::FastHR::Version, state.FastHeartRate))
-        {
-            SKSE::log::error("Failed to serialize fast HR component");
-        }
-        if (!serde->WriteRecord(Record::Exertion::Type, Record::Exertion::Version, state.Exertion))
-        {
-            SKSE::log::error("Failed to serialize exertion");
-        }
-        if (!serde->WriteRecord(Record::Adrenaline::Type, Record::Adrenaline::Version, state.Adrenaline))
-        {
-            SKSE::log::error("Failed to serialize adrenaline");
-        }
-        if (!serde->WriteRecord(Record::Fitness::Type, Record::Fitness::Version, state.Fitness))
-        {
-            SKSE::log::error("Failed to serialize fitness");
-        }
-        if (!serde->WriteRecord(Record::AcuteFatigue::Type, Record::AcuteFatigue::Version, state.AcuteFatigue))
-        {
-            SKSE::log::error("Failed to serialize acute fatigue");
-        }
-        if (!serde->WriteRecord(Record::LongTermFatigue::Type, Record::LongTermFatigue::Version, state.LongTermFatigue))
-        {
-            SKSE::log::error("Failed to serialize long-term fatigue");
-        }
-        if (!serde->WriteRecord(Record::RespRate::Type, Record::RespRate::Version, state.RespirationRate))
-        {
-            SKSE::log::error("Failed to serialize respiratory rate");
-        }
-        if (!serde->WriteRecord(Record::Contractility::Type, Record::Contractility::Version, state.Contractility))
-        {
-            SKSE::log::error("Failed to serialize contractility");
-        }
-        if (!serde->WriteRecord(Record::RespDepth::Type, Record::RespDepth::Version, state.RespirationDepth))
-        {
-            SKSE::log::error("Failed to serialize respiratory depth");
+            if (!serde->WriteRecord(record.Type, record.Version, record.Value))
+            {
+                SKSE::log::error(FMT_STRING("Failed to serialize co-save record {}"), record.Name);
+            }
         }
     }
 
@@ -246,112 +131,83 @@ namespace
         SHR::PluginState::Get().Revert(RE::Calendar::GetSingleton()->GetHoursPassed());
     }
 
+    // Only a record that arrived and could not be used is reported; absence is silent by design.
+    void ReportRecord(
+        const char                 *name,
+        SHR::CoSave::RecordFamily   family,
+        SHR::CoSave::RecordVerdict  verdict
+    )
+    {
+        if (verdict == SHR::CoSave::RecordVerdict::Accepted)
+        {
+            return;
+        }
+        SKSE::log::warn(
+            FMT_STRING("Co-save record {}: {}; {}."),
+            name,
+            SHR::CoSave::Describe(verdict),
+            SHR::CoSave::Describe(SHR::CoSave::ConsequenceOf(family, verdict))
+        );
+    }
+
     void OnLoad(SKSE::SerializationInterface *serde)
     {
         std::uint32_t recordType;
         std::uint32_t recordSize;
         std::uint32_t recordVersion;
 
-        LegacyCoSaveState records;
-
-        const SHR::SimulationState initial = RuntimeInstance().CreateInitialState();
-
-        const float initialHeartRate = initial.FastHeartRate + initial.SlowHeartRate;
-        const auto readRecord = [serde](std::optional<float> &destination, float fallback) {
-            float value = fallback;
-            serde->ReadRecordData(value);
-            destination = value;
-        };
+        SHR::CoSave::CoSaveRecords records;
 
         while (serde->GetNextRecordInfo(recordType, recordVersion, recordSize))
         {
-            switch (recordType)
+            const SHR::CoSave::RecordSpec *spec = SHR::CoSave::FindRecord(recordType);
+            if (spec == nullptr)
             {
-            case Record::HeartRate::Type:
-                readRecord(records.HeartRate, initialHeartRate);
-                break;
-            case Record::FastHR::Type:
-                readRecord(records.FastHeartRate, 0.0F);
-                break;
-            case Record::Exertion::Type:
-                readRecord(records.Exertion, initial.Exertion);
-                break;
-            case Record::Adrenaline::Type:
-                readRecord(records.Adrenaline, initial.Adrenaline);
-                break;
-            case Record::Fitness::Type:
-                readRecord(records.Fitness, initial.Fitness);
-                break;
-            case Record::AcuteFatigue::Type:
-                readRecord(records.AcuteFatigue, initial.AcuteFatigue);
-                break;
-            case Record::LongTermFatigue::Type:
-                readRecord(records.LongTermFatigue, initial.LongTermFatigue);
-                break;
-            case Record::RespRate::Type:
-                readRecord(records.RespirationRate, initial.RespirationRate);
-                break;
-            case Record::Contractility::Type:
-                readRecord(records.Contractility, -1.0F);
-                break;
-            case Record::RespDepth::Type:
-                readRecord(records.RespirationDepth, -1.0F);
-                break;
-            default:
-                {
-                    const std::uint32_t type = std::byteswap(recordType);
-                    const char *typeBytes = reinterpret_cast<const char *>(&type);
-                    SKSE::log::warn(FMT_STRING("Encountered unknown record type in co-save: {:.{}}"), typeBytes, sizeof(type));
-                    break;
-                }
+                // GetNextRecordInfo seeks past whatever the previous record left unread, so an
+                // unread record needs no skip of its own.
+                const std::uint32_t type = std::byteswap(recordType);
+                const char *typeBytes = reinterpret_cast<const char *>(&type);
+                SKSE::log::warn(
+                    FMT_STRING("Encountered unknown record type in co-save: {:.{}}"),
+                    typeBytes,
+                    sizeof(type)
+                );
+                continue;
             }
+
+            // Read only after the header clears, so a malformed record cannot leave a partially
+            // overwritten float behind.
+            const SHR::CoSave::RecordVerdict header = SHR::CoSave::ClassifyHeader(
+                spec,
+                recordVersion,
+                recordSize
+            );
+            if (header != SHR::CoSave::RecordVerdict::Accepted)
+            {
+                ReportRecord(spec->Name, spec->Family, header);
+                continue;
+            }
+
+            float value = 0.0F;
+            const std::uint32_t bytesRead = serde->ReadRecordData(value);
+            ReportRecord(
+                spec->Name,
+                spec->Family,
+                records.Accept(recordType, recordVersion, recordSize, bytesRead, value)
+            );
         }
 
-        RuntimeInstance().Restore(FromLegacyCoSave(records));
-    }
-
-    SHR::SimulationState FromLegacyCoSave(const LegacyCoSaveState &records)
-    {
-        SHR::SimulationState state = RuntimeInstance().CreateInitialState();
-
-        const float heartRate = records.HeartRate.value_or(
-            state.FastHeartRate + state.SlowHeartRate
+        SHR::Runtime &runtime = RuntimeInstance();
+        runtime.Restore(
+            SHR::CoSave::RestoreSimulationState(
+                records,
+                runtime.CreateInitialState(),
+                runtime.GetState().DeathSeconds,
+                [&runtime](const SHR::SimulationState &state) {
+                    return runtime.ComputeEquilibriumContractility(state);
+                }
+            )
         );
-        const float fastHeartRate = records.FastHeartRate.value_or(0.0F);
-        state.FastHeartRate = fastHeartRate > 0.0F
-            ? fastHeartRate
-            : C::HRFastFraction * heartRate;
-        state.SlowHeartRate = heartRate - state.FastHeartRate;
-        state.Exertion = records.Exertion.value_or(state.Exertion);
-        state.Adrenaline = records.Adrenaline.value_or(state.Adrenaline);
-        state.Fitness = records.Fitness.value_or(state.Fitness);
-        if (state.Fitness <= 0.0F)
-        {
-            state.Fitness = RuntimeInstance().CreateInitialState().Fitness;
-        }
-        state.AcuteFatigue = records.AcuteFatigue.value_or(state.AcuteFatigue);
-        state.LongTermFatigue = records.LongTermFatigue.value_or(state.LongTermFatigue);
-        state.RespirationRate = records.RespirationRate.value_or(state.RespirationRate);
-        if (state.RespirationRate <= 0.0F)
-        {
-            state.RespirationRate = C::RestingRespRate;
-        }
-
-        const float respirationDepth = records.RespirationDepth.value_or(-1.0F);
-        state.RespirationDepth = respirationDepth >= 0.0F
-            ? std::clamp(respirationDepth, 0.0F, 1.0F)
-            : 0.0F;
-
-        const float contractility = records.Contractility.value_or(-1.0F);
-        state.Contractility = contractility >= 0.0F
-            ? contractility
-            : RuntimeInstance().ComputeEquilibriumContractility(state);
-
-        // The current co-save schema does not persist these fields. Preserve the legacy restore
-        // behavior: restart the respiratory oscillator and leave an active death timer untouched.
-        state.RespirationPhase = 0.0F;
-        state.DeathSeconds = RuntimeInstance().GetState().DeathSeconds;
-        return state;
     }
 
     void Update(const RE::PlayerCharacter *player, float delta)

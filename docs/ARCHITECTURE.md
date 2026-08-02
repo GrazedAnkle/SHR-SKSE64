@@ -108,8 +108,18 @@ disabled rather than silently consuming a rhythm sequence.
 `Runtime::Init` resets simulation and rhythm together. `SimulationState` is the persistence boundary and
 contains only state required to resume the physiological model; rhythm state is not persisted.
 `Runtime::Restore` therefore restores that simulation value without interpreting record versions or
-missing fields. The Skyrim serialization adapter owns versioned records, validation policy, and
-legacy-field defaults.
+missing fields.
+
+Co-save handling splits across the boundary rather than sitting on one side of it. `adapter/CoSave.hpp`
+owns the record table, validation policy, and legacy-field defaults, and is free of SKSE so the
+compatibility fixtures can drive it directly. The plugin owns only the serialization stream: it pumps
+each record's header and payload into that policy and reports what the policy rejected. A record is
+usable only if it was present, well-framed, fully read, and in domain, so absence and malformation stay
+distinguishable instead of collapsing into an in-band sentinel. Absence, malformation, and a good value
+therefore mean three different things, which is what lets settings overrides share the co-save with
+simulation state: for a state record a missing record means "use the initial value", while for an
+override it means "the player never moved this control". Every field falls back on its own, so one
+malformed record costs one field rather than the character's whole progression.
 
 ## Value and responsibility split
 
@@ -135,9 +145,10 @@ legacy-field defaults.
   float renderer. `RenderBeat` consumes that source and a `RenderSpec` without filesystem, device, or
   Skyrim state. The plugin owns WAV container parsing; offline clients may supply the same decoded
   samples without reproducing conditioning or rendering.
-- The plugin layer owns RE/SKSE mapping, game-clock sampling, event delivery, co-save translation, HUD
-  policy, pause/resume integration, WAV/file I/O, and XAudio submission. The audio sink owns device
-  volume and queue/resource behavior.
+- The plugin layer owns RE/SKSE mapping, game-clock sampling, event delivery, the co-save serialization
+  stream, HUD policy, pause/resume integration, WAV/file I/O, and XAudio submission. Co-save record
+  policy and translation belong to the adapter, as above. The audio sink owns device volume and
+  queue/resource behavior.
 
 ### Thread contract
 
