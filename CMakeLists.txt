@@ -92,6 +92,7 @@ set(adapter_sources
     src/adapter/CoSave.hpp
     src/adapter/Config.cpp
     src/adapter/Config.hpp
+    src/adapter/GameClock.hpp
     src/adapter/HeartRate.hpp
     src/adapter/HeartRateLevelTracker.hpp
     src/adapter/LoggingConfiguration.cpp
@@ -124,6 +125,7 @@ set(test_sources
     tests/BeatRendererTests.cpp
     tests/CoSaveTests.cpp
     tests/ConfigTests.cpp
+    tests/GameClockTests.cpp
     tests/HeartRateLevelTrackerTests.cpp
     tests/HeartbeatSourceTests.cpp
     tests/LoggingTests.cpp

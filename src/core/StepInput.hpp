@@ -23,7 +23,7 @@ namespace SHR
     {
         PlayerState Player;
         float       DeltaSeconds;   // real frame time in seconds
-        float       GameHoursDelta; // elapsed in-game hours
+        float       GameHoursDelta; // elapsed in-game hours; never negative
         bool        OutputEnabled;  // false advances physiology without advancing rhythm
     };
 }

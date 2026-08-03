@@ -110,6 +110,15 @@ contains only state required to resume the physiological model; rhythm state is 
 `Runtime::Restore` therefore restores that simulation value without interpreting record versions or
 missing fields.
 
+Elapsed game time is sampled rather than persisted, so it rebases across a load instead of carrying
+over. `GameClock` holds the previous calendar reading and `PluginState` resets it wherever a character
+resets. Differencing across that boundary would span two timelines: a save from earlier in the
+playthrough yields a negative interval, which drives the fatigue relaxation factor negative and
+unbounded until long-term fatigue crosses zero into a silent fitness buff, while a later save applies
+drift the character never lived. The first sample after a reset therefore reports zero elapsed hours.
+That single enforcement point is why `StepInput::GameHoursDelta` is contracted as never negative and
+the simulation does not re-check it.
+
 Co-save handling splits across the boundary rather than sitting on one side of it. `adapter/CoSave.hpp`
 owns the record table, validation policy, and legacy-field defaults, and is free of SKSE so the
 compatibility fixtures can drive it directly. The plugin owns only the serialization stream: it pumps
@@ -147,8 +156,8 @@ malformed record costs one field rather than the character's whole progression.
   samples without reproducing conditioning or rendering.
 - The plugin layer owns RE/SKSE mapping, game-clock sampling, event delivery, the co-save serialization
   stream, HUD policy, pause/resume integration, WAV/file I/O, and XAudio submission. Co-save record
-  policy and translation belong to the adapter, as above. The audio sink owns device volume and
-  queue/resource behavior.
+  policy and translation belong to the adapter, as above, along with the `GameClock` that differences
+  those samples into elapsed hours. The audio sink owns device volume and queue/resource behavior.
 
 ### Thread contract
 

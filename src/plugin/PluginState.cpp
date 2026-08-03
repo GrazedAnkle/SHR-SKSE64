@@ -24,7 +24,7 @@ SHR::PluginState &SHR::PluginState::Get()
     return instance;
 }
 
-void SHR::PluginState::Init(const Config &config, float gameHours)
+void SHR::PluginState::Init(const Config &config)
 {
     m_Runtime.emplace(RuntimeSettings{
         .Simulation = {
@@ -34,28 +34,26 @@ void SHR::PluginState::Init(const Config &config, float gameHours)
         .ArrhythmiaSusceptibility = config.Arrhythmia.Susceptibility,
     });
     m_Voice.Init(config.Audio.Volume);
-    ResetForCharacter(gameHours);
+    ResetForCharacter();
 }
 
-void SHR::PluginState::Revert(float gameHours)
+void SHR::PluginState::Revert()
 {
     m_Voice.FlushAndStop();
-    ResetForCharacter(gameHours);
+    ResetForCharacter();
 }
 
-void SHR::PluginState::ResetForCharacter(float gameHours)
+void SHR::PluginState::ResetForCharacter()
 {
     m_Runtime.value().Init();
     m_LevelTracker = { };
-    m_LastHoursPassed = gameHours;
+    m_GameClock.Reset();
     m_IsListening.store(0);
 }
 
 float SHR::PluginState::ConsumeGameHoursDelta(float currentHours) noexcept
 {
-    const float delta = currentHours - m_LastHoursPassed;
-    m_LastHoursPassed = currentHours;
-    return delta;
+    return m_GameClock.Consume(currentHours);
 }
 
 bool SHR::PluginState::IsListening() const noexcept

@@ -16,6 +16,7 @@
 #pragma once
 
 #include "adapter/Config.hpp"
+#include "adapter/GameClock.hpp"
 #include "adapter/HeartRateLevelTracker.hpp"
 #include "core/Runtime.hpp"
 #include "plugin/HeartbeatVoice.hpp"
@@ -43,9 +44,9 @@ namespace SHR
         PluginState(PluginState &&)                 = delete;
         PluginState &operator=(PluginState &&)      = delete;
 
-        void Init(const Config &config, float gameHours);
+        void Init(const Config &config);
         // The co-save revert path: everything a new character must not inherit resets here.
-        void Revert(float gameHours);
+        void Revert();
 
         Runtime &GetRuntime() { return m_Runtime.value(); }
         HeartbeatVoice &GetVoice() noexcept { return m_Voice; }
@@ -63,12 +64,12 @@ namespace SHR
 
         // Everything that must not survive into a different character. Init and Revert share it so
         // the two cannot disagree about what a fresh character starts with.
-        void ResetForCharacter(float gameHours);
+        void ResetForCharacter();
 
         std::optional<Runtime> m_Runtime;
         HeartbeatVoice         m_Voice;
         HeartRateLevelTracker  m_LevelTracker;
-        float                  m_LastHoursPassed = 0.0F;
-        std::atomic_int        m_IsListening     = 0;
+        GameClock              m_GameClock;
+        std::atomic_int        m_IsListening = 0;
     };
 }

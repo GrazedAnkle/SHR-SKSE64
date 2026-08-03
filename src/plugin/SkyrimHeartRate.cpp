@@ -66,7 +66,7 @@ void SHR::HeartRateManager::InstallHooks(SKSE::Trampoline &trampoline)
 void SHR::HeartRateManager::Init()
 {
     InitSerialization();
-    PluginState::Get().Init(Config::Get(), RE::Calendar::GetSingleton()->GetHoursPassed());
+    PluginState::Get().Init(Config::Get());
 }
 
 void SHR::HeartRateManager::NotifyJump()
@@ -128,7 +128,7 @@ namespace
 
     void OnRevert([[maybe_unused]] SKSE::SerializationInterface *serde)
     {
-        SHR::PluginState::Get().Revert(RE::Calendar::GetSingleton()->GetHoursPassed());
+        SHR::PluginState::Get().Revert();
     }
 
     // Only a record that arrived and could not be used is reported; absence is silent by design.
