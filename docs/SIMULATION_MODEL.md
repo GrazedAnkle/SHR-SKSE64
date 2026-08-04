@@ -84,13 +84,15 @@ HR (`RestingHRSlope`, capped at `MaxRestingHR`) and both the HR ceiling and the 
 `PhysiologySnapshot::EffectiveFitness` is fitness minus current fatigue (below), floored at
 `FitnessAbsoluteMin`.
 
-The present adaptation bracket is weak/provisional grounding carried forward from general training
-guidance: `FitnessGainTau` represents roughly eight weeks of aerobic adaptation, `FitnessDecayTau`
-roughly four weeks of detraining, and the capacity endpoints correspond to about 24.5 mL/kg/min VO2max
-at the deconditioned floor and 70 mL/kg/min at the endurance-athlete ceiling. `RestingHRSlope` uses a
-rough 3 bpm/MET sedentary-to-elite relation, while `MaxRestingHR` bounds the supported healthy,
-deconditioned end. These figures define a plausible gameplay population; they are not a validated
-longitudinal training model.
+The capacity endpoints `FitnessBaseMets` and `FitnessMaxMets` are bracketed against population and
+athlete reference values in
+[LITERATURE_ANALYSIS.md](LITERATURE_ANALYSIS.md#aerobic-capacity-endpoints), which also records why
+`FitnessAbsoluteMin` is a division guard rather than a physiological floor. The adaptation rates are
+weak/provisional grounding from general training guidance: `FitnessGainTau` represents
+roughly eight weeks of aerobic adaptation and `FitnessDecayTau` roughly four weeks of detraining, while
+`RestingHRSlope` uses a rough 3 bpm/MET sedentary-to-elite relation and `MaxRestingHR` bounds the
+supported healthy, deconditioned end. Those four define a plausible gameplay population; they are not a
+validated longitudinal training model.
 
 ## Fatigue
 
@@ -102,12 +104,17 @@ Two timescales, both measured in METs and subtracted from fitness (a tired body 
   load (`LongTermFatigueGainTau`, up to `LongTermFatigueMax`), clears over about a week
   (`LongTermFatigueDecayTau`); sleep accelerates recovery (`SleepRecoveryRate`).
 
-These fatigue setpoints are likewise provisional brackets rather than subject-specific fits. Acute
-fatigue uses a 20-30% capacity-loss bracket, a roughly 20-minute build, and about an hour of recovery.
-Long-term fatigue uses the upper end of a 5-15% capacity-loss bracket, multi-day accumulation, and a
-rough one-to-two-week waking recovery scale; `SleepRecoveryRate` encodes the working assumption that an
-eight-hour sleep clears about 55% of the state. WI-012 must audit the coupled trajectories rather than
-retuning one fatigue constant in isolation.
+The capacity-loss magnitudes `AcuteFatigueMax` and `LongTermFatigueMax` are bracketed against the
+durability literature in
+[LITERATURE_ANALYSIS.md](LITERATURE_ANALYSIS.md#fatigue-reduction-of-aerobic-capacity), which also
+records why the reduction is proportional to capacity rather than absolute, and why that does not
+conflict with dosing exertion in absolute METs. The gain and decay rates are provisional rather than
+bracketed: acute fatigue uses a roughly 20-minute build and about an hour of recovery, long-term
+fatigue multi-day accumulation and a rough one-to-two-week waking recovery scale, and
+`SleepRecoveryRate` encodes the working assumption that an eight-hour sleep clears about 55% of the
+state. [WI-012](https://github.com/GrazedAnkle/SHR-SKSE64/issues/15) must audit the coupled
+trajectories rather than retuning one fatigue constant in isolation, and also owns the saturation
+policy that makes `UpdateAcuteFatigue` clamp normalized exertion where `NormalizedExertion` does not.
 
 ## Adrenaline
 

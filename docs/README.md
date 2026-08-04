@@ -11,7 +11,8 @@ history.
 3. [Synthesis Model](SYNTHESIS_MODEL.md) and [Simulation Model](SIMULATION_MODEL.md) for the two halves of
    the system: state-to-sound and state evolution.
 4. [Measurement Methods](MEASUREMENT_METHODS.md) before trusting a number, then
-   [Reference Analysis](REFERENCE_ANALYSIS.md) for the evidence.
+   [Reference Analysis](REFERENCE_ANALYSIS.md) for evidence from our own recordings and
+   [Literature Analysis](LITERATURE_ANALYSIS.md) for evidence from published sources.
 5. [Roadmap](ROADMAP.md) for the current milestone and priority order; individual work items are GitHub
    issues labeled `work-item`.
 

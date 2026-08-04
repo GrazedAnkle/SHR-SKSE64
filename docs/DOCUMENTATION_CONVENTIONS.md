@@ -13,6 +13,8 @@ Each topic has one authoritative owner. Other documents link to it instead of re
 - [SIMULATION_MODEL.md](SIMULATION_MODEL.md) owns physiological state evolution.
 - [CONTRACTILITY_SPEC.md](CONTRACTILITY_SPEC.md) owns the current contractility signal in depth.
 - [REFERENCE_ANALYSIS.md](REFERENCE_ANALYSIS.md) owns findings from reference recordings.
+- [LITERATURE_ANALYSIS.md](LITERATURE_ANALYSIS.md) owns published-source evidence behind `[physio]`
+  constants: the reported figures, the bracket they support, and the liberties taken against it.
 - [MEASUREMENT_METHODS.md](MEASUREMENT_METHODS.md) owns cross-cutting measurement methodology.
 - [ROADMAP.md](ROADMAP.md) owns the current milestone, priority order, and the groupings that say which
   items must be designed or balanced together.
