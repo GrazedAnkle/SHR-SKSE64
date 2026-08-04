@@ -45,14 +45,17 @@ RE::BSEventNotifyControl SHR::InputHandler::ProcessEvent(
 
         const RE::ButtonEvent *buttonEvent = it->AsButtonEvent();
         const std::uint32_t keyCode = buttonEvent->idCode;
-        if (keyCode == Config::Get().Input.Listen)
+
+        // One snapshot for both reads: two Get() calls could straddle a write and mix versions.
+        const auto config = Config::Get();
+        if (keyCode == config->Input.Listen)
         {
             if (buttonEvent->IsDown())
             {
                 PluginState::Get().ToggleListening();
 
                 const auto notification = NotificationPolicy::SelectStatus(
-                    Config::Get().Notification,
+                    config->Notification,
                     RE::PlayerCharacter::GetSingleton()->IsDead(),
                     HeartRateManager::GetHeartRate()
                 );

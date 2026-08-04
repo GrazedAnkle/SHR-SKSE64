@@ -104,32 +104,32 @@ TEST_CASE("Simulation trajectory matches the extraction baseline", "[simulation]
     sprinting.IsSprinting = true;
     RunSteps(sim, sprinting, 900);
     RequireCheckpoint("exercise", sim, {
-        .HeartRate       = 186.545593F,
-        .FastHeartRate   = 119.845428F,
-        .Exertion        = 14.6501722F,
+        .HeartRate       = 186.549164F,
+        .FastHeartRate   = 119.849915F,
+        .Exertion        = 14.8729782F,
         .Adrenaline      = 1.78381789F,
         .Contractility   = 0.988891542F,
         .Fitness         = 15.0F,
-        .AcuteFatigue    = 0.350204319F,
+        .AcuteFatigue    = 0.127159968F,
         .LongTermFatigue = 0.0F,
         .RespRate        = 49.8950386F,
         .RespDepth       = 0.997262478F,
-        .RespPhase       = 0.552927911F,
+        .RespPhase       = 0.552590549F,
     });
 
     RunSteps(sim, SHR::PlayerState{ }, 1200);
     RequireCheckpoint("recovery", sim, {
-        .HeartRate       = 95.0183716F,
-        .FastHeartRate   = 46.2714157F,
+        .HeartRate       = 94.1870117F,
+        .FastHeartRate   = 45.5919418F,
         .Exertion        = 2.39191484F,
         .Adrenaline      = 0.891914785F,
-        .Contractility   = 0.688048005F,
+        .Contractility   = 0.687253177F,
         .Fitness         = 15.0F,
-        .AcuteFatigue    = 0.380427808F,
+        .AcuteFatigue    = 0.138214484F,
         .LongTermFatigue = 0.0F,
-        .RespRate        = 15.993722F,
-        .RespDepth       = 0.233912289F,
-        .RespPhase       = 0.361832231F,
+        .RespRate        = 15.9723520F,
+        .RespDepth       = 0.232665807F,
+        .RespPhase       = 0.350518167F,
     });
 }
 
@@ -160,7 +160,7 @@ TEST_CASE("Simulation time skips match the extraction baseline", "[simulation][c
             .LongTermFatigue = 0.0F,
             .RespRate        = 9.0332222F,
             .RespDepth       = 0.0F,
-            .RespPhase       = 0.736149549F,
+            .RespPhase       = 0.735814571F,
         });
     }
 
@@ -174,17 +174,17 @@ TEST_CASE("Simulation time skips match the extraction baseline", "[simulation][c
         sim.NotifyFastTravel(C::SecondsPerHour);
         sim.Step(SHR::PlayerState{ }, 0.1F, 1.0F);
         RequireCheckpoint("fast-travel", sim, {
-            .HeartRate       = 176.553864F,
-            .FastHeartRate   = 118.499016F,
+            .HeartRate       = 176.571960F,
+            .FastHeartRate   = 118.518059F,
             .Exertion        = 3.0F,
             .Adrenaline      = 1.97449901e-9F,
-            .Contractility   = 0.113081619F,
-            .Fitness         = 15.0036297F,
-            .AcuteFatigue    = 0.235272452F,
-            .LongTermFatigue = 0.00194704975F,
-            .RespRate        = 15.8093061F,
-            .RespDepth       = 0.128159136F,
-            .RespPhase       = 0.305889845F,
+            .Contractility   = 0.111816563F,
+            .Fitness         = 15.0005188F,
+            .AcuteFatigue    = 0.0851814600F,
+            .LongTermFatigue = 0.000489540000F,
+            .RespRate        = 15.7890654F,
+            .RespDepth       = 0.126725391F,
+            .RespPhase       = 0.091134444F,
         });
     }
 }

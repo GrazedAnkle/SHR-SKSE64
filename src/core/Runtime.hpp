@@ -42,6 +42,11 @@ namespace SHR
         void Init();
         StepResult Step(const StepInput &input);
 
+        // Update thread. Validates the whole update before applying any part of it, returning false
+        // untouched otherwise. Preserves simulation and rhythm.
+        bool ApplySettings(RuntimeSettings settings);
+        const RuntimeSettings &GetSettings() const noexcept { return m_Settings; }
+
         // Any thread. Posts to the mailbox; takes effect at the top of the next Step, so a
         // notification is not visible in GetState until then.
         void NotifyJump();
@@ -70,8 +75,8 @@ namespace SHR
     private:
         void DrainEvents();
 
-        const RuntimeSettings   m_Settings;
-        const ModelCoefficients m_Coefficients;
+        RuntimeSettings   m_Settings;
+        ModelCoefficients m_Coefficients;
         HeartRateSimulation     m_Simulation;
         RhythmEngine            m_Rhythm;
         RuntimeEventMailbox     m_Events;

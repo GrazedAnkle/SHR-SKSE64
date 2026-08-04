@@ -21,6 +21,8 @@ history.
 - [CONTRACTILITY_SPEC.md](CONTRACTILITY_SPEC.md) gives the current contractility signal in depth.
 - [references/timestamps.txt](references/timestamps.txt) catalogs the local reference recordings;
   committed landmark files, the authored state ledger, and generated measurements live beside it.
+- [MENU_ARTIFACTS.md](MENU_ARTIFACTS.md) owns how the menu's plugin, scripts, and layout are
+  regenerated, including the committed binary that has no other source.
 - [DOCUMENTATION_CONVENTIONS.md](DOCUMENTATION_CONVENTIONS.md) contains authoring, status, ownership, and
   provenance conventions.
 

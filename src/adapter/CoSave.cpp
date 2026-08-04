@@ -120,6 +120,30 @@ SHR::CoSave::RecordVerdict SHR::CoSave::ClassifyHeader(
     return RecordVerdict::Accepted;
 }
 
+SHR::CoSave::RecordVerdict SHR::CoSave::ClassifyHeader(
+    std::uint32_t type,
+    std::uint32_t version,
+    std::uint32_t size
+) noexcept
+{
+    if (const RecordSpec *spec = FindRecord(type))
+    {
+        return ClassifyHeader(spec, version, size);
+    }
+    if (Settings::FindSubjectByRecord(type) == nullptr)
+    {
+        return RecordVerdict::UnknownType;
+    }
+
+    // Overrides share one framing: version 0, a single float. A row-by-row spec would be a second
+    // place for the settings table to disagree with itself.
+    if (version > CoSaveRecords::OverrideVersion)
+    {
+        return RecordVerdict::UnknownVersion;
+    }
+    return size == sizeof(float) ? RecordVerdict::Accepted : RecordVerdict::BadSize;
+}
+
 SHR::CoSave::Consequence SHR::CoSave::ConsequenceOf(
     RecordFamily  family,
     RecordVerdict verdict
@@ -186,6 +210,28 @@ std::optional<float> SHR::CoSave::ValidateDomain(ValueDomain domain, float value
     return std::nullopt;
 }
 
+SHR::CoSave::RecordVerdict SHR::CoSave::CoSaveRecords::AcceptOverride(
+    std::uint32_t type,
+    float         value
+) noexcept
+{
+    const Settings::SubjectSpec *setting = Settings::FindSubjectByRecord(type);
+    if (setting == nullptr)
+    {
+        return RecordVerdict::UnknownType;
+    }
+    if (m_Overrides.Get(setting->Field).has_value())
+    {
+        return RecordVerdict::Duplicate;
+    }
+    // Range-checked by the registry, the same table the menu validates against.
+    if (!m_Overrides.Set(setting->Field, value))
+    {
+        return RecordVerdict::OutOfDomain;
+    }
+    return RecordVerdict::Accepted;
+}
+
 SHR::CoSave::RecordVerdict SHR::CoSave::CoSaveRecords::Accept(
     std::uint32_t type,
     std::uint32_t version,
@@ -194,22 +240,20 @@ SHR::CoSave::RecordVerdict SHR::CoSave::CoSaveRecords::Accept(
     float         value
 ) noexcept
 {
-    const RecordSpec   *spec   = FindRecord(type);
-    const RecordVerdict header = ClassifyHeader(spec, version, size);
+    const RecordVerdict header = ClassifyHeader(type, version, size);
     if (header != RecordVerdict::Accepted)
     {
         return header;
     }
-
-    if (bytesRead != spec->ExpectedSize)
+    if (bytesRead != size)
     {
         return RecordVerdict::ShortRead;
     }
 
-    if (spec->Family != RecordFamily::State)
+    const RecordSpec *spec = FindRecord(type);
+    if (spec == nullptr)
     {
-        // Classified, but there is nowhere to put the value until WI-034 adds override storage.
-        return RecordVerdict::Accepted;
+        return AcceptOverride(type, value);
     }
 
     const auto index = static_cast<std::size_t>(spec->Field);
@@ -295,4 +339,32 @@ SHR::CoSave::RecordsToWrite(const SimulationState &state)
         };
     }
     return values;
+}
+
+std::optional<SHR::CoSave::RecordIdentity> SHR::CoSave::Identify(std::uint32_t type) noexcept
+{
+    if (const RecordSpec *spec = FindRecord(type))
+    {
+        return RecordIdentity{ .Family = spec->Family, .Name = spec->Name };
+    }
+    if (const Settings::SubjectSpec *setting = Settings::FindSubjectByRecord(type))
+    {
+        return RecordIdentity{ .Family = RecordFamily::Override, .Name = setting->Name };
+    }
+    return std::nullopt;
+}
+
+std::vector<SHR::CoSave::RecordValue> SHR::CoSave::OverrideRecordsToWrite(
+    const Settings::Overrides &overrides
+)
+{
+    std::vector<RecordValue> records;
+    for (const Settings::SubjectSpec &setting : Settings::SubjectSettings())
+    {
+        if (const std::optional<float> value = overrides.Get(setting.Field))
+        {
+            records.push_back({ setting.Record, CoSaveRecords::OverrideVersion, setting.Name, *value });
+        }
+    }
+    return records;
 }

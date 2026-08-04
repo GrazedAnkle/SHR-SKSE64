@@ -65,7 +65,7 @@ namespace SHR::Constants
     constexpr float FitnessGainTau  = 8.0F * 7.0F * 24.0F; // game h; training adaptation tau
     constexpr float FitnessDecayTau = 4.0F * 7.0F * 24.0F; // game h; detraining tau
     constexpr float FitnessBaseMets = 24.5F / 3.5F;         // MET; detraining floor
-    constexpr float FitnessMaxMets  = 70.0F / 3.5F;         // MET; adaptation ceiling
+    constexpr float FitnessEliteMets = 70.0F / 3.5F;        // MET; elite capacity; normalizes fitness
     constexpr float RestingHRSlope  = 3.0F;                 // bpm/MET; fitness-to-resting-HR slope
     constexpr float MaxRestingHR    = 90.0F;                // bpm; supported deconditioned ceiling
     // Absolute fitness floor derived from MaxRestingHR. Prevents division by
@@ -110,18 +110,19 @@ namespace SHR::Constants
     constexpr float AdrenalineRunRiskScale        = 5.0F;         // [game] adrenaline units producing run-risk = 1
 
     // --- Acute fatigue [physio] ---
-    constexpr float AcuteFatigueMax      = 0.25F * FitnessMaxMets; // MET; subtracted from fitness
+    constexpr float AcuteFatigueMaxFraction = 0.12F; // of raw fitness; subtracted from fitness
     constexpr float AcuteFatigueGainTau  = 20.0F * 60.0F;         // s; accumulation tau
     constexpr float AcuteFatigueDecayTau = 60.0F * 60.0F;         // s; recovery tau
 
     // --- Long-term fatigue [physio] ---
-    constexpr float LongTermFatigueMax      = 0.15F * FitnessMaxMets; // MET; subtracted from fitness
+    constexpr float LongTermFatigueMaxFraction = 0.05F; // of raw fitness; subtracted from fitness
     constexpr float LongTermFatigueGainTau  = 3.0F * 24.0F;          // game h; accumulation tau
     constexpr float LongTermFatigueDecayTau = 7.0F * 24.0F;          // game h; waking recovery tau
     constexpr float SleepRecoveryRate       = 0.099F; // h^-1; exp(-rate * sleep hours)
 
     // --- Unit conversions [util] ---
     constexpr float SecondsPerHour = 60.0F * 60.0F;
+    constexpr float MetsToVO2      = 3.5F; // mL/kg/min per MET; the unit capacity is published in
 
     // ============================ AUDIO SYNTHESIS ============================
 

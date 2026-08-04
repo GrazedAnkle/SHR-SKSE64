@@ -51,6 +51,8 @@ rates):
 
 - Onset: `FastOnsetTauSedentary` / `FastOnsetTauElite` (fitness-lerped) and `SlowOnsetTau`.
 - Recovery: `FastRecoveryTauSedentary` / `FastRecoveryTauElite` (fitness-lerped) and `SlowRecoveryTau`.
+  The lerp normalizes against the global `FitnessEliteMets`, not the character's own ceiling: the
+  endpoints name absolute states, so a low-capacity character must not reach the elite tau.
 
 The taus are fitness-dependent (fitter hearts respond faster), lerped between the sedentary and elite
 ends by fitness. The target (`ComputeTargetHeartRate`) rises with exertion from a resting floor to a
@@ -79,12 +81,21 @@ contractility (as the sympathetic proxy), respiration, and fatigue.
 
 `m_Fitness` (`UpdateFitness`) is the player's aerobic capacity in METs (VO2max / 3.5), adapting slowly
 to activity: it rises with sustained exertion (`FitnessGainTau`, on the order of weeks) and decays with
-inactivity (`FitnessDecayTau`), bounded by `FitnessBaseMets` .. `FitnessMaxMets`. Fitness sets resting
+inactivity (`FitnessDecayTau`), bounded below by `FitnessBaseMets` and above by the per-character
+`SimulationSettings::FitnessMaxMets`. Fitness sets resting
 HR (`RestingHRSlope`, capped at `MaxRestingHR`) and both the HR ceiling and the response taus.
 `PhysiologySnapshot::EffectiveFitness` is fitness minus current fatigue (below), floored at
 `FitnessAbsoluteMin`.
 
-The capacity endpoints `FitnessBaseMets` and `FitnessMaxMets` are bracketed against population and
+Fitness is also what makes `RestingHeartRate` a seed rather than a parameter: `CreateInitialState` is its
+only consumer, so a control bound straight to it would change nothing on a character who has already
+played. Because that seeding is linear, shifting live fitness by the same slope is the one transform that
+commutes with drift - re-seeding would delete the character's progression, and doing nothing would
+misrepresent what the control does. `HeartRateSimulation::ApplySettings` performs the shift and clamps only
+from below, so lowering the ceiling lets a character detrain over `FitnessDecayTau` rather than losing
+progression at the moment the control moves.
+
+The capacity endpoints `FitnessBaseMets` and `FitnessEliteMets` are bracketed against population and
 athlete reference values in
 [LITERATURE_ANALYSIS.md](LITERATURE_ANALYSIS.md#aerobic-capacity-endpoints), which also records why
 `FitnessAbsoluteMin` is a division guard rather than a physiological floor. The adaptation rates are
@@ -99,12 +110,12 @@ validated longitudinal training model.
 Two timescales, both measured in METs and subtracted from fitness (a tired body behaves as if less fit):
 
 - **Acute** - `m_AcuteFatigue` (`UpdateAcuteFatigue`): builds over a workout (`AcuteFatigueGainTau`)
-  up to `AcuteFatigueMax`, clears over about an hour (`AcuteFatigueDecayTau`).
+  up to `AcuteFatigueMaxFraction` of raw fitness, clears over about an hour (`AcuteFatigueDecayTau`).
 - **Long-term** - `m_LongTermFatigue` (`UpdateLongTermFatigue`): accumulates over days of sustained
-  load (`LongTermFatigueGainTau`, up to `LongTermFatigueMax`), clears over about a week
+  load (`LongTermFatigueGainTau`, up to `LongTermFatigueMaxFraction` of raw fitness), clears over about a week
   (`LongTermFatigueDecayTau`); sleep accelerates recovery (`SleepRecoveryRate`).
 
-The capacity-loss magnitudes `AcuteFatigueMax` and `LongTermFatigueMax` are bracketed against the
+The capacity-loss magnitudes `AcuteFatigueMaxFraction` and `LongTermFatigueMaxFraction` are bracketed against the
 durability literature in
 [LITERATURE_ANALYSIS.md](LITERATURE_ANALYSIS.md#fatigue-reduction-of-aerobic-capacity), which also
 records why the reduction is proportional to capacity rather than absolute, and why that does not

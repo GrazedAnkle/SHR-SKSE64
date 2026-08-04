@@ -4,3 +4,8 @@
 # Golden manifests are hashed/compared byte-for-byte. Normalize to LF regardless
 # of core.autocrlf.
 tests/golden/*.json text eol=lf
+
+# Committed build outputs: a plugin record file and compiled Papyrus. Marked explicitly rather than
+# left to content detection, because a newline rewrite would corrupt them silently.
+*.esp binary
+*.pex binary

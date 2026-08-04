@@ -19,17 +19,46 @@
 
 #include <toml.hpp>
 
+#include <atomic>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 
 namespace
 {
-    SHR::Config s_Config;
+    // Never null, so a reader arriving before Init sees defaults rather than dereferencing nothing.
+    std::atomic<std::shared_ptr<const SHR::Config>> s_Config{ std::make_shared<const SHR::Config>() };
+
+    // Remembered by Init so a later write knows where the file is. Empty until then, which is what
+    // makes Persist a no-op in tests that never named one.
+    std::filesystem::path s_ConfigPath;
 
     std::string LevelName(spdlog::level::level_enum level)
     {
         const auto view = spdlog::level::to_string_view(level);
         return std::string(view.data(), view.size());
+    }
+
+    // Sets one key in a parsed document without disturbing the rest. The section is created when a
+    // file predates the key.
+    void Assign(
+        toml::ordered_value &document,
+        const char          *section,
+        const char          *key,
+        toml::ordered_value  value
+    )
+    {
+        toml::ordered_value &table = document[section];
+        if (!table.is_table())
+        {
+            table = toml::ordered_value(toml::ordered_table{ });
+        }
+
+        // A comment belongs to the value it sits above, and assignment replaces the whole value.
+        toml::ordered_value &slot = table[key];
+        const auto comments = slot.comments();
+        slot = std::move(value);
+        slot.comments() = comments;
     }
 }
 
@@ -68,6 +97,12 @@ namespace toml
             return {
                 .Resting = toml::find<float>(value, SHR::HeartRate::RestingKey),
                 .Max     = toml::find<float>(value, SHR::HeartRate::MaxKey),
+                // Optional: configs written before the ceiling existed keep the default.
+                .FitnessCeiling = toml::find_or<float>(
+                    value,
+                    SHR::HeartRate::FitnessCeilingKey,
+                    SHR::HeartRate{ }.FitnessCeiling
+                ),
             };
         }
     };
@@ -82,8 +117,12 @@ namespace toml
             resting.comments().push_back(" Initial resting heart rate; also initializes fitness.");
 
             basic_value<TC> value(typename basic_value<TC>::table_type{ });
-            value[SHR::HeartRate::RestingKey] = resting;
-            value[SHR::HeartRate::MaxKey]     = static_cast<double>(heartRate.Max);
+            basic_value<TC> ceiling(static_cast<double>(heartRate.FitnessCeiling));
+            ceiling.comments().push_back(" Aerobic capacity ceiling in mL/kg/min; what training converges toward.");
+
+            value[SHR::HeartRate::RestingKey]        = resting;
+            value[SHR::HeartRate::MaxKey]            = static_cast<double>(heartRate.Max);
+            value[SHR::HeartRate::FitnessCeilingKey] = ceiling;
             return value;
         }
     };
@@ -239,19 +278,56 @@ namespace toml
     };
 }
 
-const SHR::Config &SHR::Config::Get()
+std::shared_ptr<const SHR::Config> SHR::Config::Get()
 {
-    return s_Config;
+    return s_Config.load(std::memory_order_acquire);
 }
 
 void SHR::Config::Set(Config config)
 {
-    s_Config = std::move(config);
+    // Publishes rather than mutates: a mutating write would free Notification's strings under a
+    // reader on the worker pool.
+    s_Config.store(std::make_shared<const Config>(std::move(config)), std::memory_order_release);
+}
+
+bool SHR::Config::Persist()
+{
+    if (s_ConfigPath.empty())
+    {
+        return false;
+    }
+
+    const std::shared_ptr<const Config> config = Get();
+    try
+    {
+        // Re-parsed rather than reserialized: the file is hand-editable and only these keys are ours.
+        toml::ordered_value document = toml::parse<toml::ordered_type_config>(s_ConfigPath);
+
+        Assign(document, AudioKey, SHR::Audio::VolumeKey, toml::ordered_value(config->Audio.Volume));
+        Assign(document, InputKey, SHR::Input::ListenKey, toml::ordered_value(config->Input.Listen));
+        Assign(
+            document,
+            NotificationKey,
+            SHR::Notification::EnabledKey,
+            toml::ordered_value(config->Notification.Enabled)
+        );
+
+        std::ofstream out(s_ConfigPath);
+        out << toml::format(document);
+        return out.good();
+    }
+    catch (const std::exception &error)
+    {
+        // The value stays applied in memory; only the next launch loses it.
+        spdlog::error("Config: could not write '{}' - {}", s_ConfigPath.string(), error.what());
+        return false;
+    }
 }
 
 void SHR::Config::Init(std::string_view configPath)
 {
     const std::filesystem::path path(configPath);
+    s_ConfigPath = path;
     if (!std::filesystem::exists(path))
     {
         spdlog::info("Config: '{}' not found - generating defaults.", path.string());
@@ -287,5 +363,5 @@ void SHR::Config::Init(std::string_view configPath)
         }
     }
 
-    s_Config = std::move(config);
+    Set(std::move(config));
 }

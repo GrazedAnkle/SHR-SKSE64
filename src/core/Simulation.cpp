@@ -212,6 +212,37 @@ SHR::SimulationState SHR::HeartRateSimulation::CreateInitialState() const
     };
 }
 
+void SHR::HeartRateSimulation::ApplySettings(SimulationSettings settings)
+{
+    // Mirrors the linear seeding in CreateInitialState, which is the only consumer of
+    // RestingHeartRate; a plain assignment would leave an existing character untouched.
+    m_Fitness += (m_Settings.RestingHeartRate - settings.RestingHeartRate) /
+        m_Coefficients.RestingHRSlope;
+
+    // Lower bound only: NormalizedExertion divides by (fitness - IdleMets), while a lowered ceiling
+    // is left to detrain over FitnessDecayTau rather than deleting progression on a slider drag.
+    m_Fitness = std::max(m_Fitness, m_Coefficients.FitnessAbsoluteMin());
+
+    m_Settings = settings;
+}
+
+float SHR::HeartRateSimulation::FatigueScale() const
+{
+    // Floored like EffectiveFitness: these divide, and a restored state can carry a fitness small
+    // enough to make the ratios explode.
+    return std::max(m_Fitness, m_Coefficients.FitnessAbsoluteMin());
+}
+
+float SHR::HeartRateSimulation::AcuteFatigueMax() const
+{
+    return m_Coefficients.AcuteFatigueMaxFraction * FatigueScale();
+}
+
+float SHR::HeartRateSimulation::LongTermFatigueMax() const
+{
+    return m_Coefficients.LongTermFatigueMaxFraction * FatigueScale();
+}
+
 float SHR::HeartRateSimulation::ComputeEquilibriumContractility(const SimulationState &state) const
 {
     const float effectiveFitness = std::max(
@@ -292,7 +323,7 @@ void SHR::HeartRateSimulation::UpdateAcuteFatigue(float exertion, float delta)
         0.0F,
         1.0F
     );
-    const float target = m_Coefficients.AcuteFatigueMax * normalizedExertion;
+    const float target = AcuteFatigueMax() * normalizedExertion;
     const float difference = target - m_AcuteFatigue;
     const float tau = difference > 0.0F ?
         m_Coefficients.AcuteFatigueGainTau :
@@ -302,8 +333,8 @@ void SHR::HeartRateSimulation::UpdateAcuteFatigue(float exertion, float delta)
 
 void SHR::HeartRateSimulation::UpdateLongTermFatigue(float gameHoursDelta)
 {
-    const float normalizedAcute = m_AcuteFatigue / m_Coefficients.AcuteFatigueMax;
-    const float target = m_Coefficients.LongTermFatigueMax * normalizedAcute;
+    const float normalizedAcute = m_AcuteFatigue / AcuteFatigueMax();
+    const float target = LongTermFatigueMax() * normalizedAcute;
     const float difference = target - m_LongTermFatigue;
     const float tau = difference > 0.0F ?
         m_Coefficients.LongTermFatigueGainTau :
@@ -314,14 +345,15 @@ void SHR::HeartRateSimulation::UpdateLongTermFatigue(float gameHoursDelta)
 void SHR::HeartRateSimulation::UpdateFitness(float exertion, float gameHoursDelta)
 {
     const float normalizedFatigue =
-        (m_AcuteFatigue / m_Coefficients.AcuteFatigueMax +
-            m_LongTermFatigue / m_Coefficients.LongTermFatigueMax) *
+        (m_AcuteFatigue / AcuteFatigueMax() +
+            m_LongTermFatigue / LongTermFatigueMax()) *
         0.5F;
     const float trainingEfficacy = std::max(0.0F, 1.0F - normalizedFatigue);
 
     const bool isTraining = exertion > m_Coefficients.IdleMets;
-    const float target =
-        isTraining ? m_Coefficients.FitnessMaxMets : m_Coefficients.FitnessBaseMets;
+    const float target = isTraining
+        ? m_Settings.FitnessMaxMets
+        : m_Coefficients.FitnessBaseMets;
     const float tau = isTraining ? m_Coefficients.FitnessGainTau : m_Coefficients.FitnessDecayTau;
     const float step = (1.0F - std::exp(-gameHoursDelta / tau)) * (target - m_Fitness);
     m_Fitness += isTraining ? step * trainingEfficacy : step;
@@ -537,7 +569,7 @@ void SHR::HeartRateSimulation::UpdateCurrentHeartRate(float delta)
 
     const float normFitness = std::clamp(
         (EffectiveFitness() - m_Coefficients.FitnessBaseMets) /
-            (m_Coefficients.FitnessMaxMets - m_Coefficients.FitnessBaseMets),
+            (m_Coefficients.FitnessEliteMets - m_Coefficients.FitnessBaseMets),
         0.0F,
         1.0F
     );

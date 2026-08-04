@@ -66,6 +66,10 @@ namespace SHR
         // realDelta is frame time in seconds; gameHoursDelta is elapsed in-game hours.
         void Step(PlayerState state, float realDelta, float gameHoursDelta = 0.0F);
 
+        // Live replacement: shifts fitness with the resting rate. Runtime validates first; this
+        // applies unconditionally.
+        void ApplySettings(SimulationSettings settings);
+
         // Update thread only: reached solely from Runtime's mailbox drain.
         void NotifyJump();
         // Durations are real seconds.
@@ -89,6 +93,11 @@ namespace SHR
         float ComputeTargetRespRate(float normalizedExertion) const;
         float ComputeTargetRespDepth(float normalizedExertion) const;
 
+        // Proportional to RAW fitness, not EffectiveFitness, which already has fatigue subtracted.
+        float FatigueScale() const;
+        float AcuteFatigueMax() const;
+        float LongTermFatigueMax() const;
+
         float EffectiveRestingHR() const;
         float CurrentHeartRate() const;
         float EffectiveFitness() const;
@@ -107,8 +116,8 @@ namespace SHR
         float ComputeTargetHeartRate(float exertion) const;
 
     private:
-        const SimulationSettings          m_Settings;
-        const SimulationModelCoefficients m_Coefficients;
+        SimulationSettings          m_Settings;
+        SimulationModelCoefficients m_Coefficients;
 
         float m_TargetHeartRate = 0.0F;
         float m_FastHR = 0.0F;

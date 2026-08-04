@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include "adapter/Settings.hpp"
 #include "core/SimulationState.hpp"
 
 #include <array>
@@ -23,6 +24,7 @@
 #include <functional>
 #include <optional>
 #include <span>
+#include <vector>
 
 namespace SHR::CoSave
 {
@@ -92,13 +94,27 @@ namespace SHR::CoSave
         StateField    Field;         // meaningful only for RecordFamily::State
     };
 
-    // Every record this build knows. Override rows arrive with the settings surface itself (WI-034).
+    // Every state record this build knows. Overrides are not here; Identify covers both families.
     std::span<const RecordSpec> KnownRecords() noexcept;
 
     const RecordSpec *FindRecord(std::uint32_t type) noexcept;
 
+    // What the reader needs before it has read anything: which family's rules apply, and a name.
+    struct RecordIdentity
+    {
+        RecordFamily Family;
+        const char  *Name;  // the 4CC as text
+    };
+
+    // Override rows are not in the table: the settings registry owns their 4CCs, so the two cannot
+    // drift. Returns nullopt for a type this build does not know at all.
+    std::optional<RecordIdentity> Identify(std::uint32_t type) noexcept;
+
     // Callers must clear this before consuming a payload, so a malformed record costs only its header.
     RecordVerdict ClassifyHeader(const RecordSpec *spec, std::uint32_t version, std::uint32_t size) noexcept;
+
+    // Both families, so one reader loop serves both.
+    RecordVerdict ClassifyHeader(std::uint32_t type, std::uint32_t version, std::uint32_t size) noexcept;
 
     Consequence ConsequenceOf(RecordFamily family, RecordVerdict verdict) noexcept;
 
@@ -124,8 +140,16 @@ namespace SHR::CoSave
 
         std::optional<float> Get(StateField field) const noexcept;
 
+        const Settings::Overrides &Overrides() const noexcept { return m_Overrides; }
+
+        static constexpr std::uint32_t OverrideVersion = 0;
+
     private:
+        // Framing is already cleared by the time this runs.
+        RecordVerdict AcceptOverride(std::uint32_t type, float value) noexcept;
+
         std::array<std::optional<float>, StateFieldCount> m_Fields{ };
+        Settings::Overrides                              m_Overrides{ };
     };
 
     // `initial` supplies the per-field fallbacks, `liveDeathSeconds` the value the schema does not
@@ -148,4 +172,8 @@ namespace SHR::CoSave
 
     // What a save must emit for this state, derived from the same table the reader dispatches on.
     std::array<RecordValue, StateFieldCount> RecordsToWrite(const SimulationState &state);
+
+    // Only the settings a player actually moved, so an untouched one stays absent rather than
+    // being pinned to whatever the profile default happened to be at save time.
+    std::vector<RecordValue> OverrideRecordsToWrite(const Settings::Overrides &overrides);
 }

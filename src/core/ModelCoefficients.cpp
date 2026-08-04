@@ -114,9 +114,9 @@ namespace
         {
             Invalid("MaxRestingHR", "must be at least BaseRestingHR");
         }
-        if (c.FitnessMaxMets < c.FitnessBaseMets)
+        if (c.FitnessEliteMets <= c.FitnessBaseMets)
         {
-            Invalid("FitnessMaxMets", "must be at least FitnessBaseMets");
+            Invalid("FitnessEliteMets", "must be greater than FitnessBaseMets");
         }
         if (c.FitnessBaseMets <= c.IdleMets)
         {
@@ -164,10 +164,12 @@ namespace
         RequirePositive("BreathDepthOnsetTau", c.BreathDepthOnsetTau);
         RequirePositive("BreathDepthRecoveryTau", c.BreathDepthRecoveryTau);
 
-        RequirePositive("AcuteFatigueMax", c.AcuteFatigueMax);
+        RequirePositive("AcuteFatigueMaxFraction", c.AcuteFatigueMaxFraction);
+        RequireUnitRange("AcuteFatigueMaxFraction", c.AcuteFatigueMaxFraction);
         RequirePositive("AcuteFatigueGainTau", c.AcuteFatigueGainTau);
         RequirePositive("AcuteFatigueDecayTau", c.AcuteFatigueDecayTau);
-        RequirePositive("LongTermFatigueMax", c.LongTermFatigueMax);
+        RequirePositive("LongTermFatigueMaxFraction", c.LongTermFatigueMaxFraction);
+        RequireUnitRange("LongTermFatigueMaxFraction", c.LongTermFatigueMaxFraction);
         RequirePositive("LongTermFatigueGainTau", c.LongTermFatigueGainTau);
         RequirePositive("LongTermFatigueDecayTau", c.LongTermFatigueDecayTau);
         RequireNonnegative("SleepRecoveryRate", c.SleepRecoveryRate);

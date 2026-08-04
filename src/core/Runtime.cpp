@@ -23,15 +23,25 @@
 
 namespace
 {
+    // Construction throws on violation; a live update rejects instead.
+    bool IsRuntimeCoefficientContextValid(
+        const SHR::RuntimeSettings   &settings,
+        const SHR::ModelCoefficients &coefficients
+    )
+    {
+        // Strictly greater: UpdateFitness targets the ceiling while fitness decays toward the base,
+        // and an equal pair leaves the character with no range to train through.
+        return settings.Simulation.MaximumHeartRate >
+                coefficients.Rhythm.ExtremeHeartRateRiskThreshold &&
+            settings.Simulation.FitnessMaxMets > coefficients.Simulation.FitnessBaseMets;
+    }
+
     void ValidateRuntimeCoefficientContext(
         const SHR::RuntimeSettings   &settings,
         const SHR::ModelCoefficients &coefficients
     )
     {
-        if (
-            settings.Simulation.MaximumHeartRate <=
-            coefficients.Rhythm.ExtremeHeartRateRiskThreshold
-        )
+        if (!IsRuntimeCoefficientContextValid(settings, coefficients))
         {
             throw std::invalid_argument(
                 "runtime maximum heart rate must be greater than "
@@ -74,6 +84,18 @@ SHR::Runtime::Runtime(
     , m_Rhythm(m_Coefficients.Rhythm, std::move(random))
 {
     ValidateRuntimeCoefficientContext(m_Settings, m_Coefficients);
+}
+
+bool SHR::Runtime::ApplySettings(RuntimeSettings settings)
+{
+    if (!IsRuntimeCoefficientContextValid(settings, m_Coefficients))
+    {
+        return false;
+    }
+
+    m_Settings = settings;
+    m_Simulation.ApplySettings(settings.Simulation);
+    return true;
 }
 
 void SHR::Runtime::Init()
@@ -119,7 +141,8 @@ SHR::StepResult SHR::Runtime::Step(const StepInput &input)
         1.0F
     );
     const float fatigueFactor =
-        physiology.LongTermFatigue / m_Coefficients.Simulation.LongTermFatigueMax;
+        physiology.LongTermFatigue /
+        (m_Coefficients.Simulation.LongTermFatigueMaxFraction * physiology.Fitness);
     const float riskFactor = std::max({
         deathFactor,
         extremeHeartRateFactor,
@@ -144,7 +167,8 @@ SHR::StepResult SHR::Runtime::Step(const StepInput &input)
         1.0F
     );
     const float acuteFatigueFactor =
-        physiology.AcuteFatigue / m_Coefficients.Simulation.AcuteFatigueMax;
+        physiology.AcuteFatigue /
+        (m_Coefficients.Simulation.AcuteFatigueMaxFraction * physiology.Fitness);
     const float runExtensionChance = std::min(
         m_Settings.ArrhythmiaSusceptibility *
             m_Coefficients.Rhythm.PVCRunExtensionChance *

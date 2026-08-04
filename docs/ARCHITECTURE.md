@@ -159,6 +159,44 @@ malformed record costs one field rather than the character's whole progression.
   policy and translation belong to the adapter, as above, along with the `GameClock` that differences
   those samples into elapsed hours. The audio sink owns device volume and queue/resource behavior.
 
+### Settings
+
+A setting's scope follows the type it already lives in, rather than a judgement made per setting.
+`RuntimeSettings` describes a subject, so its fields are per-character and persist in the co-save.
+`Config` describes an installation, so its fields are profile-wide and persist in the configuration
+file. Two tables in `Settings.hpp` mirror that seam; dispatch tries each in turn. A row carries the
+control id, the value's Papyrus type, the domain, and - for a per-character row - the co-save record
+type, which is defined there alone so the record stream and the settings surface cannot disagree.
+Four consumers read those tables: native dispatch, co-save read and write, display sync, and reset.
+
+The domain in a row is the validation authority, and a menu range is presentation over it. Keeping
+every offered position inside its domain is what makes a rejected edit unreachable rather than merely
+unlikely, so `tools/check_menu.py` gates the two against each other.
+
+Per-character settings persist as overrides: only the ones a player has moved are written. An absent
+record and an untouched setting are therefore the same state, which is what lets a save written before
+a setting existed load correctly with no migration, and what makes resetting one expressible at all.
+Comparing against the current default would collapse that distinction, because a setting left at
+today's default would silently follow tomorrow's.
+
+Settings are applied by validated in-place replacement. `ApplySettings` checks a complete update
+against the coefficients before assigning any part of it, and preserves simulation and rhythm; a
+rebuild would reseed the rhythm and drop queued events, which a slider drag mid-combat must not do.
+`RestingHeartRate` needs more than assignment because `CreateInitialState` is its only reader - it
+seeds fitness rather than parameterizing it, so a plain write would do nothing for the rest of a
+character's life. [SIMULATION_MODEL.md](SIMULATION_MODEL.md) owns the transform that replaces it.
+
+That transform also fixes the order in which a save is restored. Overrides are applied before
+`Restore`, never after. On the freshly reverted simulation the transform is arithmetically identical
+to re-seeding, so a character with no saved progression starts where construction would have put it,
+while `Restore` then overwrites fitness outright for one that has. Applying them afterwards would
+re-apply the shift on every load, because the runtime's settings return to the profile's values first.
+
+Reset gives each scope the layer beneath it: a character falls back to the profile by discarding its
+overrides, and the profile falls back to the values compiled in. The configuration file is rewritten
+key by key rather than reserialized, because it is also a hand-editable document and a whole-file
+write would discard its author's comments and ordering.
+
 ### Thread contract
 
 Callback delivery threads were established by observation, not documentation: there is no published
@@ -175,13 +213,13 @@ callback site across two in-game sessions on the supported runtime.
 | `TESCombatEvent`, `TESHitEvent` | **Engine worker pool** | Six distinct threads, never the update thread |
 | Input events | **Engine worker pool**, plus update and menu threads | Overflowed an eight-thread cap |
 | XAudio `OnBufferEnd` | XAudio thread | Both sessions; touches only its own context |
-| Menu-driven settings change | Not yet observed | Owned by [WI-034](https://github.com/GrazedAnkle/SHR-SKSE64/issues/4)'s spike |
+| Menu-driven settings change | Update thread | One session; action and event dispatch alike |
 
 Combat, hit, and input events all arrive from one shared worker pool, so notifications cannot touch
 simulation state where they land. `Runtime` therefore owns a `RuntimeEventMailbox`: every notification posts
 a typed event from whatever thread it arrives on, and the update thread drains the mailbox at the top of
-`Step` - the same point in the frame at which direct mutation used to take effect. The simulation's
-notification entry points are consequently single-writer and hold plain scalars rather than atomics.
+`Step`. The simulation's notification entry points are consequently single-writer and hold plain scalars
+rather than atomics.
 
 All five notification kinds route through the mailbox, including the ones observed on the update thread.
 Sleep and fast-travel were each seen only a handful of times, and combat looked equally settled after its
@@ -198,13 +236,21 @@ sample, the heart-rate level tracker, and the listening flag - as one emplaced i
 so each member's writer is stated once rather than per variable. It is deliberately leaked because
 destroying the voice at process exit would call into a possibly-dead `BSXAudio2Audio`, and it is
 non-movable because an initialized voice hands its callback pointer to XAudio. `Init` and `Revert` share
-one reset step, so a member cannot be silently exempt from the co-save revert the way the listening flag
-previously was. This is also the object a menu-driven settings update is delivered into.
+one reset step, so no member can be silently exempt from the co-save revert. This is also the object a
+menu-driven settings update is delivered into.
 
-One row is still open. `Config::Get` returns a reference into mutable process-global storage whose
-`Notification` member owns heap strings, so a settings write that replaces the aggregate would free those
-buffers under a pool-thread reader. Nothing writes config at runtime today; the write path and its fix
-belong to [WI-034](https://github.com/GrazedAnkle/SHR-SKSE64/issues/4).
+The table is complete. A menu change arrives on the update thread, so it cannot interleave with a step in
+progress and a validated settings update applies inline; the mailbox remains available as an ordering
+choice rather than a correctness requirement. That result is specific to the menu framework's dispatch and
+does not generalize to Papyrus, which ordinarily runs on VM worker threads, so a script-facing API would
+have to be measured rather than assumed to inherit it.
+
+Landing on the update thread does not by itself make a configuration write safe, because the readers are
+elsewhere: `InputHandler` reads the listen key from the worker pool. `Config` is therefore published rather
+than mutated. `Set` installs a whole new immutable snapshot and `Get` hands back a `shared_ptr` to it, so a
+reader holds a consistent view for as long as it needs one and no write frees `Notification`'s strings
+underneath it. The residual hazard is version mixing rather than lifetime: two `Get` calls can straddle a
+write, so a caller reading related fields takes one snapshot for all of them.
 
 ## Offline execution
 

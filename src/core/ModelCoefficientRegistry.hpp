@@ -50,7 +50,7 @@
     X(float, FitnessGainTau)                  \
     X(float, FitnessDecayTau)                 \
     X(float, FitnessBaseMets)                 \
-    X(float, FitnessMaxMets)                  \
+    X(float, FitnessEliteMets)                \
     X(float, RestingHRSlope)                  \
     X(float, MaxRestingHR)                    \
     X(float, RestingRespRate)                 \
@@ -66,10 +66,10 @@
     X(float, RespRecoveryTau)                 \
     X(float, BreathDepthOnsetTau)             \
     X(float, BreathDepthRecoveryTau)          \
-    X(float, AcuteFatigueMax)                 \
+    X(float, AcuteFatigueMaxFraction)         \
     X(float, AcuteFatigueGainTau)             \
     X(float, AcuteFatigueDecayTau)            \
-    X(float, LongTermFatigueMax)              \
+    X(float, LongTermFatigueMaxFraction)      \
     X(float, LongTermFatigueGainTau)          \
     X(float, LongTermFatigueDecayTau)         \
     X(float, SleepRecoveryRate)
@@ -142,6 +142,7 @@
     X(AssetFixed, std::uint32_t, S2EndFrames, "is fixed by the heartbeat source asset")       \
     X(Derived, float, FitnessAbsoluteMin, "is derived from FitnessBaseMets, BaseRestingHR, MaxRestingHR, and RestingHRSlope") \
     X(Utility, float, SecondsPerHour, "is a unit conversion rather than a model coefficient") \
+    X(Utility, float, MetsToVO2, "is a unit conversion rather than a model coefficient")     \
     X(GameIntegration, float, VoiceOutputGain, "belongs to downstream game-mix integration")  \
     X(Dormant, float, InspirationFraction, "is dormant pending the state-dependent breath-curve work")
 

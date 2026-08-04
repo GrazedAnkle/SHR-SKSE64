@@ -208,3 +208,139 @@ TEST_CASE("Runtime initialization resets simulation and rhythm together", "[runt
     CHECK_FALSE(runtime.Step(Input(0.5F, true)).Beat.has_value());
     random.RequireConsumed();
 }
+
+TEST_CASE("Applying settings shifts fitness so resting heart rate is not inert", "[runtime][settings]")
+{
+    SHR::Runtime runtime(Settings());
+    runtime.Init();
+
+    const float seededFitness = runtime.GetState().Fitness;
+
+    SHR::RuntimeSettings lowered = Settings();
+    lowered.Simulation.RestingHeartRate = 51.0F;
+    REQUIRE(runtime.ApplySettings(lowered));
+
+    const float expected = seededFitness + (60.0F - 51.0F) / C::RestingHRSlope;
+    CHECK_THAT(runtime.GetState().Fitness, Catch::Matchers::WithinAbs(expected, Tolerance));
+}
+
+TEST_CASE("The fitness transform commutes with drift", "[runtime][settings]")
+{
+    SHR::Runtime driftedThenApplied(Settings());
+    driftedThenApplied.Init();
+
+    const float seeded = driftedThenApplied.GetState().Fitness;
+
+    // Fitness integrates over GAME hours, so real delta alone leaves it where it started.
+    SHR::PlayerState exerting;
+    exerting.IsSprinting = true;
+    for (int i = 0; i < 200; ++i)
+    {
+        driftedThenApplied.Step({
+            .Player         = exerting,
+            .DeltaSeconds   = 0.1F,
+            .GameHoursDelta = 0.5F,
+            .OutputEnabled  = false,
+        });
+    }
+
+    const float drifted = driftedThenApplied.GetState().Fitness;
+    REQUIRE(drifted != seeded);
+
+    SHR::RuntimeSettings lowered = Settings();
+    lowered.Simulation.RestingHeartRate = 51.0F;
+    REQUIRE(driftedThenApplied.ApplySettings(lowered));
+
+    CHECK_THAT(
+        driftedThenApplied.GetState().Fitness,
+        Catch::Matchers::WithinAbs(drifted + (60.0F - 51.0F) / C::RestingHRSlope, Tolerance)
+    );
+}
+
+TEST_CASE("An invalid settings update is rejected without applying any part of it", "[runtime][settings]")
+{
+    SHR::Runtime runtime(Settings());
+    runtime.Init();
+
+    const SHR::SimulationState before = runtime.GetState();
+
+    SHR::RuntimeSettings invalid;
+    invalid.Simulation.RestingHeartRate = 51.0F;  // valid on its own
+    invalid.Simulation.MaximumHeartRate = C::ExtremeHeartRateRiskThreshold;
+    invalid.ArrhythmiaSusceptibility = 0.0F;
+
+    CHECK_FALSE(runtime.ApplySettings(invalid));
+
+    CHECK_THAT(runtime.GetState().Fitness, Catch::Matchers::WithinAbs(before.Fitness, Tolerance));
+}
+
+// The menu displays what GetSettings reports, so a divergence between it and what was applied would
+// show the player a control that disagrees with the simulation behind it.
+TEST_CASE("Live settings report what was applied", "[runtime][settings]")
+{
+    SHR::Runtime runtime(Settings());
+    runtime.Init();
+
+    SHR::RuntimeSettings updated = Settings();
+    updated.Simulation.RestingHeartRate = 51.0F;
+    updated.ArrhythmiaSusceptibility = 2.5F;
+    REQUIRE(runtime.ApplySettings(updated));
+
+    CHECK_THAT(
+        runtime.GetSettings().Simulation.RestingHeartRate,
+        Catch::Matchers::WithinAbs(51.0F, Tolerance)
+    );
+    CHECK_THAT(
+        runtime.GetSettings().ArrhythmiaSusceptibility,
+        Catch::Matchers::WithinAbs(2.5F, Tolerance)
+    );
+
+    SHR::RuntimeSettings invalid = updated;
+    invalid.Simulation.MaximumHeartRate = C::ExtremeHeartRateRiskThreshold;
+    REQUIRE_FALSE(runtime.ApplySettings(invalid));
+
+    CHECK_THAT(
+        runtime.GetSettings().Simulation.MaximumHeartRate,
+        Catch::Matchers::WithinAbs(updated.Simulation.MaximumHeartRate, Tolerance)
+    );
+}
+
+// The co-save load path applies a character's setting overrides to an already-constructed runtime,
+// so the shift ApplySettings performs has to land a fresh character exactly where constructing with
+// those settings would have. This equality is what lets overrides be adopted after construction.
+TEST_CASE("Applying settings to a fresh runtime seeds as construction would", "[runtime][settings]")
+{
+    SHR::RuntimeSettings overridden = Settings();
+    overridden.Simulation.RestingHeartRate = 48.0F;
+
+    SHR::Runtime constructed(overridden);
+    constructed.Init();
+
+    SHR::Runtime applied(Settings());
+    applied.Init();
+    REQUIRE(applied.ApplySettings(overridden));
+
+    CHECK_THAT(
+        applied.GetState().Fitness,
+        Catch::Matchers::WithinAbs(constructed.GetState().Fitness, Tolerance)
+    );
+}
+
+// The other half of that ordering: for a character who already has saved progression, the shift must
+// be discarded rather than compounded. Restore running last is what guarantees it, so a reordering
+// that reintroduced the double-count would fail here.
+TEST_CASE("Restoring after a settings change discards the seed shift", "[runtime][settings]")
+{
+    SHR::Runtime runtime(Settings());
+    runtime.Init();
+
+    SHR::SimulationState saved = runtime.GetState();
+    saved.Fitness = 17.5F;
+
+    SHR::RuntimeSettings overridden = Settings();
+    overridden.Simulation.RestingHeartRate = 48.0F;
+    REQUIRE(runtime.ApplySettings(overridden));
+    runtime.Restore(saved);
+
+    CHECK_THAT(runtime.GetState().Fitness, Catch::Matchers::WithinAbs(17.5F, Tolerance));
+}

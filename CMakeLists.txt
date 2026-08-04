@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 ## Define project
 ########################################################################################################################
 project(SHR
-    VERSION     0.5.3.0
+    VERSION     0.5.4.0
     LANGUAGES   CXX
     DESCRIPTION "Physiological heart-rate simulation with synthesized heartbeat audio."
 )
@@ -99,6 +99,8 @@ set(adapter_sources
     src/adapter/LoggingConfiguration.hpp
     src/adapter/NotificationPolicy.cpp
     src/adapter/NotificationPolicy.hpp
+    src/adapter/Settings.cpp
+    src/adapter/Settings.hpp
 )
 
 set(plugin_sources
@@ -111,6 +113,8 @@ set(plugin_sources
     src/plugin/Logging.cpp
     src/plugin/Logging.hpp
     src/plugin/Main.cpp
+    src/plugin/MenuBridge.cpp
+    src/plugin/MenuBridge.hpp
     src/plugin/PluginState.cpp
     src/plugin/PluginState.hpp
     src/plugin/SinkBuffer.hpp
@@ -136,6 +140,7 @@ set(test_sources
     tests/RhythmEngineTests.cpp
     tests/RuntimeEventMailboxTests.cpp
     tests/RuntimeTests.cpp
+    tests/SettingsTests.cpp
     tests/SinkBufferTests.cpp
     tests/SimulationCharacterizationTests.cpp
     tests/SimulationStateTests.cpp

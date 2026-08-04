@@ -1,0 +1,182 @@
+{
+  "modName": "SHR",
+  "displayName": "Skyrim Heart Rate",
+  "cursorFillMode": "topToBottom",
+  "pages": [
+    {
+      "pageDisplayName": "Character",
+      "cursorFillMode": "topToBottom",
+      "content": [
+        {
+          "text": "This character",
+          "type": "header"
+        },
+        {
+          "id": "fRestingHeartRate:Subject",
+          "text": "Resting heart rate",
+          "type": "slider",
+          "help": "Your heart rate at complete rest. This also sets how fit the character starts out: a lower resting rate means a higher starting fitness.",
+          "valueOptions": {
+            "min": 40,
+            "max": 90,
+            "step": 1,
+            "formatString": "{0} bpm",
+            "sourceType": "ModSettingFloat"
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SHR_Native",
+            "function": "SetFloat",
+            "params": ["fRestingHeartRate:Subject", "{value}"]
+          }
+        },
+        {
+          "id": "fMaximumHeartRate:Subject",
+          "text": "Maximum heart rate",
+          "type": "slider",
+          "help": "The highest rate this character's heart can reach under maximal effort.",
+          "valueOptions": {
+            "min": 180,
+            "max": 220,
+            "step": 1,
+            "formatString": "{0} bpm",
+            "sourceType": "ModSettingFloat"
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SHR_Native",
+            "function": "SetFloat",
+            "params": ["fMaximumHeartRate:Subject", "{value}"]
+          }
+        },
+        {
+          "id": "fFitnessCeiling:Subject",
+          "text": "Fitness ceiling",
+          "type": "slider",
+          "help": "How fit this character can become through activity, as VO2 max. Training raises fitness toward this limit; lowering it lets fitness decay back down rather than resetting it.",
+          "valueOptions": {
+            "min": 28,
+            "max": 70,
+            "step": 1,
+            "formatString": "{0} mL/kg/min",
+            "sourceType": "ModSettingFloat"
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SHR_Native",
+            "function": "SetFloat",
+            "params": ["fFitnessCeiling:Subject", "{value}"]
+          }
+        },
+        {
+          "id": "fArrhythmia:Subject",
+          "text": "Arrhythmia susceptibility",
+          "type": "slider",
+          "help": "How prone this character is to skipped and extra beats. Zero removes them entirely.",
+          "valueOptions": {
+            "min": 0,
+            "max": 5,
+            "step": 0.1,
+            "formatString": "{2}",
+            "sourceType": "ModSettingFloat"
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SHR_Native",
+            "function": "SetFloat",
+            "params": ["fArrhythmia:Subject", "{value}"]
+          }
+        },
+        {
+          "text": "",
+          "type": "empty"
+        },
+        {
+          "text": "Reset this character",
+          "type": "text",
+          "help": "Return this character's settings to the values in SHR.toml. Does not affect fitness or fatigue already earned, and does not touch other characters.",
+          "action": {
+            "type": "CallFunction",
+            "form": "SHR.esp|0x800",
+            "scriptName": "SHR_ConfigMenu",
+            "function": "ResetCharacterSettings"
+          }
+        }
+      ]
+    },
+    {
+      "pageDisplayName": "General",
+      "cursorFillMode": "topToBottom",
+      "content": [
+        {
+          "text": "All characters",
+          "type": "header"
+        },
+        {
+          "id": "fVolume:Profile",
+          "text": "Heartbeat volume",
+          "type": "slider",
+          "help": "Loudness of the heartbeat itself.",
+          "valueOptions": {
+            "min": 0,
+            "max": 1,
+            "step": 0.05,
+            "formatString": "{1}",
+            "sourceType": "ModSettingFloat"
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SHR_Native",
+            "function": "SetFloat",
+            "params": ["fVolume:Profile", "{value}"]
+          }
+        },
+        {
+          "id": "iListenKey:Profile",
+          "text": "Listen key",
+          "type": "keymap",
+          "help": "Hold to hear your heartbeat.",
+          "valueOptions": {
+            "sourceType": "ModSettingInt"
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SHR_Native",
+            "function": "SetInt",
+            "params": ["iListenKey:Profile", "{value}"]
+          }
+        },
+        {
+          "id": "bNotifications:Profile",
+          "text": "Corner notifications",
+          "type": "toggle",
+          "help": "Show messages when your heart rate crosses a threshold, or when an arrhythmia occurs.",
+          "valueOptions": {
+            "sourceType": "ModSettingBool"
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SHR_Native",
+            "function": "SetBool",
+            "params": ["bNotifications:Profile", "{value}"]
+          }
+        },
+        {
+          "text": "",
+          "type": "empty"
+        },
+        {
+          "text": "Reset general settings",
+          "type": "text",
+          "help": "Return the settings shared by every character to their built-in values, and write them to SHR.toml.",
+          "action": {
+            "type": "CallFunction",
+            "form": "SHR.esp|0x800",
+            "scriptName": "SHR_ConfigMenu",
+            "function": "ResetGeneralSettings"
+          }
+        }
+      ]
+    }
+  ]
+}

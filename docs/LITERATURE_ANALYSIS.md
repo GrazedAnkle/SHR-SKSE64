@@ -16,7 +16,8 @@ establish a bracket's scale; confirm it against the primary source before treati
 
 ## Aerobic capacity endpoints
 
-Backs `FitnessBaseMets`, `FitnessMaxMets`, `MaxRestingHR`, and the derived `FitnessAbsoluteMin`.
+Backs `FitnessBaseMets`, `FitnessEliteMets`, the default of `SimulationSettings::FitnessMaxMets`,
+`MaxRestingHR`, and the derived `FitnessAbsoluteMin`.
 Capacity is in METs, one MET being 3.5 mL/kg/min of oxygen uptake.
 
 Population reference values, from the Fitness Registry and the Importance of Exercise National
@@ -34,9 +35,9 @@ conventionally associated with independent living **[secondary]**.
 
 `FitnessBaseMets` at 24.5 mL/kg/min is close to the median woman in her seventies — low, but above the
 independence threshold, which is the right character for a floor representing a healthy but fully
-detrained adult. `FitnessMaxMets` at 70 is the elite-endurance line: defensible as a ceiling, though
-the archetype the mod serves is nearer the soldier band, so a per-character ceiling should not default
-to the maximum.
+detrained adult. `FitnessEliteMets` at 70 is the elite-endurance line, which is why it anchors the
+fitness normalization; it is defensible as a ceiling too, though the archetype the mod serves is nearer
+the soldier band, so the per-character `FitnessMaxMets` should not default to the maximum.
 
 Two consequences of the endpoints are not evident from the values:
 
@@ -51,7 +52,7 @@ Two consequences of the endpoints are not evident from the values:
 
 ## Fatigue reduction of aerobic capacity
 
-Backs `AcuteFatigueMax` and `LongTermFatigueMax`.
+Backs `AcuteFatigueMaxFraction` and `LongTermFatigueMaxFraction`.
 
 The relevant work treats resilience to physiological decline during prolonged exercise as a property in
 its own right — durability, proposed as a fourth determinant of endurance performance alongside

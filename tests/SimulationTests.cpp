@@ -53,6 +53,16 @@ namespace
     // Recreate the legacy co-save defaults used by the pre-SimulationState test setup. Production
     // compatibility translation belongs to the SKSE adapter; these tests use the helper only to keep
     // their existing physiological starting conditions legible.
+    float AcuteFatigueMax(const SHR::HeartRateSimulation &sim)
+    {
+        return C::AcuteFatigueMaxFraction * sim.GetSnapshot().Fitness;
+    }
+
+    float LongTermFatigueMax(const SHR::HeartRateSimulation &sim)
+    {
+        return C::LongTermFatigueMaxFraction * sim.GetSnapshot().Fitness;
+    }
+
     void RestoreLegacyState(
         SHR::HeartRateSimulation &sim,
         float heartRate,
@@ -409,7 +419,7 @@ TEST_CASE("Fit character's fast HR recovers more than sedentary from same peak H
     RestoreLegacyState(sedentary, maxHR, C::IdleMets, 0.0F, C::FitnessBaseMets, 0.0F, 0.0F, fastPeak);
 
     SHR::HeartRateSimulation athlete(DefaultSimulationSettings);
-    RestoreLegacyState(athlete, maxHR, C::IdleMets, 0.0F, C::FitnessMaxMets, 0.0F, 0.0F, fastPeak);
+    RestoreLegacyState(athlete, maxHR, C::IdleMets, 0.0F, DefaultSimulationSettings.FitnessMaxMets, 0.0F, 0.0F, fastPeak);
 
     RunFor(sedentary, SHR::PlayerState{ }, C::FastRecoveryTauSedentary);
     RunFor(athlete,   SHR::PlayerState{ }, C::FastRecoveryTauSedentary);
@@ -552,13 +562,13 @@ TEST_CASE_METHOD(SimFixture, "Fitness rises ~63% toward max after one gain tau o
     sprinting.IsSprinting = true;
     sim.Step(sprinting, 0.033F, C::FitnessGainTau);
 
-    const float expected = initial + (1.0F - std::exp(-1.0F)) * (C::FitnessMaxMets - initial);
+    const float expected = initial + (1.0F - std::exp(-1.0F)) * (DefaultSimulationSettings.FitnessMaxMets - initial);
     REQUIRE_THAT(sim.GetSnapshot().Fitness, Catch::Matchers::WithinAbs(expected, 0.01F));
 }
 
 TEST_CASE_METHOD(SimFixture, "Fitness decays ~63% toward base after one decay tau of inactivity", "[simulation][fitness]")
 {
-    RestoreLegacyState(sim, DefaultSimulationSettings.RestingHeartRate, C::IdleMets, 0.0F, C::FitnessMaxMets);
+    RestoreLegacyState(sim, DefaultSimulationSettings.RestingHeartRate, C::IdleMets, 0.0F, DefaultSimulationSettings.FitnessMaxMets);
 
     const float initial = sim.GetSnapshot().Fitness;
 
@@ -575,7 +585,7 @@ TEST_CASE_METHOD(SimFixture, "Higher fitness lowers steady-state resting HR", "[
 
     SHR::HeartRateSimulation simFit(DefaultSimulationSettings);
     simFit.Init();
-    RestoreLegacyState(simFit, DefaultSimulationSettings.RestingHeartRate, C::IdleMets, 0.0F, C::FitnessMaxMets);
+    RestoreLegacyState(simFit, DefaultSimulationSettings.RestingHeartRate, C::IdleMets, 0.0F, DefaultSimulationSettings.FitnessMaxMets);
     RunFor(simFit, SHR::PlayerState{ }, 300.0F);
     const float fitRestingHR = simFit.GetSnapshot().HeartRate;
 
@@ -585,10 +595,10 @@ TEST_CASE_METHOD(SimFixture, "Higher fitness lowers steady-state resting HR", "[
 TEST_CASE_METHOD(SimFixture, "Resting HR at max fitness matches slope formula", "[simulation][fitness][physiology]")
 {
     // Seed at max fitness; let HR converge to its new resting point at idle.
-    RestoreLegacyState(sim, DefaultSimulationSettings.RestingHeartRate, C::IdleMets, 0.0F, C::FitnessMaxMets);
+    RestoreLegacyState(sim, DefaultSimulationSettings.RestingHeartRate, C::IdleMets, 0.0F, DefaultSimulationSettings.FitnessMaxMets);
     RunFor(sim, SHR::PlayerState{ }, 800.0F);
 
-    const float expected = C::BaseRestingHR - (C::FitnessMaxMets - C::FitnessBaseMets) * C::RestingHRSlope;
+    const float expected = C::BaseRestingHR - (DefaultSimulationSettings.FitnessMaxMets - C::FitnessBaseMets) * C::RestingHRSlope;
 
     REQUIRE_THAT(sim.GetSnapshot().HeartRate, Catch::Matchers::WithinAbs(expected, 1.0F));
 }
@@ -615,8 +625,8 @@ TEST_CASE_METHOD(SimFixture, "Acute fatigue accumulates during sustained exertio
     // lowers the exertion cap and thus the fatigue target. The equilibrium is roughly
     // (fitness - idle) / (fitness - idle + AcuteFatigueMax) * max, ~73% for default config. After
     // 3 tau we should be well above 50% and close to that ceiling.
-    REQUIRE(sim.GetSnapshot().AcuteFatigue > C::AcuteFatigueMax * 0.5F);
-    REQUIRE(sim.GetSnapshot().AcuteFatigue < C::AcuteFatigueMax);
+    REQUIRE(sim.GetSnapshot().AcuteFatigue > AcuteFatigueMax(sim) * 0.5F);
+    REQUIRE(sim.GetSnapshot().AcuteFatigue < AcuteFatigueMax(sim));
 }
 
 TEST_CASE_METHOD(SimFixture, "Acute fatigue decays toward zero at rest", "[simulation][fatigue]")
@@ -624,11 +634,11 @@ TEST_CASE_METHOD(SimFixture, "Acute fatigue decays toward zero at rest", "[simul
     SHR::PlayerState sprinting = { };
     sprinting.IsSprinting = true;
     RunFor(sim, sprinting, 3.0F * C::AcuteFatigueGainTau);
-    REQUIRE(sim.GetSnapshot().AcuteFatigue > C::AcuteFatigueMax * 0.5F);
+    REQUIRE(sim.GetSnapshot().AcuteFatigue > AcuteFatigueMax(sim) * 0.5F);
 
     RunFor(sim, SHR::PlayerState{ }, 3.0F * C::AcuteFatigueDecayTau);
 
-    REQUIRE(sim.GetSnapshot().AcuteFatigue < C::AcuteFatigueMax * 0.1F);
+    REQUIRE(sim.GetSnapshot().AcuteFatigue < AcuteFatigueMax(sim) * 0.1F);
 }
 
 TEST_CASE_METHOD(SimFixture, "Sleep clears acute fatigue", "[simulation][fatigue]")
@@ -691,7 +701,7 @@ TEST_CASE_METHOD(SimFixture, "Long-term fatigue builds from sustained acute fati
 TEST_CASE_METHOD(SimFixture, "Sleep partially clears long-term fatigue proportional to duration", "[simulation][fatigue]")
 {
     // Seed with max long-term fatigue.
-    RestoreLegacyState(sim, 55.0F, C::IdleMets, 0.0F, 0.0F, 0.0F, C::LongTermFatigueMax);
+    RestoreLegacyState(sim, 55.0F, C::IdleMets, 0.0F, 0.0F, 0.0F, LongTermFatigueMax(sim));
     const float initial = sim.GetSnapshot().LongTermFatigue;
 
     // 8 game-hours of sleep should clear ~55% (rate = 0.099/h, 1 - exp(-8*0.099)
@@ -707,7 +717,10 @@ TEST_CASE_METHOD(SimFixture, "Sleep partially clears long-term fatigue proportio
 TEST_CASE_METHOD(SimFixture, "Long-term fatigue reduces effective fitness", "[simulation][fatigue]")
 {
     const float rawFitness = sim.GetSnapshot().Fitness;
-    RestoreLegacyState(sim, 55.0F, C::IdleMets, 0.0F, rawFitness, 0.0F, C::LongTermFatigueMax);
+    RestoreLegacyState(
+        sim, 55.0F, C::IdleMets, 0.0F, rawFitness, 0.0F,
+        C::LongTermFatigueMaxFraction * rawFitness
+    );
 
     REQUIRE(sim.GetSnapshot().EffectiveFitness < rawFitness - 0.5F);
 }
@@ -724,8 +737,8 @@ TEST_CASE_METHOD(SimFixture, "Training with maximum fatigue produces no fitness 
         C::IdleMets,
         0.0F,
         baseFitness,
-        C::AcuteFatigueMax,
-        C::LongTermFatigueMax
+        C::AcuteFatigueMaxFraction * baseFitness,
+        C::LongTermFatigueMaxFraction * baseFitness
     );
 
     SHR::PlayerState sprinting = { };
@@ -748,7 +761,7 @@ TEST_CASE_METHOD(SimFixture, "Training with partial fatigue produces reduced fit
         C::IdleMets,
         0.0F,
         startFitness,
-        C::AcuteFatigueMax * 0.5F,
+        C::AcuteFatigueMaxFraction * startFitness * 0.5F,
         0.0F
     );
 

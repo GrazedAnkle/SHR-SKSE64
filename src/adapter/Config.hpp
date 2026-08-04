@@ -15,11 +15,13 @@
  */
 #pragma once
 
+#include "core/Constants.hpp"
 #include "core/SimulationSettings.hpp"
 
 #include <spdlog/spdlog.h>
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -37,12 +39,16 @@ namespace SHR
 
     struct HeartRate
     {
-        static constexpr const char RestingKey[] = "resting";
-        static constexpr const char MaxKey[]     = "max";
+        static constexpr const char RestingKey[]        = "resting";
+        static constexpr const char MaxKey[]            = "max";
+        static constexpr const char FitnessCeilingKey[] = "fitness_ceiling";
 
         // Initial resting heart rate; also initializes fitness.
         float Resting = SimulationSettings{ }.RestingHeartRate;
         float Max     = SimulationSettings{ }.MaximumHeartRate;
+        // mL/kg/min, the unit VO2max is published in; the model works in METs.
+        float FitnessCeiling =
+            SimulationSettings{ }.FitnessMaxMets * Constants::MetsToVO2;
     };
 
     struct Arrhythmia
@@ -101,6 +107,12 @@ namespace SHR
         static void Init(std::string_view configPath);
         static void Set(Config config);
 
-        static const Config &Get();
+        // Writes the menu-owned profile settings back to the file Init read, so a change made in
+        // game survives a restart. Only those keys are touched, and comments and key order are kept,
+        // because the file is the player's to hand-edit. Returns false if it could not be written.
+        static bool Persist();
+
+        // Immutable snapshot; read related fields from one, as two calls can straddle a Set.
+        static std::shared_ptr<const Config> Get();
     };
 }

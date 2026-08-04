@@ -14,6 +14,7 @@
  * SHR. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "adapter/CoSave.hpp"
+#include "adapter/Settings.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
@@ -360,4 +361,135 @@ TEST_CASE("A persisted contractility is used instead of the equilibrium fallback
     REQUIRE(Feed(records, "CTLY", 0.42F) == RecordVerdict::Accepted);
 
     CHECK_THAT(Restore(records).Contractility, Catch::Matchers::WithinAbs(0.42F, Tolerance));
+}
+
+TEST_CASE("Override records round-trip through the co-save", "[cosave][settings]")
+{
+    SHR::Settings::Overrides written;
+    REQUIRE(written.Set(SHR::Settings::Subject::RestingHeartRate, 47.0F));
+    REQUIRE(written.Set(SHR::Settings::Subject::FitnessMaxMets, 62.0F));
+
+    const auto records = SHR::CoSave::OverrideRecordsToWrite(written);
+    REQUIRE(records.size() == 2);
+
+    CoSaveRecords read;
+    for (const auto &record : records)
+    {
+        REQUIRE(
+            read.Accept(record.Type, record.Version, sizeof(float), sizeof(float), record.Value) ==
+            RecordVerdict::Accepted
+        );
+    }
+
+    CHECK_THAT(
+        *read.Overrides().Get(SHR::Settings::Subject::RestingHeartRate),
+        Catch::Matchers::WithinAbs(47.0F, Tolerance)
+    );
+    CHECK_FALSE(read.Overrides().Get(SHR::Settings::Subject::ArrhythmiaSusceptibility).has_value());
+}
+
+TEST_CASE("A setting nobody moved emits no record", "[cosave][settings]")
+{
+    const SHR::Settings::Overrides untouched;
+    CHECK(SHR::CoSave::OverrideRecordsToWrite(untouched).empty());
+}
+
+TEST_CASE("A malformed override is dropped rather than applied", "[cosave][settings]")
+{
+    const auto *resting = SHR::Settings::FindSubject(SHR::Settings::Subject::RestingHeartRate);
+    REQUIRE(resting != nullptr);
+
+    SECTION("out of domain")
+    {
+        CoSaveRecords records;
+        const RecordVerdict verdict =
+            records.Accept(resting->Record, 0, sizeof(float), sizeof(float), resting->Max + 10.0F);
+
+        CHECK(verdict == RecordVerdict::OutOfDomain);
+        CHECK_FALSE(records.Overrides().Get(SHR::Settings::Subject::RestingHeartRate).has_value());
+        CHECK(
+            SHR::CoSave::ConsequenceOf(RecordFamily::Override, verdict) ==
+            Consequence::OverrideDropped
+        );
+    }
+
+    SECTION("not a number")
+    {
+        CoSaveRecords records;
+        CHECK(
+            records.Accept(
+                resting->Record, 0, sizeof(float), sizeof(float),
+                std::numeric_limits<float>::quiet_NaN()
+            ) == RecordVerdict::OutOfDomain
+        );
+    }
+
+    SECTION("written by a newer build")
+    {
+        CoSaveRecords records;
+        CHECK(
+            records.Accept(resting->Record, 1, sizeof(float), sizeof(float), 50.0F) ==
+            RecordVerdict::UnknownVersion
+        );
+    }
+
+    SECTION("wrong size")
+    {
+        CoSaveRecords records;
+        CHECK(
+            records.Accept(resting->Record, 0, sizeof(double), sizeof(double), 50.0F) ==
+            RecordVerdict::BadSize
+        );
+    }
+
+    SECTION("arrives twice")
+    {
+        CoSaveRecords records;
+        REQUIRE(
+            records.Accept(resting->Record, 0, sizeof(float), sizeof(float), 50.0F) ==
+            RecordVerdict::Accepted
+        );
+        CHECK(
+            records.Accept(resting->Record, 0, sizeof(float), sizeof(float), 51.0F) ==
+            RecordVerdict::Duplicate
+        );
+    }
+}
+
+TEST_CASE("A record type resolves to its family and name", "[cosave][settings]")
+{
+    const auto *resting = SHR::Settings::FindSubject(SHR::Settings::Subject::RestingHeartRate);
+    REQUIRE(resting != nullptr);
+
+    const auto setting = SHR::CoSave::Identify(resting->Record);
+    REQUIRE(setting.has_value());
+    CHECK(setting->Family == RecordFamily::Override);
+    CHECK(std::string_view{ setting->Name } == resting->Name);
+
+    const SHR::CoSave::RecordSpec &first = SHR::CoSave::KnownRecords().front();
+    const auto state = SHR::CoSave::Identify(first.Type);
+    REQUIRE(state.has_value());
+    CHECK(state->Family == RecordFamily::State);
+    CHECK(std::string_view{ state->Name } == first.Name);
+
+    CHECK_FALSE(SHR::CoSave::Identify(0xDEADBEEF).has_value());
+}
+
+// The reader loop classifies by type alone, so an override's framing has to be reachable without a
+// record-table row to look it up in.
+TEST_CASE("Header classification covers both families", "[cosave][settings]")
+{
+    const auto *resting = SHR::Settings::FindSubject(SHR::Settings::Subject::RestingHeartRate);
+    REQUIRE(resting != nullptr);
+
+    using SHR::CoSave::ClassifyHeader;
+    CHECK(ClassifyHeader(resting->Record, 0, sizeof(float)) == RecordVerdict::Accepted);
+    CHECK(ClassifyHeader(resting->Record, 1, sizeof(float)) == RecordVerdict::UnknownVersion);
+    CHECK(ClassifyHeader(resting->Record, 0, sizeof(double)) == RecordVerdict::BadSize);
+    CHECK(ClassifyHeader(0xDEADBEEF, 0, sizeof(float)) == RecordVerdict::UnknownType);
+
+    const SHR::CoSave::RecordSpec &state = SHR::CoSave::KnownRecords().front();
+    CHECK(ClassifyHeader(state.Type, state.KnownVersion, state.ExpectedSize) == RecordVerdict::Accepted);
+    CHECK(ClassifyHeader(state.Type, state.KnownVersion + 1, state.ExpectedSize) ==
+        RecordVerdict::UnknownVersion);
 }

@@ -67,7 +67,7 @@ TEST_CASE("Logging applies generated configuration defaults after bootstrap", "[
     fs::remove_all(dir);
 
     REQUIRE_NOTHROW(SHR::Config::Init(path.string()));
-    SHR::Logging::Configure(SHR::Config::Get().Debug);
+    SHR::Logging::Configure(SHR::Config::Get()->Debug);
 
     CHECK(output.str().contains("not found - generating defaults"));
     CHECK(logger->level() == spdlog::level::info);
@@ -119,7 +119,7 @@ arrhythmia = "arrhythmia"
     REQUIRE_NOTHROW(SHR::Config::Init(path.string()));
     CHECK(output.str().contains("pulse notification array requires at least"));
 
-    SHR::Logging::Configure(SHR::Config::Get().Debug);
+    SHR::Logging::Configure(SHR::Config::Get()->Debug);
     CHECK(logger->level() == spdlog::level::critical);
     CHECK(logger->flush_level() == spdlog::level::err);
 

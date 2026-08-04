@@ -33,3 +33,5 @@ jobs:
         run: python tools/check_data_citations.py
       - name: Validate the core/adapter/plugin include boundary
         run: python tools/check_layering.py
+      - name: Validate the menu layout against the settings registry
+        run: python tools/check_menu.py

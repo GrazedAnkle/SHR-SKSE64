@@ -18,6 +18,7 @@
 #include "adapter/Config.hpp"
 #include "adapter/GameClock.hpp"
 #include "adapter/HeartRateLevelTracker.hpp"
+#include "adapter/Settings.hpp"
 #include "core/Runtime.hpp"
 #include "plugin/HeartbeatVoice.hpp"
 
@@ -52,6 +53,23 @@ namespace SHR
         HeartbeatVoice &GetVoice() noexcept { return m_Voice; }
         HeartRateLevelTracker &GetLevelTracker() noexcept { return m_LevelTracker; }
 
+        // Update thread. A rejected value is recorded nowhere, so the store cannot claim a setting
+        // is in force when it is not.
+        bool ApplySubject(const Settings::SubjectSpec &spec, float value);
+        bool ApplyProfile(const Settings::ProfileSpec &spec, float value);
+
+        void ResetSubjectSettings();
+        void ResetProfileSettings();
+
+        float ReadSubject(Settings::Subject field) const;
+        static float ReadProfile(Settings::Profile field);
+
+        const Settings::Overrides &GetOverrides() const noexcept { return m_Overrides; }
+
+        // Must run BEFORE Runtime::Restore; reversing the two double-counts the seed transform on
+        // every load. Returns false having applied nothing.
+        bool AdoptOverrides(const Settings::Overrides &overrides);
+
         // Update thread. Returns in-game hours since the previous call and rebases.
         float ConsumeGameHoursDelta(float currentHours) noexcept;
 
@@ -71,5 +89,10 @@ namespace SHR
         HeartRateLevelTracker  m_LevelTracker;
         GameClock              m_GameClock;
         std::atomic_int        m_IsListening = 0;
+
+        // The profile's values, kept apart from the runtime's live settings: resolving an override
+        // against those would not be idempotent.
+        RuntimeSettings     m_Defaults;
+        Settings::Overrides m_Overrides;
     };
 }

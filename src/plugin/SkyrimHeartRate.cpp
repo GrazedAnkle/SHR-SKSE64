@@ -31,6 +31,7 @@ namespace
     void OnRevert(SKSE::SerializationInterface *serde);
     void OnLoad(SKSE::SerializationInterface *serde);
     void ReportRecord(const char *name, SHR::CoSave::RecordFamily family, SHR::CoSave::RecordVerdict verdict);
+    void WriteRecords(SKSE::SerializationInterface *serde, std::span<const SHR::CoSave::RecordValue> records);
 
     void Update(const RE::PlayerCharacter *player, float delta);
     void HandleFeedback(const RE::PlayerCharacter *player, const SHR::StepResult &result);
@@ -66,7 +67,7 @@ void SHR::HeartRateManager::InstallHooks(SKSE::Trampoline &trampoline)
 void SHR::HeartRateManager::Init()
 {
     InitSerialization();
-    PluginState::Get().Init(Config::Get());
+    PluginState::Get().Init(*Config::Get());
 }
 
 void SHR::HeartRateManager::NotifyJump()
@@ -113,17 +114,24 @@ namespace
         SKSE::log::trace("SKSE co-save serialization initialized.");
     }
 
-    void OnSave(SKSE::SerializationInterface *serde)
+    void WriteRecords(SKSE::SerializationInterface *serde, std::span<const SHR::CoSave::RecordValue> records)
     {
-        const SHR::SimulationState state = RuntimeInstance().GetState();
-
-        for (const SHR::CoSave::RecordValue &record : SHR::CoSave::RecordsToWrite(state))
+        for (const SHR::CoSave::RecordValue &record : records)
         {
             if (!serde->WriteRecord(record.Type, record.Version, record.Value))
             {
                 SKSE::log::error(FMT_STRING("Failed to serialize co-save record {}"), record.Name);
             }
         }
+    }
+
+    void OnSave(SKSE::SerializationInterface *serde)
+    {
+        const SHR::PluginState &state = SHR::PluginState::Get();
+
+        WriteRecords(serde, SHR::CoSave::RecordsToWrite(RuntimeInstance().GetState()));
+        // Only what the player moved; an untouched setting stays absent.
+        WriteRecords(serde, SHR::CoSave::OverrideRecordsToWrite(state.GetOverrides()));
     }
 
     void OnRevert([[maybe_unused]] SKSE::SerializationInterface *serde)
@@ -160,8 +168,10 @@ namespace
 
         while (serde->GetNextRecordInfo(recordType, recordVersion, recordSize))
         {
-            const SHR::CoSave::RecordSpec *spec = SHR::CoSave::FindRecord(recordType);
-            if (spec == nullptr)
+            // Both families dispatch here; an override's 4CC lives in the settings registry.
+            const std::optional<SHR::CoSave::RecordIdentity> identity =
+                SHR::CoSave::Identify(recordType);
+            if (!identity)
             {
                 // GetNextRecordInfo seeks past whatever the previous record left unread, so an
                 // unread record needs no skip of its own.
@@ -178,26 +188,37 @@ namespace
             // Read only after the header clears, so a malformed record cannot leave a partially
             // overwritten float behind.
             const SHR::CoSave::RecordVerdict header = SHR::CoSave::ClassifyHeader(
-                spec,
+                recordType,
                 recordVersion,
                 recordSize
             );
             if (header != SHR::CoSave::RecordVerdict::Accepted)
             {
-                ReportRecord(spec->Name, spec->Family, header);
+                ReportRecord(identity->Name, identity->Family, header);
                 continue;
             }
 
             float value = 0.0F;
             const std::uint32_t bytesRead = serde->ReadRecordData(value);
             ReportRecord(
-                spec->Name,
-                spec->Family,
+                identity->Name,
+                identity->Family,
                 records.Accept(recordType, recordVersion, recordSize, bytesRead, value)
             );
         }
 
-        SHR::Runtime &runtime = RuntimeInstance();
+        SHR::PluginState &state = SHR::PluginState::Get();
+
+        // Before Restore; AdoptOverrides states why the order matters.
+        if (!state.AdoptOverrides(records.Overrides()))
+        {
+            SKSE::log::warn(
+                FMT_STRING("Co-save settings could not be applied together; {}."),
+                SHR::CoSave::Describe(SHR::CoSave::Consequence::OverrideDropped)
+            );
+        }
+
+        SHR::Runtime &runtime = state.GetRuntime();
         runtime.Restore(
             SHR::CoSave::RestoreSimulationState(
                 records,
@@ -259,7 +280,7 @@ namespace
         if (result.Beat->Event.Kind == SHR::BeatKind::PVC)
         {
             const auto notification = SHR::NotificationPolicy::SelectArrhythmia(
-                SHR::Config::Get().Notification
+                SHR::Config::Get()->Notification
             );
             if (notification)
             {
@@ -274,7 +295,7 @@ namespace
         if (state.GetLevelTracker().Observe(heartRate))
         {
             const auto notification = SHR::NotificationPolicy::SelectStatus(
-                SHR::Config::Get().Notification,
+                SHR::Config::Get()->Notification,
                 player->IsDead(),
                 heartRate
             );

@@ -21,5 +21,8 @@ namespace SHR
     {
         float RestingHeartRate = 55.0F;
         float MaximumHeartRate = 200.0F;
+        // Per-character adaptation ceiling: what this subject's training converges toward. Must stay
+        // above the fitness that RestingHeartRate seeds, or training would reduce fitness.
+        float FitnessMaxMets   = 55.0F / 3.5F;
     };
 }
