@@ -152,7 +152,7 @@ def plot_anchor_view(
     ax_spec.text(
         0.01,
         0.97,
-        "context only — temporal anchors come from the envelope below",
+        "context only - temporal anchors come from the envelope below",
         transform=ax_spec.transAxes,
         va="top",
         ha="left",
@@ -253,11 +253,11 @@ def plot_anchor_view(
     heading = title or wav.name
     fig.suptitle(
         f"{heading}  [{start:.6f}, {end:.6f}] s\n"
-        f"rise10–90 {rise_ms:.2f} ms   last10→peak {attack_ms:.2f} ms   "
+        f"rise10-90 {rise_ms:.2f} ms   last10->peak {attack_ms:.2f} ms   "
         f"lobes {n_lobes} (tallest #{tallest}, runner {runner:.2f})   "
         f"HF lead/lag {hf_skew:+.4f}   |   "
         f"spectrogram: Hann {actual_stft_ms:.1f} ms, hop {actual_hop_ms:.1f} ms, "
-        f"0–{fmax_hz:g} Hz, {db_floor:g}..0 dB",
+        f"0-{fmax_hz:g} Hz, {db_floor:g}..0 dB",
         fontsize=11,
     )
     ax_wave.set_xlim(display_start, display_end)

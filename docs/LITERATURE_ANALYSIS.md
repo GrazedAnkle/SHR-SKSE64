@@ -33,7 +33,7 @@ carriage measure roughly 47-57 mL/kg/min **[secondary]**; elite endurance athlet
 cross-country skiers reaching 80-90 **[secondary]**. About 17.5 mL/kg/min (5 MET) is the capacity
 conventionally associated with independent living **[secondary]**.
 
-`FitnessBaseMets` at 24.5 mL/kg/min is close to the median woman in her seventies — low, but above the
+`FitnessBaseMets` at 24.5 mL/kg/min is close to the median woman in her seventies - low, but above the
 independence threshold, which is the right character for a floor representing a healthy but fully
 detrained adult. `FitnessEliteMets` at 70 is the elite-endurance line, which is why it anchors the
 fitness normalization; it is defensible as a ceiling too, though the archetype the mod serves is nearer
@@ -55,7 +55,7 @@ Two consequences of the endpoints are not evident from the values:
 Backs `AcuteFatigueMaxFraction` and `LongTermFatigueMaxFraction`.
 
 The relevant work treats resilience to physiological decline during prolonged exercise as a property in
-its own right — durability, proposed as a fourth determinant of endurance performance alongside
+its own right - durability, proposed as a fourth determinant of endurance performance alongside
 VO2max, threshold, and efficiency. Its measurements are expressed as a percentage of the individual's
 own capacity:
 
@@ -63,9 +63,9 @@ own capacity:
 | --- | --- | --- |
 | 90 min running at lactate threshold | ~6% VO2peak; speed at threshold 12.8 to 12.1 km/h (~5.5%) | [primary] |
 | 120 min running | 7.1% VO2max | [secondary] |
-| 2 h cycling | power at first ventilatory threshold -6 ± 7%; 5 min time trial -9 ± 10%; VO2peak not significant | [primary] |
+| 2 h cycling | power at first ventilatory threshold -6 +/- 7%; 5 min time trial -9 +/- 10%; VO2peak not significant | [primary] |
 | Prolonged cycling | critical power ~10% mean, inter-individual range 0.4-32% | [secondary] |
-| 3 week overload block (functional overreaching) | incremental test performance -9.0 ± 2.1%; VO2max reduced only in the overreached subgroup | [secondary] |
+| 3 week overload block (functional overreaching) | incremental test performance -9.0 +/- 2.1%; VO2max reduced only in the overreached subgroup | [secondary] |
 
 That supports roughly **5-15% for acute fatigue**, with a tail toward 30% at glycogen depletion, and a
 further **5-10% for the chronic layer**.
@@ -84,8 +84,8 @@ and would place fatigue inside its own target. This is the same reasoning that m
 
 ### Proportional maxima and absolute-MET exertion
 
-The literature doses at a *relative* anchor — 90 minutes at the subject's own lactate threshold, two
-hours at their own moderate intensity — so a fitter subject performs more absolute work by
+The literature doses at a *relative* anchor - 90 minutes at the subject's own lactate threshold, two
+hours at their own moderate intensity - so a fitter subject performs more absolute work by
 construction. The model doses in absolute METs, because Skyrim fixes movement speed for every character
 and the metabolic cost of covering ground is the same for all of them.
 
@@ -113,16 +113,16 @@ sprinting. This is independent of the magnitude bracket above;
 ## Fatigue resistance and aerobic capacity
 
 Cross-sectionally the association is real. Trained individuals sustain effort longer at the same
-relative intensity, show faster oxygen-uptake kinetics — a time constant near 28-29 s against 59-64 s
-in untrained subjects **[secondary]** — and recover better between efforts, which a review of aerobic
+relative intensity, show faster oxygen-uptake kinetics - a time constant near 28-29 s against 59-64 s
+in untrained subjects **[secondary]** - and recover better between efforts, which a review of aerobic
 fitness and recovery attributes to a larger aerobic contribution, improved lactate removal, and
 enhanced phosphocreatine resynthesis **[primary, qualitative]**. That review reports the relationship
 as strongest for the fraction of VO2max at 4 mmol/L blood lactate rather than for VO2max itself, and
 finds the phosphocreatine association depends on the active muscle mass.
 
 Longitudinally it breaks down. Across a ten-week training study, durability improved under both low-
-and high-intensity training — energy-expenditure drift fell from about 6.4% to 4.0% and from 6.5% to
-3.0%, and the onset of drift was postponed by roughly 25-29 minutes — yet change in VO2max was not
+and high-intensity training - energy-expenditure drift fell from about 6.4% to 4.0% and from 6.5% to
+3.0%, and the onset of drift was postponed by roughly 25-29 minutes - yet change in VO2max was not
 associated with change in any drift, which the authors read as evidence of distinct mechanisms
 **[primary]**.
 

@@ -15,7 +15,7 @@
           "id": "fRestingHeartRate:Subject",
           "text": "Resting heart rate",
           "type": "slider",
-          "help": "Your heart rate at complete rest. This also sets how fit the character starts out: a lower resting rate means a higher starting fitness.",
+          "help": "This character's heart rate at complete rest. This also sets how fit the character starts out: a lower resting rate means a higher starting fitness.",
           "valueOptions": {
             "min": 40,
             "max": 90,
@@ -34,7 +34,7 @@
           "id": "fMaximumHeartRate:Subject",
           "text": "Maximum heart rate",
           "type": "slider",
-          "help": "The highest rate this character's heart can reach under maximal effort.",
+          "help": "This character's highest heart rate under maximal effort.",
           "valueOptions": {
             "min": 180,
             "max": 220,
@@ -53,7 +53,7 @@
           "id": "fFitnessCeiling:Subject",
           "text": "Fitness ceiling",
           "type": "slider",
-          "help": "How fit this character can become through activity, as VO2 max. Training raises fitness toward this limit; lowering it lets fitness decay back down rather than resetting it.",
+          "help": "This character's maximum potential fitness (VO2 max). Training raises fitness toward this limit.",
           "valueOptions": {
             "min": 28,
             "max": 70,
@@ -94,7 +94,7 @@
         {
           "text": "Reset this character",
           "type": "text",
-          "help": "Return this character's settings to the values in SHR.toml. Does not affect fitness or fatigue already earned, and does not touch other characters.",
+          "help": "Return this character's settings to the values in SHR.toml. Does not affect current fitness or fatigue levels.",
           "action": {
             "type": "CallFunction",
             "form": "SHR.esp|0x800",
@@ -135,7 +135,7 @@
           "id": "iListenKey:Profile",
           "text": "Listen key",
           "type": "keymap",
-          "help": "Hold to hear your heartbeat.",
+          "help": "Toggle key to hear heartbeat.",
           "valueOptions": {
             "sourceType": "ModSettingInt"
           },
@@ -150,7 +150,7 @@
           "id": "bNotifications:Profile",
           "text": "Corner notifications",
           "type": "toggle",
-          "help": "Show messages when your heart rate crosses a threshold, or when an arrhythmia occurs.",
+          "help": "Show messages when heart rate crosses a threshold, or when an arrhythmia occurs.",
           "valueOptions": {
             "sourceType": "ModSettingBool"
           },
@@ -168,7 +168,7 @@
         {
           "text": "Reset general settings",
           "type": "text",
-          "help": "Return the settings shared by every character to their built-in values, and write them to SHR.toml.",
+          "help": "Return the settings shared by every character to their built-in values.",
           "action": {
             "type": "CallFunction",
             "form": "SHR.esp|0x800",

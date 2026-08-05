@@ -82,7 +82,7 @@ SKSEPluginLoad(const SKSE::LoadInterface *skse)
     SKSE::Init(skse);
     InitializeMessaging();
 
-    // Papyrus registrations are queued, so this must run before the VM starts binding scripts —
+    // Papyrus registrations are queued, so this must run before the VM starts binding scripts.
     // kDataLoaded is already too late.
     SHR::MenuBridge::Register();
 
