@@ -87,4 +87,3 @@ dependencies are understood.
 - Orthostatic HR bump on standing.
 - A unified physiological-modifier input pipeline for fear, temperature, potions, injury, and posture.
 - Warm-up and cooldown behavior.
-- Random draw from pool of notification messages.

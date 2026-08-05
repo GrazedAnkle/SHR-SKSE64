@@ -18,6 +18,7 @@
 #include "adapter/CoSave.hpp"
 #include "adapter/Config.hpp"
 #include "adapter/NotificationPolicy.hpp"
+#include "core/Random.hpp"
 #include "core/Runtime.hpp"
 #include "plugin/PluginState.hpp"
 
@@ -277,31 +278,38 @@ namespace
             return;
         }
 
+        SHR::PluginState &state = SHR::PluginState::Get();
+
+        // Held until both messages have been shown, not merely selected: a selected message points
+        // into this snapshot.
+        const auto config = SHR::Config::Get();
+
         if (result.Beat->Event.Kind == SHR::BeatKind::PVC)
         {
-            const auto notification = SHR::NotificationPolicy::SelectArrhythmia(
-                SHR::Config::Get()->Notification
+            const auto *notification = SHR::NotificationPolicy::SelectArrhythmia(
+                config->Notification,
+                state.NextArrhythmiaDraw(config->Notification.Arrhythmia.size())
             );
             if (notification)
             {
-                RE::SendHUDMessage::ShowHUDMessage(notification->data());
+                RE::SendHUDMessage::ShowHUDMessage(notification->c_str());
             }
         }
 
-        SHR::PluginState &state = SHR::PluginState::Get();
         state.GetVoice().Play(result.Beat->Render);
 
         const float heartRate = result.Physiology.HeartRate;
         if (state.GetLevelTracker().Observe(heartRate))
         {
-            const auto notification = SHR::NotificationPolicy::SelectStatus(
-                SHR::Config::Get()->Notification,
+            const auto *notification = SHR::NotificationPolicy::SelectStatus(
+                config->Notification,
                 player->IsDead(),
-                heartRate
+                heartRate,
+                RandomDraw()
             );
             if (notification)
             {
-                RE::SendHUDMessage::ShowHUDMessage(notification->data());
+                RE::SendHUDMessage::ShowHUDMessage(notification->c_str());
             }
         }
     }

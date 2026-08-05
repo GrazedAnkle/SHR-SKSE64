@@ -15,6 +15,9 @@
  */
 #include "plugin/PluginState.hpp"
 
+#include "adapter/NotificationPolicy.hpp"
+#include "core/Random.hpp"
+
 SHR::PluginState &SHR::PluginState::Get()
 {
     // Leaked deliberately rather than held as a static object: a static would register ~PluginState
@@ -142,6 +145,22 @@ float SHR::PluginState::ReadProfile(Settings::Profile field)
 float SHR::PluginState::ConsumeGameHoursDelta(float currentHours) noexcept
 {
     return m_GameClock.Consume(currentHours);
+}
+
+std::size_t SHR::PluginState::NextArrhythmiaDraw(std::size_t poolSize) noexcept
+{
+    if (poolSize == 0)
+    {
+        // Nothing to show, so nothing to remember having shown.
+        return 0;
+    }
+
+    m_LastArrhythmiaDraw = NotificationPolicy::SelectIndexExcluding(
+        poolSize,
+        RandomDraw(),
+        m_LastArrhythmiaDraw
+    );
+    return m_LastArrhythmiaDraw;
 }
 
 bool SHR::PluginState::IsListening() const noexcept

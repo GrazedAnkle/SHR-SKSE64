@@ -73,6 +73,10 @@ namespace SHR
         float Volume = 1.0F;
     };
 
+    // Interchangeable wordings for one notification; a firing draws one of them. Configuration may
+    // write a bare string wherever a pool is expected.
+    using MessagePool = std::vector<std::string>;
+
     struct Notification
     {
         static constexpr const char EnabledKey[]    = "enabled";
@@ -82,10 +86,11 @@ namespace SHR
         static constexpr const char ArrhythmiaKey[] = "arrhythmia";
 
         bool                     Enabled = false;
-        std::vector<std::string> Pulse;
-        std::string              Dying;
-        std::string              Dead;
-        std::string              Arrhythmia;
+        // One pool per heart-rate band, in order of increasing rate.
+        std::vector<MessagePool> Pulse;
+        MessagePool              Dying;
+        MessagePool              Dead;
+        MessagePool              Arrhythmia;
     };
 
     struct Config

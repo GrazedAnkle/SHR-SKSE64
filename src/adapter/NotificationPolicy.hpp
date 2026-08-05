@@ -20,24 +20,43 @@
 
 #include <cstddef>
 #include <optional>
-#include <string_view>
+#include <string>
 
+// Which message a notification shows; `draw` carries the randomness in, leaving selection pure.
+// ARCHITECTURE.md (notifications) owns why selection is shaped this way.
 namespace SHR::NotificationPolicy
 {
     constexpr std::size_t RequiredPulseCount = 6;
 
     bool IsEnabled(const Notification &notification) noexcept;
 
-    std::optional<std::string_view> SelectPulse(
+    // The first pulse band holding no message, or nullopt when all six can answer. IsEnabled rejects
+    // such a configuration; Config::Init calls this only to say which band is at fault.
+    std::optional<std::size_t> FindEmptyBand(const Notification &notification) noexcept;
+
+    // The pool entry a `draw` lands on.
+    std::size_t SelectIndex(std::size_t poolSize, std::size_t draw) noexcept;
+
+    // The same, refusing to land on `previous` while the pool offers an alternative.
+    std::size_t SelectIndexExcluding(std::size_t poolSize, std::size_t draw, std::size_t previous) noexcept;
+
+    // The message to show, or null when this configuration has none. It points into the caller's
+    // configuration snapshot and lives exactly as long as that does.
+    const std::string *SelectPulse(
         const Notification &notification,
-        HeartRateLevel heartRateLevel
+        HeartRateLevel heartRateLevel,
+        std::size_t draw
     ) noexcept;
 
-    std::optional<std::string_view> SelectStatus(
+    const std::string *SelectStatus(
         const Notification &notification,
         bool isDead,
-        float heartRate
+        float heartRate,
+        std::size_t draw
     ) noexcept;
 
-    std::optional<std::string_view> SelectArrhythmia(const Notification &notification) noexcept;
+    const std::string *SelectArrhythmia(
+        const Notification &notification,
+        std::size_t draw
+    ) noexcept;
 }

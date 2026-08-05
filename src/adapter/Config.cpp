@@ -39,6 +39,29 @@ namespace
         return std::string(view.data(), view.size());
     }
 
+    // A bare string is the one-message pool.
+    SHR::MessagePool AsPool(const toml::value &value)
+    {
+        if (value.is_string())
+        {
+            return { toml::get<std::string>(value) };
+        }
+
+        return toml::get<SHR::MessagePool>(value);
+    }
+
+    // Written back in the simplest form that expresses what is configured.
+    template<typename TC>
+    toml::basic_value<TC> PoolValue(const SHR::MessagePool &pool)
+    {
+        if (pool.size() == 1)
+        {
+            return toml::basic_value<TC>(pool.front());
+        }
+
+        return toml::basic_value<TC>(pool);
+    }
+
     // Sets one key in a parsed document without disturbing the rest. The section is created when a
     // file predates the key.
     void Assign(
@@ -211,12 +234,21 @@ namespace toml
     {
         static SHR::Notification from_toml(const toml::value &value)
         {
+            const toml::value &pulse = toml::find(value, SHR::Notification::PulseKey);
+
+            std::vector<SHR::MessagePool> pools;
+            pools.reserve(pulse.size());
+            for (const toml::value &band : pulse.as_array())
+            {
+                pools.push_back(AsPool(band));
+            }
+
             return {
                 .Enabled    = toml::find<bool>(value, SHR::Notification::EnabledKey),
-                .Pulse      = toml::find<std::vector<std::string>>(value, SHR::Notification::PulseKey),
-                .Dying      = toml::find<std::string>(value, SHR::Notification::DyingKey),
-                .Dead       = toml::find<std::string>(value, SHR::Notification::DeadKey),
-                .Arrhythmia = toml::find<std::string>(value, SHR::Notification::ArrhythmiaKey),
+                .Pulse      = std::move(pools),
+                .Dying      = AsPool(toml::find(value, SHR::Notification::DyingKey)),
+                .Dead       = AsPool(toml::find(value, SHR::Notification::DeadKey)),
+                .Arrhythmia = AsPool(toml::find(value, SHR::Notification::ArrhythmiaKey)),
             };
         }
     };
@@ -227,15 +259,50 @@ namespace toml
         template<typename TC>
         static basic_value<TC> into_toml(const SHR::Notification &notification)
         {
-            basic_value<TC> pulse(notification.Pulse);
-            pulse.comments().push_back(" Strings printed in order of increasing HR. All six must be filled to enable.");
+            basic_value<TC> enabled(notification.Enabled);
+            enabled.comments().push_back(" Notification messages about your character's heart. Toggling can be done from");
+            enabled.comments().push_back(" the mod menu as well.");
+
+            typename basic_value<TC>::array_type bands;
+            bands.reserve(notification.Pulse.size());
+            for (const SHR::MessagePool &band : notification.Pulse)
+            {
+                bands.push_back(PoolValue<TC>(band));
+            }
+
+            basic_value<TC> pulse(std::move(bands));
+            pulse.comments().push_back(" One message per heart-rate range, from lowest to highest: resting, idle,");
+            pulse.comments().push_back(" elevated, high, very high, extreme. Shown when heart rate crosses into that");
+            pulse.comments().push_back(" range. All six must be present or notifications will stay off.");
+            pulse.comments().push_back(" ");
+            pulse.comments().push_back(" Anywhere one message is expected, you can also provide a list of");
+            pulse.comments().push_back(" interchangeable wordings. One of them will be drawn each time that message is");
+            pulse.comments().push_back(" shown:");
+            pulse.comments().push_back(" ");
+            pulse.comments().push_back("   pulse = [");
+            pulse.comments().push_back(R"(     "This message will show up verbatim at resting HR.",)");
+            pulse.comments().push_back(R"(     ["At idle HR, this message will show up.", "Or this one."],)");
+            pulse.comments().push_back("     # ... four more, one per band.");
+            pulse.comments().push_back("   ]");
+            pulse.comments().push_back(" ");
+            pulse.comments().push_back(" dying, dead and arrhythmia accept both forms as well.");
+
+            basic_value<TC> dying = PoolValue<TC>(notification.Dying);
+            dying.comments().push_back(" Shown while your character is bleeding out.");
+
+            basic_value<TC> dead = PoolValue<TC>(notification.Dead);
+            dead.comments().push_back(" Shown once your character's heart has stopped.");
+
+            basic_value<TC> arrhythmia = PoolValue<TC>(notification.Arrhythmia);
+            arrhythmia.comments().push_back(" Shown when a beat skips. This one fires the most often, so it is the one");
+            arrhythmia.comments().push_back(" that would benefit the most from several wordings.");
 
             basic_value<TC> value(typename basic_value<TC>::table_type{ });
-            value[SHR::Notification::EnabledKey]    = notification.Enabled;
+            value[SHR::Notification::EnabledKey]    = enabled;
             value[SHR::Notification::PulseKey]      = pulse;
-            value[SHR::Notification::DyingKey]      = notification.Dying;
-            value[SHR::Notification::DeadKey]       = notification.Dead;
-            value[SHR::Notification::ArrhythmiaKey] = notification.Arrhythmia;
+            value[SHR::Notification::DyingKey]      = dying;
+            value[SHR::Notification::DeadKey]       = dead;
+            value[SHR::Notification::ArrhythmiaKey] = arrhythmia;
             return value;
         }
     };
@@ -350,6 +417,15 @@ void SHR::Config::Init(std::string_view configPath)
                 "Config: pulse notification array requires at least {} entries (got {}) - notifications disabled.",
                 NotificationPolicy::RequiredPulseCount,
                 pulseCount
+            );
+            config.Notification.Enabled = false;
+        }
+        // An empty pool has no message to draw, so it fails the same way a missing band does.
+        else if (const auto empty = NotificationPolicy::FindEmptyBand(config.Notification))
+        {
+            spdlog::error(
+                "Config: pulse notification band {} has no message - notifications disabled.",
+                *empty
             );
             config.Notification.Enabled = false;
         }

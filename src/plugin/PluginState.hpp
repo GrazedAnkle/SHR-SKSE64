@@ -23,6 +23,8 @@
 #include "plugin/HeartbeatVoice.hpp"
 
 #include <atomic>
+#include <cstddef>
+#include <limits>
 #include <optional>
 
 namespace SHR
@@ -73,6 +75,10 @@ namespace SHR
         // Update thread. Returns in-game hours since the previous call and rebases.
         float ConsumeGameHoursDelta(float currentHours) noexcept;
 
+        // Update thread. The pool index for the next arrhythmia message, avoiding the one it last
+        // returned while the pool offers an alternative.
+        std::size_t NextArrhythmiaDraw(std::size_t poolSize) noexcept;
+
         // Toggled from the engine's worker pool, read on the update thread.
         bool IsListening() const noexcept;
         void ToggleListening() noexcept;
@@ -89,6 +95,10 @@ namespace SHR
         HeartRateLevelTracker  m_LevelTracker;
         GameClock              m_GameClock;
         std::atomic_int        m_IsListening = 0;
+
+        // Out of range on purpose, which the policy reads as "nothing shown yet". Not character
+        // state, so it deliberately survives Revert.
+        std::size_t m_LastArrhythmiaDraw = std::numeric_limits<std::size_t>::max();
 
         // The profile's values, kept apart from the runtime's live settings: resolving an override
         // against those would not be idempotent.

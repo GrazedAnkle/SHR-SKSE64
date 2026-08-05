@@ -53,8 +53,8 @@ TEST_CASE("Config generates parseable defaults when the file is missing", "[conf
     CHECK(loaded->Notification.Enabled == defaults.Notification.Enabled);
     CHECK(loaded->Notification.Arrhythmia == defaults.Notification.Arrhythmia);
     CHECK_FALSE(SHR::NotificationPolicy::IsEnabled(loaded->Notification));
-    CHECK_FALSE(SHR::NotificationPolicy::SelectStatus(loaded->Notification, false, 80.0F));
-    CHECK_FALSE(SHR::NotificationPolicy::SelectArrhythmia(loaded->Notification));
+    CHECK_FALSE(SHR::NotificationPolicy::SelectStatus(loaded->Notification, false, 80.0F, 0));
+    CHECK_FALSE(SHR::NotificationPolicy::SelectArrhythmia(loaded->Notification, 0));
 
     // Re-init on the now-existing file must parse cleanly.
     REQUIRE_NOTHROW(SHR::Config::Init(path.string()));
@@ -104,8 +104,66 @@ arrhythmia = "arrhythmia"
     const SHR::Notification &notification = config->Notification;
     CHECK_FALSE(notification.Enabled);
     CHECK_FALSE(SHR::NotificationPolicy::IsEnabled(notification));
-    CHECK_FALSE(SHR::NotificationPolicy::SelectStatus(notification, false, 80.0F));
-    CHECK_FALSE(SHR::NotificationPolicy::SelectArrhythmia(notification));
+    CHECK_FALSE(SHR::NotificationPolicy::SelectStatus(notification, false, 80.0F, 0));
+    CHECK_FALSE(SHR::NotificationPolicy::SelectArrhythmia(notification, 0));
+
+    fs::remove_all(dir);
+    SHR::Config::Set(SHR::Config{ }); // Restore global state for other tests.
+}
+
+TEST_CASE("Config reads a single message and a pool of them the same way", "[config][notification]")
+{
+    const fs::path dir  = fs::temp_directory_path() / "shr_config_notification_pools";
+    const fs::path path = dir / "SHR.toml";
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+
+    {
+        std::ofstream out(path);
+        out << R"toml(
+[debug]
+log = "info"
+flush = "trace"
+
+[heart_rate]
+resting = 55.0
+max = 200.0
+
+[arrhythmia]
+susceptibility = 1.0
+
+[input]
+listen = 35
+
+[audio]
+volume = 1.0
+
+[notification]
+enabled = true
+pulse = ["resting", ["idle", "idle again"], "elevated", "high", "very high", "extreme"]
+dying = "dying"
+dead = "dead"
+arrhythmia = ["skip", "stumble"]
+)toml";
+    }
+
+    REQUIRE_NOTHROW(SHR::Config::Init(path.string()));
+
+    const auto config = SHR::Config::Get();
+    const SHR::Notification &notification = config->Notification;
+    REQUIRE(SHR::NotificationPolicy::IsEnabled(notification));
+
+    // A bare string is the pool of one it has always been.
+    CHECK(notification.Pulse.front() == SHR::MessagePool{ "resting" });
+    CHECK(notification.Dying == SHR::MessagePool{ "dying" });
+    CHECK(notification.Arrhythmia == SHR::MessagePool{ "skip", "stumble" });
+
+    const auto *first = SHR::NotificationPolicy::SelectPulse(notification, SHR::HeartRateLevel::Idle, 0);
+    const auto *second = SHR::NotificationPolicy::SelectPulse(notification, SHR::HeartRateLevel::Idle, 1);
+    REQUIRE(first);
+    REQUIRE(second);
+    CHECK(*first == "idle");
+    CHECK(*second == "idle again");
 
     fs::remove_all(dir);
     SHR::Config::Set(SHR::Config{ }); // Restore global state for other tests.
@@ -115,21 +173,21 @@ TEST_CASE("A held config snapshot survives a later write", "[config][settings]")
 {
     SHR::Config first;
     first.Input.Listen       = 0x11;
-    first.Notification.Dying = "old";
+    first.Notification.Dying = { "old" };
     SHR::Config::Set(first);
 
     const auto held = SHR::Config::Get();
 
     SHR::Config second;
     second.Input.Listen       = 0x22;
-    second.Notification.Dying = "new";
+    second.Notification.Dying = { "new" };
     SHR::Config::Set(second);
 
     CHECK(held->Input.Listen == 0x11);
-    CHECK(held->Notification.Dying == "old");
+    CHECK(held->Notification.Dying == SHR::MessagePool{ "old" });
 
     CHECK(SHR::Config::Get()->Input.Listen == 0x22);
-    CHECK(SHR::Config::Get()->Notification.Dying == "new");
+    CHECK(SHR::Config::Get()->Notification.Dying == SHR::MessagePool{ "new" });
 }
 
 TEST_CASE("A config written before the fitness ceiling existed still loads", "[config][settings]")
@@ -238,7 +296,7 @@ TEST_CASE("Persisting writes the menu-owned settings back without disturbing the
     CHECK_THAT(reloaded->HeartRate.Resting, WithinAbs(47.0F, 1e-6));
     CHECK_THAT(reloaded->HeartRate.Max, WithinAbs(190.0F, 1e-6));
     CHECK_THAT(reloaded->Arrhythmia.Susceptibility, WithinAbs(2.0F, 1e-6));
-    CHECK(reloaded->Notification.Arrhythmia == "pvc");
+    CHECK(reloaded->Notification.Arrhythmia == SHR::MessagePool{ "pvc" });
 
     fs::remove_all(dir);
     SHR::Config::Set(SHR::Config{ }); // Restore global state for other tests.

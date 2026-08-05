@@ -29,10 +29,10 @@ Shared value types - `RenderSpec`, `BeatEvent`, `PhysiologySnapshot`, `Simulatio
 directory's rule would be "anyone may depend on this", which is weaker than the downward-only chain
 rather than stronger. Layers are flat rather than component trees with public `include/` directories.
 That shape would make the direction compiler-enforced, since per-component include directories
-propagate only along link edges, but the include strings are identical either way, the private-header
-set that would justify it is one file (`Random.hpp`), and the preset and checker below already cover
-the direction. Promoting `src/core/*.hpp` to `src/core/include/core/*.hpp` later would therefore not
-touch a single include.
+propagate only along link edges, but the include strings are identical either way, no header is
+private to its layer - `Random.hpp`, the nearest thing to one, is drawn on by core and plugin alike -
+and the preset and checker below already cover the direction. Promoting `src/core/*.hpp` to
+`src/core/include/core/*.hpp` later would therefore not touch a single include.
 
 Dependencies point inward:
 
@@ -249,8 +249,46 @@ Landing on the update thread does not by itself make a configuration write safe,
 elsewhere: `InputHandler` reads the listen key from the worker pool. `Config` is therefore published rather
 than mutated. `Set` installs a whole new immutable snapshot and `Get` hands back a `shared_ptr` to it, so a
 reader holds a consistent view for as long as it needs one and no write frees `Notification`'s strings
-underneath it. The residual hazard is version mixing rather than lifetime: two `Get` calls can straddle a
-write, so a caller reading related fields takes one snapshot for all of them.
+underneath it. "As long as it needs one" runs to the last use of anything read out of it, not to the read
+itself: a selected notification message points into the snapshot, so a caller holds it until the message
+has been displayed. The residual hazard is version mixing rather than lifetime: two `Get` calls can
+straddle a write, so a caller reading related fields takes one snapshot for all of them.
+
+### Notifications
+
+Notification text is configuration rather than code, and choosing between alternatives is adapter policy:
+`NotificationPolicy` owns which message is shown, `HeartRateLevelTracker` owns when a status message is
+due, and the plugin layer only displays what it is handed. Nothing in `shr_core` knows notifications
+exist.
+
+Every slot holds a `MessagePool` of interchangeable wordings, and a firing draws one of them, so a message
+a player meets repeatedly is not the same sentence every time. Configuration may write a bare string
+wherever a pool is expected, which keeps a single message the simplest thing to author and a
+hand-written file valid whichever form its author reached for. The generated file writes a one-entry pool
+back as a bare string for the same reason: it is the format's worked example as much as it is a set of
+defaults.
+
+Selection is pure. The draw arrives as a parameter, so the randomness belongs to the caller and the suite
+asserts exact messages without seeding an engine. `SelectIndex` reduces a draw to a pool index, and since
+an index already reduced is a fixed point of that reduction, a caller that chose its own index passes it
+through the same entry point unchanged. The draw source is the process-wide engine in `Random.hpp` and
+deliberately not `RhythmRandom`, which is seeded so offline renders reproduce and must not be consumed
+from by presentation.
+
+Only the arrhythmia message remembers what it last showed. Status messages fire on a band crossing, and
+consecutive crossings usually land in different bands and therefore different pools, so an independent
+draw is indistinguishable from a smarter one; an arrhythmia message fires on every ectopic beat, where an
+immediate repeat reads as a bug. `SelectIndexExcluding` draws from the pool with the last index removed
+and reinserts it afterwards, which leaves every remaining wording equally likely without the unbounded
+work of redrawing until different. `PluginState` holds that memory, and the thread contract above is what
+lets a plain member carry it: `HandleFeedback` is its only writer. The schema does not constrain that
+policy - a shuffle bag or weighted entries would replace the memory alone.
+
+The six pulse bands are required; the death and arrhythmia slots are not. `IsEnabled` and `Config::Init`
+share one emptiness rule through `FindEmptyBand` rather than stating it twice, so a band with nothing to
+draw disables notifications with a diagnostic naming it, while an unset death or arrhythmia slot is simply
+silent. A selected message is returned as a pointer to the stored string rather than a view, because the
+game takes a C string and only the stored string carries its terminator.
 
 ## Offline execution
 

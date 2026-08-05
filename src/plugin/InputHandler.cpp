@@ -17,6 +17,7 @@
 
 #include "adapter/Config.hpp"
 #include "adapter/NotificationPolicy.hpp"
+#include "core/Random.hpp"
 #include "plugin/PluginState.hpp"
 #include "plugin/SkyrimHeartRate.hpp"
 
@@ -54,14 +55,15 @@ RE::BSEventNotifyControl SHR::InputHandler::ProcessEvent(
             {
                 PluginState::Get().ToggleListening();
 
-                const auto notification = NotificationPolicy::SelectStatus(
+                const auto *notification = NotificationPolicy::SelectStatus(
                     config->Notification,
                     RE::PlayerCharacter::GetSingleton()->IsDead(),
-                    HeartRateManager::GetHeartRate()
+                    HeartRateManager::GetHeartRate(),
+                    RandomDraw()
                 );
                 if (notification)
                 {
-                    RE::SendHUDMessage::ShowHUDMessage(notification->data());
+                    RE::SendHUDMessage::ShowHUDMessage(notification->c_str());
                 }
             }
         }

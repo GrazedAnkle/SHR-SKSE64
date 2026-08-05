@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <random>
 
 namespace Detail
@@ -36,5 +37,13 @@ inline Float Random(Float min, Float max)
 inline float RandomNormal()
 {
     std::normal_distribution<float> distribution(0.0F, 1.0F);
+    return distribution(Detail::rng());
+}
+
+// A uniform draw for choosing among interchangeable alternatives, such as a notification message.
+// Deliberately not RhythmRandom, which is seeded so offline renders reproduce.
+inline std::size_t RandomDraw()
+{
+    std::uniform_int_distribution<std::size_t> distribution;
     return distribution(Detail::rng());
 }
