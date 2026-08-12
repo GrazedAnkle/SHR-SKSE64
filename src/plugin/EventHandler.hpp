@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include "adapter/CombatEngagementTracker.hpp"
+
 #include <RE/Skyrim.h>
 
 namespace SHR
@@ -55,6 +57,7 @@ namespace SHR
         ) override;
 
     private:
-        float m_Timestamp = 0.0F;
+        float                   m_Timestamp = 0.0F;
+        CombatEngagementTracker m_Combat;
     };
 }

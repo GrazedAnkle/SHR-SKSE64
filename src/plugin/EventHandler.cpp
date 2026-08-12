@@ -72,7 +72,14 @@ RE::BSEventNotifyControl SHR::EventHandler::ProcessEvent(
 )
 {
     const auto *player = RE::PlayerCharacter::GetSingleton();
-    if (event->actor.get() == player && event->newState != RE::ACTOR_COMBAT_STATE::kNone)
+    if (event->actor.get() != player)
+    {
+        return RE::BSEventNotifyControl::kContinue;
+    }
+
+    // Searching counts as engaged: the player is still in the encounter while hunting a lost target.
+    const bool engaged = event->newState != RE::ACTOR_COMBAT_STATE::kNone;
+    if (m_Combat.Observe(engaged))
     {
         HeartRateManager::NotifyCombatEntry();
     }

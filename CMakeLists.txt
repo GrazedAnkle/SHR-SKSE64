@@ -90,6 +90,7 @@ set(core_sources
 set(adapter_sources
     src/adapter/CoSave.cpp
     src/adapter/CoSave.hpp
+    src/adapter/CombatEngagementTracker.hpp
     src/adapter/Config.cpp
     src/adapter/Config.hpp
     src/adapter/GameClock.hpp
@@ -128,6 +129,7 @@ set(test_sources
     tests/AudioBufferTests.cpp
     tests/BeatRendererTests.cpp
     tests/CoSaveTests.cpp
+    tests/CombatEngagementTrackerTests.cpp
     tests/ConfigTests.cpp
     tests/GameClockTests.cpp
     tests/HeartRateLevelTrackerTests.cpp
