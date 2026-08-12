@@ -156,9 +156,7 @@ def _check_control(control: dict[str, object], settings: dict[str, dict[str, obj
             f"{action.get('function')}, not {function}"
         )
     if options.get("sourceType") != source:
-        problems.append(
-            f"{CONFIG_JSON}: {identifier} stores as {options.get('sourceType')}, not {source}"
-        )
+        problems.append(f"{CONFIG_JSON}: {identifier} stores as {options.get('sourceType')}, not {source}")
 
     # The id is passed twice - as the control's own id and as the action's first argument - and the
     # plugin only ever sees the second, so a mismatch would write a different setting than displayed.
