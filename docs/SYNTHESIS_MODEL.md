@@ -348,5 +348,5 @@ separated vagal, noradrenergic, and epinephrine drivers feeding HR, contractilit
 gameplay effect without changing consumers. The current
 bi-exponential HR model conflates
 noradrenaline (roughly one-minute timescale) and epinephrine (roughly two-minute timescale) in one
-slow component and models only chronotropy (the heart-rate effect). Their deferred separation is described in
-[CONTRACTILITY_SPEC.md](CONTRACTILITY_SPEC.md#deferred-driver-separation).
+slow component and models only chronotropy (the heart-rate effect). Their separation is described in
+[CONTRACTILITY_SPEC.md](CONTRACTILITY_SPEC.md#driver-separation).

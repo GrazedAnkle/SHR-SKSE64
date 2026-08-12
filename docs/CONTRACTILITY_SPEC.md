@@ -12,8 +12,8 @@ state evolution is in [SIMULATION_MODEL.md](SIMULATION_MODEL.md).
 not feed back into heart rate, exertion, or metabolic demand. Its current v1 drivers are not cleanly
 separated, however: `UpdateExertion` adds `m_Adrenaline` to its target, routing acute arousal through
 exertion and HR, while `ContractilityTarget` reads that exertion and adds `m_Adrenaline` again as a direct
-adrenergic term. Contractility v2 owns removal of this known double route rather than treating it as an
-isolated coefficient fix.
+adrenergic term. [Driver separation](#driver-separation) below owns the replacement, which is the current
+milestone ([#27](https://github.com/GrazedAnkle/SHR-SKSE64/issues/27)).
 
 The public interface is deliberately narrower than the internal driver model. A future separation of
 sympathetic nervous drive and circulating catecholamines can replace the internals without changing the
@@ -53,8 +53,9 @@ between heart rate and beat character observed in refs 7, 8, and 12.
 
 The current scalar cannot reproduce all of the reference systole shape by itself. Filling/preload and
 post-exercise afterload changes have distinct recovery signatures and are absent from the current systole
-correction. They must be rebalanced together with the sympathetic term; see
-[WI-012](https://github.com/GrazedAnkle/SHR-SKSE64/issues/15).
+correction. They must be rebalanced together with the sympathetic term, which is why
+[WI-012](https://github.com/GrazedAnkle/SHR-SKSE64/issues/15) owns that rebalance and waits on the
+separation below to define the term it weights.
 
 ## Audio consumers
 
@@ -94,11 +95,12 @@ dulling is also separate and uses `ResamplePVCRatio`.
 As-built values and provenance tags live in `src/core/Constants.hpp`. The focused provenance audit is
 [WI-015](https://github.com/GrazedAnkle/SHR-SKSE64/issues/17).
 
-## Deferred driver separation
+## Driver separation
 
-Contractility v2 will split the current slow state into first-class sympathetic/noradrenergic and
-circulating epinephrine drivers while retaining the existing snapshot boundary. In particular, it will
-replace the v1 adrenaline-through-exertion plus direct-adrenergic double route rather than tuning around it:
+Contractility v2 splits the current slow state into first-class sympathetic/noradrenergic and circulating
+epinephrine drivers while retaining the existing snapshot boundary, so the audio consumers above are
+unaffected by the replacement. It is a model replacement rather than an unfinished part of the current
+signal, and it replaces the v1 double route rather than tuning around it:
 
 - HR becomes a consequence of vagal withdrawal plus the separated sympathetic/catecholamine terms.
 - Contractility weights those drivers plus Frank-Starling filling.
@@ -107,5 +109,17 @@ replace the v1 adrenaline-through-exertion plus direct-adrenergic double route r
 - Respiratory rate/depth can gain an arousal input so low-exertion fear affects both the fast beat jitter
   and slower breathing cues.
 
-That change requires re-deriving HR kinetics and is intentionally later than the current evidence-safe
-audio work. It is a model replacement, not an unfinished part of the current signal.
+### Why the v1 fusion is wrong, not merely unseparated
+
+The two routes are not just redundant; fusing them puts heart-rate recovery on the wrong clock. Measured
+simultaneously during recovery from submaximal exercise, heart rate falls mono-exponentially with a time
+constant of tens of seconds, while plasma norepinephrine decays with one of roughly a minute and a half:
+the first minute of recovery is vagal reactivation, and sympathetic withdrawal governs only the later
+approach to rest. Routing adrenaline through `m_Exertion` into the heart-rate target makes recovery a
+strict function of the catecholamine clock, so the slow driver gates the fast one. The separated model
+recovers the ordering by construction, which is why the fix is the separation rather than a coefficient.
+
+[LITERATURE_ANALYSIS.md](LITERATURE_ANALYSIS.md) owns the measured figures and their bracket.
+[#27](https://github.com/GrazedAnkle/SHR-SKSE64/issues/27) is the separation itself, and
+[#26](https://github.com/GrazedAnkle/SHR-SKSE64/issues/26) records the resulting defect and owns the
+acceptance criteria the separated model is validated against.

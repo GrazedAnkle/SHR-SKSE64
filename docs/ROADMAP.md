@@ -1,16 +1,39 @@
 # Roadmap
 
-The current milestone is **evidence-safe audio refinement**: close or precisely characterize the remaining
-S2 and breath-transmission gaps without letting an invalid ruler or mismatched physiological state drive
-another retune. The settled S1 baseline remains fixed while those independent gaps are evaluated.
+The current milestone is **contractility v2**
+([#27](https://github.com/GrazedAnkle/SHR-SKSE64/issues/27)): replace the v1 driver model, in which acute
+arousal reaches heart rate through the exertion proxy, with separated vagal, sympathetic, and
+circulating-catecholamine terms. [CONTRACTILITY_SPEC.md](CONTRACTILITY_SPEC.md#driver-separation) owns the
+model; the audio consumers keep their current snapshot boundary throughout.
 
-The milestone succeeds when the S2 annotation convention is operational, breath spectral claims are
-either reproducible or demoted, and every changed coefficient has an auditable ruler, state, and
-provenance.
+The milestone is scheduled now because it finally has a ruler. Heart-rate kinetics cannot be validated
+against the reference recordings, which capture sound rather than trajectories, and the published
+heart-rate-recovery bracket assembled for
+[#26](https://github.com/GrazedAnkle/SHR-SKSE64/issues/26) is the first external, non-self-referential
+target the driver model can be held to.
+
+The milestone succeeds when post-combat recovery is monotone and inside that bracket, the double route is
+gone rather than tuned around, and every constant the new drivers introduce carries a literature entry.
 
 ## Current queue
 
 In dependency-aware rough priority order:
+
+1. [#22: bracket the remaining [physio] constants](https://github.com/GrazedAnkle/SHR-SKSE64/issues/22),
+   heart-rate-dynamics slice only - v2 re-derives those constants and adds more beside them.
+2. [#24: acute and chronic state integrate on different clocks](https://github.com/GrazedAnkle/SHR-SKSE64/issues/24) -
+   v2 re-derives the same integrators, so the clock semantics must be settled under it.
+3. [#27](https://github.com/GrazedAnkle/SHR-SKSE64/issues/27) itself, validated by
+   [#26](https://github.com/GrazedAnkle/SHR-SKSE64/issues/26).
+
+## Later milestones
+
+### Evidence-safe audio refinement
+
+Parked mid-flight rather than finished. The settled S1 baseline remains fixed, and the queue below resumes
+in this order. The open convention question is the one thing not recoverable from these documents: the
+annotator's hand-versus-detector S2 onset convention needs a clap-present discriminator before
+[WI-016](https://github.com/GrazedAnkle/SHR-SKSE64/issues/18) can use the validated HF-onset heuristic.
 
 1. [WI-005: cross-gap reference-claim audit](https://github.com/GrazedAnkle/SHR-SKSE64/issues/10) -
    classify and remeasure every distant-window reference claim.
@@ -25,19 +48,19 @@ In dependency-aware rough priority order:
 6. [WI-009: breath-curve asymmetry](https://github.com/GrazedAnkle/SHR-SKSE64/issues/13) - a smooth
    state-dependent inspiration/expiration curve.
 
-## Later milestones
-
 ### Rhythm and simulation
 
 - [WI-019](https://github.com/GrazedAnkle/SHR-SKSE64/issues/21) lands before
   [WI-010](https://github.com/GrazedAnkle/SHR-SKSE64/issues/14): neighbor-beat tuning needs correct
   compensatory-pause scheduling under it.
-- [WI-012](https://github.com/GrazedAnkle/SHR-SKSE64/issues/15) deliberately bundles preload/afterload
-  systole hysteresis, exertion response, HR-versus-demand validation, and ventilation kinetics, because
-  their interactions have to be tested together rather than tuned as isolated constants.
-- Contractility-driver separation and fight-or-flight gameplay remain a later architectural milestone;
-  [CONTRACTILITY_SPEC.md](CONTRACTILITY_SPEC.md#deferred-driver-separation) owns contractility v2, including
-  replacement of the known v1 adrenaline double route.
+- [WI-012](https://github.com/GrazedAnkle/SHR-SKSE64/issues/15) keeps post-exercise systole and
+  ventilation kinetics once [#27](https://github.com/GrazedAnkle/SHR-SKSE64/issues/27) takes its
+  exertion-response and heart-rate-versus-demand items, and waits on it for the sympathetic systole term.
+  What still binds the remainder is whole-trajectory audition rather than a shared driver, which is why
+  the fatigue time constants left for [#28](https://github.com/GrazedAnkle/SHR-SKSE64/issues/28): they act
+  on twenty-minute to multi-day scales that no single audition covers.
+- Fight-or-flight gameplay follows [#27](https://github.com/GrazedAnkle/SHR-SKSE64/issues/27), which is
+  what gives it an arousal signal to read without routing gameplay effects through the audio scalar.
 - Swimming/breath hold, sitting/resting posture, and over-capacity gameplay consequences wait for the
   dynamics pass or stronger reference evidence.
 - Expanded arrhythmia states (AF, SVT, VF, sustained bigeminy) may justify a coroutine-based rhythm
@@ -66,13 +89,9 @@ In dependency-aware rough priority order:
   S2-louder straddle supplies ground truth.
 - Re-annotating lost prose-only reference windows, catalog cleanup, extreme-value testing, derived-value
   citation support, and prose-consistency invariants are maintenance candidates.
-- The MCM capability chain runs in a fixed order:
-  [WI-022](https://github.com/GrazedAnkle/SHR-SKSE64/issues/8) gives the audio voice an owner, then
-  [WI-026](https://github.com/GrazedAnkle/SHR-SKSE64/issues/7) settles the thread contract and consolidates
-  the adapter's file-scope state into the owner that settings updates are delivered into, then
-  [WI-023](https://github.com/GrazedAnkle/SHR-SKSE64/issues/6) defines co-save record validation, and only
-  then [WI-034](https://github.com/GrazedAnkle/SHR-SKSE64/issues/4) adds the menu itself - beginning with a
-  feasibility spike that decides how much packaging work it carries.
+- [#23](https://github.com/GrazedAnkle/SHR-SKSE64/issues/23) separates transient physiological modifiers
+  from persisted settings. Contractility v2 raises its priority rather than settling it: an arousal driver
+  is exactly the kind of transient state that must not reach the settings layer.
 
 ## Untriaged ideas
 

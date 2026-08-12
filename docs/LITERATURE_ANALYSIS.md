@@ -108,7 +108,8 @@ capacity and the whole of a sedentary character's.
 heart rate, is deliberately unbounded above. Heart rate keeps responding to supra-capacity effort while
 fatigue stops accruing, so a low-capacity character reaches identical fatigue from jogging and from
 sprinting. This is independent of the magnitude bracket above;
-[WI-012](https://github.com/GrazedAnkle/SHR-SKSE64/issues/15) owns the saturation policy.
+[#27](https://github.com/GrazedAnkle/SHR-SKSE64/issues/27) owns the saturation policy, because the
+driver model it replaces has to settle one convention for both.
 
 ## Fatigue resistance and aerobic capacity
 
@@ -136,7 +137,7 @@ resilience move together, which the longitudinal evidence says they need not.
 - **Fatigue time constants are unbracketed.** `AcuteFatigueGainTau`, `AcuteFatigueDecayTau`,
   `LongTermFatigueGainTau`, `LongTermFatigueDecayTau`, and `SleepRecoveryRate` have no entry above. The
   durability literature measures decline, not clearance, so it does not transfer.
-  [WI-012](https://github.com/GrazedAnkle/SHR-SKSE64/issues/15) owns them.
+  [#28](https://github.com/GrazedAnkle/SHR-SKSE64/issues/28) owns them.
 - **Most `[physio]` constants have no entry.** Heart-rate dynamics, activity intensities, respiration,
   respiratory sinus arrhythmia, and premature-ventricular-contraction rhythm are uncovered. Closing
   that backlog, and deciding whether coverage should be machine-checked the way

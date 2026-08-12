@@ -64,8 +64,9 @@ parameter-level evidence audit. `SleepFraction` follows the common roughly 15% s
 `HRFastFraction` plus the onset/recovery taus were selected within broad reported response ranges (about
 10-20 s for the fitness-dependent fast onset, 30-60 s for fast recovery, 45-90 s for slow onset, and
 3-10 min for the slow recovery tail). These ranges justify the scale and ordering, not the exact
-setpoints. Revalidation belongs to [WI-012](https://github.com/GrazedAnkle/SHR-SKSE64/issues/15), with provenance
-closure under [WI-015](https://github.com/GrazedAnkle/SHR-SKSE64/issues/17).
+setpoints. Revalidation belongs to [#27](https://github.com/GrazedAnkle/SHR-SKSE64/issues/27), which
+re-derives these taus from the separated drivers, with provenance closure under
+[WI-015](https://github.com/GrazedAnkle/SHR-SKSE64/issues/17).
 
 ## Exertion
 
@@ -123,9 +124,11 @@ conflict with dosing exertion in absolute METs. The gain and decay rates are pro
 bracketed: acute fatigue uses a roughly 20-minute build and about an hour of recovery, long-term
 fatigue multi-day accumulation and a rough one-to-two-week waking recovery scale, and
 `SleepRecoveryRate` encodes the working assumption that an eight-hour sleep clears about 55% of the
-state. [WI-012](https://github.com/GrazedAnkle/SHR-SKSE64/issues/15) must audit the coupled
-trajectories rather than retuning one fatigue constant in isolation, and also owns the saturation
-policy that makes `UpdateAcuteFatigue` clamp normalized exertion where `NormalizedExertion` does not.
+state. [#28](https://github.com/GrazedAnkle/SHR-SKSE64/issues/28) brackets those rates and must audit the
+coupled trajectories rather than retuning one fatigue constant in isolation. The saturation policy that
+makes `UpdateAcuteFatigue` clamp normalized exertion where `NormalizedExertion` does not belongs to
+[#27](https://github.com/GrazedAnkle/SHR-SKSE64/issues/27), which has to choose a saturation convention
+for the driver model anyway.
 
 ## Adrenaline
 
@@ -133,9 +136,9 @@ policy that makes `UpdateAcuteFatigue` clamp normalized exertion where `Normaliz
 (`AdrenalineHalfLife`), raised by gameplay events - combat entry (`AdrenalineCombatEntry`,
 `NotifyCombatEntry`) and taking a hit (`AdrenalineTakeHit`, `NotifyHit`). The current v1 routing adds it to
 the exertion target, so it raises HR through `m_Exertion`; `ContractilityTarget` then reads that exertion
-and adds a direct adrenergic contribution through `AdrenalineContractilityScale`. This known double route
-is retained until contractility v2 replaces it with separated drivers, as described in
-[CONTRACTILITY_SPEC.md](CONTRACTILITY_SPEC.md#deferred-driver-separation).
+and adds a direct adrenergic contribution through `AdrenalineContractilityScale`. Contractility v2 replaces
+this known double route with separated drivers, as described in
+[CONTRACTILITY_SPEC.md](CONTRACTILITY_SPEC.md#driver-separation).
 
 The roughly two-minute `AdrenalineHalfLife` was taken from the circulating-epinephrine scale reported by
 Clutter et al. (1980). That supports the order of magnitude, not the current lumped gameplay state's exact
@@ -204,9 +207,13 @@ in-game hours without simulating every frame. State persists across saves via a 
 contractility, and the runtime's `Restore` reconstructs the target HR so the first `Step` after a load is
 consistent. Fast travel assumes upright walking with no new adrenaline spikes during the skipped interval.
 
-## Deferred dynamics work
+## Dynamics work in progress
 
-The heart-rate and exertion *dynamics* - recovery kinetics versus fitness, the exertion ramp feel, and
-the post-exercise systole hysteresis that needs preload and afterload terms - have a dedicated focused
-pass: [WI-012](https://github.com/GrazedAnkle/SHR-SKSE64/issues/15). Its accepted literature-backed model lands in
-this document when that work is complete.
+The heart-rate and exertion *dynamics* are split across two passes, and each lands its accepted
+literature-backed model in this document when complete.
+
+Recovery kinetics versus fitness and the exertion ramp belong to
+[#27](https://github.com/GrazedAnkle/SHR-SKSE64/issues/27), which replaces the driver model they hang
+off rather than retuning them in place. The post-exercise systole hysteresis that needs preload and
+afterload terms belongs to [WI-012](https://github.com/GrazedAnkle/SHR-SKSE64/issues/15), and waits on
+#27 for the sympathetic term it weights.
