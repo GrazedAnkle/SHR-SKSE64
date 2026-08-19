@@ -58,14 +58,16 @@ The taus are fitness-dependent (fitter hearts respond faster), lerped between th
 ends by fitness. The target (`ComputeTargetHeartRate`) rises with exertion from a resting floor to a
 fitness-scaled ceiling.
 
-The current coefficient grounding is literature-informed but provisional rather than a completed
-parameter-level evidence audit. `SleepFraction` follows the common roughly 15% sleeping-HR reduction;
-`HRFormulaCeiling` is the absolute endpoint inherited from the 220-minus-age heuristic; and
-`HRFastFraction` plus the onset/recovery taus were selected within broad reported response ranges (about
-10-20 s for the fitness-dependent fast onset, 30-60 s for fast recovery, 45-90 s for slow onset, and
-3-10 min for the slow recovery tail). These ranges justify the scale and ordering, not the exact
-setpoints. Revalidation belongs to [#27](https://github.com/GrazedAnkle/SHR-SKSE64/issues/27), which
-re-derives these taus from the separated drivers, with provenance closure under
+[LITERATURE_ANALYSIS.md](LITERATURE_ANALYSIS.md#heart-rate-response-kinetics) owns the published brackets
+for these coefficients and for the resting line beneath them. Three of its conclusions bear on the
+structure above rather than only on the values. No published time constant brackets either component
+alone, because the literature fits the whole response, so only the composite of the two is comparable;
+the onset pair matches its bracket at both ends while composite recovery is slower than every intensity
+measured; and `HRFastFraction`, which sets the split itself, has no published bracket and is a
+consequence of whichever recovery taus are chosen rather than an independent setting.
+
+Revalidation belongs to [#27](https://github.com/GrazedAnkle/SHR-SKSE64/issues/27), which re-derives
+these taus from the separated drivers, with provenance closure under
 [WI-015](https://github.com/GrazedAnkle/SHR-SKSE64/issues/17).
 
 ## Exertion

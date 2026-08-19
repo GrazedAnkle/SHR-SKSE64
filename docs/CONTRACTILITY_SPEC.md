@@ -119,7 +119,8 @@ approach to rest. Routing adrenaline through `m_Exertion` into the heart-rate ta
 strict function of the catecholamine clock, so the slow driver gates the fast one. The separated model
 recovers the ordering by construction, which is why the fix is the separation rather than a coefficient.
 
-[LITERATURE_ANALYSIS.md](LITERATURE_ANALYSIS.md) owns the measured figures and their bracket.
+[LITERATURE_ANALYSIS.md](LITERATURE_ANALYSIS.md#catecholamine-clearance) owns the measured figures and
+their bracket.
 [#27](https://github.com/GrazedAnkle/SHR-SKSE64/issues/27) is the separation itself, and
 [#26](https://github.com/GrazedAnkle/SHR-SKSE64/issues/26) records the resulting defect and owns the
 acceptance criteria the separated model is validated against.
