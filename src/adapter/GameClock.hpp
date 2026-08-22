@@ -15,30 +15,52 @@
  */
 #pragma once
 
+#include <atomic>
+#include <cmath>
+#include <limits>
 #include <optional>
 
 namespace SHR
 {
     // Differences samples of the in-game calendar into elapsed hours. Sampling cadence is the caller's;
     // ARCHITECTURE.md (runtime contract) owns why a reset rebases rather than carrying a reading over.
+    //
+    // Reset and Consume belong to the update thread; Peek is readable from any. The held reading is
+    // atomic because ARCHITECTURE.md (thread contract) records sink delivery as measured rather than
+    // guaranteed, so Peek's caller cannot rely on landing where Consume does.
     class GameClock
     {
     public:
         // Marks the held reading stale: the next sample belongs to a timeline this one cannot span.
         void Reset() noexcept
         {
-            m_LastHours.reset();
+            m_LastHours.store(Unset, std::memory_order_relaxed);
         }
 
         // Elapsed in-game hours, and zero for the first sample after a reset.
         float Consume(float currentHours) noexcept
         {
-            const float delta = m_LastHours ? currentHours - *m_LastHours : 0.0F;
-            m_LastHours = currentHours;
+            const float held = m_LastHours.load(std::memory_order_relaxed);
+            const float delta = std::isnan(held) ? 0.0F : currentHours - held;
+            m_LastHours.store(currentHours, std::memory_order_relaxed);
             return delta;
         }
 
+        // The held reading without consuming it. Empty after a reset and before the first sample.
+        std::optional<float> Peek() const noexcept
+        {
+            const float held = m_LastHours.load(std::memory_order_relaxed);
+            if (std::isnan(held))
+            {
+                return std::nullopt;
+            }
+            return held;
+        }
+
     private:
-        std::optional<float> m_LastHours;
+        // NaN sentinel rather than a second atomic, which would need the two kept consistent.
+        static constexpr float Unset = std::numeric_limits<float>::quiet_NaN();
+
+        std::atomic<float> m_LastHours{ Unset };
     };
 }

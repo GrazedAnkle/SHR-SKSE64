@@ -27,6 +27,7 @@ namespace SHR
         Jump,
         Sleep,
         FastTravel,
+        Wait,
         CombatEntry,
         Hit,
     };
@@ -34,7 +35,7 @@ namespace SHR
     struct RuntimeEvent
     {
         RuntimeEventKind Kind;
-        // Real seconds. Meaningful for Sleep and FastTravel; ignored by the other kinds.
+        // Experienced seconds. Meaningful for the time-skip kinds; ignored by the others.
         float Duration = 0.0F;
     };
 

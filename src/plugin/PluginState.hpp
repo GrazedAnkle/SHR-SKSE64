@@ -75,6 +75,9 @@ namespace SHR
         // Update thread. Returns in-game hours since the previous call and rebases.
         float ConsumeGameHoursDelta(float currentHours) noexcept;
 
+        // Any thread. Empty before the clock's first sample.
+        std::optional<float> PeekGameHours() const noexcept;
+
         // Update thread. The pool index for the next arrhythmia message, avoiding the one it last
         // returned while the pool offers an alternative.
         std::size_t NextArrhythmiaDraw(std::size_t poolSize) noexcept;

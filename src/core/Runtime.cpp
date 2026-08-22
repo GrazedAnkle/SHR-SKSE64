@@ -215,6 +215,11 @@ void SHR::Runtime::NotifyFastTravel(float duration)
     m_Events.Post({ .Kind = RuntimeEventKind::FastTravel, .Duration = duration });
 }
 
+void SHR::Runtime::NotifyWait(float duration)
+{
+    m_Events.Post({ .Kind = RuntimeEventKind::Wait, .Duration = duration });
+}
+
 void SHR::Runtime::NotifyCombatEntry()
 {
     m_Events.Post({ .Kind = RuntimeEventKind::CombatEntry });
@@ -248,6 +253,9 @@ void SHR::Runtime::DrainEvents()
             break;
         case RuntimeEventKind::FastTravel:
             m_Simulation.NotifyFastTravel(event.Duration);
+            break;
+        case RuntimeEventKind::Wait:
+            m_Simulation.NotifyWait(event.Duration);
             break;
         case RuntimeEventKind::CombatEntry:
             m_Simulation.NotifyCombatEntry();

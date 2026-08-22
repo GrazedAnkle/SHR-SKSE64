@@ -72,9 +72,10 @@ namespace SHR
 
         // Update thread only: reached solely from Runtime's mailbox drain.
         void NotifyJump();
-        // Durations are real seconds.
+        // Durations are experienced seconds: the skipped in-game span, not the real time it took.
         void NotifySleep(float duration);
         void NotifyFastTravel(float duration);
+        void NotifyWait(float duration);
         void NotifyCombatEntry();
         void NotifyHit();
 
@@ -105,6 +106,7 @@ namespace SHR
         float NormalizedExertion(float exertion) const;
 
         void UpdateExertion(PlayerState state, float delta);
+        void AdvanceTimeSkip(float duration, float targetMets);
         void UpdateContractility(float delta);
         float ContractilityTarget() const;
         void UpdateAcuteFatigue(float exertion, float delta);
@@ -138,5 +140,6 @@ namespace SHR
         bool  m_DidJump = false;
         float m_SleepDuration = Sentinel;
         float m_FastTravelDuration = Sentinel;
+        float m_WaitDuration = Sentinel;
     };
 }

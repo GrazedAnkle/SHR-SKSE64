@@ -147,6 +147,11 @@ float SHR::PluginState::ConsumeGameHoursDelta(float currentHours) noexcept
     return m_GameClock.Consume(currentHours);
 }
 
+std::optional<float> SHR::PluginState::PeekGameHours() const noexcept
+{
+    return m_GameClock.Peek();
+}
+
 std::size_t SHR::PluginState::NextArrhythmiaDraw(std::size_t poolSize) noexcept
 {
     if (poolSize == 0)

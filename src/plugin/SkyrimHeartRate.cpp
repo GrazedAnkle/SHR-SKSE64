@@ -86,6 +86,11 @@ void SHR::HeartRateManager::NotifyFastTravel(float duration)
     RuntimeInstance().NotifyFastTravel(duration);
 }
 
+void SHR::HeartRateManager::NotifyWait(float duration)
+{
+    RuntimeInstance().NotifyWait(duration);
+}
+
 void SHR::HeartRateManager::NotifyCombatEntry()
 {
     RuntimeInstance().NotifyCombatEntry();

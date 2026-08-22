@@ -52,6 +52,7 @@ namespace SHR
         void NotifyJump();
         void NotifySleep(float duration);
         void NotifyFastTravel(float duration);
+        void NotifyWait(float duration);
         void NotifyCombatEntry();
         void NotifyHit();
 

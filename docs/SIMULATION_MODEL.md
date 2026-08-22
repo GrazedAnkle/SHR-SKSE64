@@ -40,6 +40,60 @@ that complete value without interpreting missing-field sentinels. The SKSE seria
 legacy record optionality and translates it into a `SimulationState`, including the historical defaults
 for fields absent from older saves.
 
+## Clocks
+
+The model advances on two clocks, and the disagreement between them is a deliberate liberty rather than an
+oversight. `Step` takes both intervals - a real frame delta and elapsed in-game hours - and every state
+variable is credited on exactly one of them.
+
+**The acute layer integrates experienced time**: heart rate, exertion, adrenaline, acute fatigue,
+contractility, and respiration advance over the interval the character lives through, which is one second
+per real second while the game runs and the whole skipped span across a time-skip. A character who sleeps
+eight hours must wake with adrenaline cleared; the real time the menu occupied is not what their body
+experienced.
+
+**The chronic layer integrates the game calendar**: fitness and long-term fatigue advance on
+`StepInput::GameHoursDelta` unconditionally. Their only observable is drift across in-game days, and the
+calendar is what a time-skip advances anyway, so they need no skip handling of their own.
+
+Neither layer can move to the other's clock. The acute layer's output is a beat interval, heard in real
+seconds and calibrated against real-time recordings, so slowing it by the timescale would invalidate every
+reference comparison in [REFERENCE_ANALYSIS.md](REFERENCE_ANALYSIS.md). The chronic layer's `FitnessGainTau`
+is eight weeks, which a hundred-hour playthrough would not traverse a tenth of, so on experienced time the
+fitness model would never move at all.
+
+### What crosses the seam
+
+The two couplings are not symmetric. Downward, the chronic layer exposes `EffectiveFitness`, a slowly
+varying scalar the acute layer reads as a parameter; no interval travels with it, so that direction is
+clock-free. Upward, two chronic integrators take acute state as their driver: `UpdateLongTermFatigue` reads
+normalized `m_AcuteFatigue`, and `UpdateFitness` gates on `m_Exertion` and scales by a training efficacy
+derived from both fatigue states. Those two expressions are where the clocks meet.
+
+### The bound
+
+One physiological event therefore has two durations, differing by the timescale - 20 by default, and
+user-configurable. Recovery from a hard fight clears acute fatigue over `AcuteFatigueDecayTau`, one real
+hour, while the calendar advances twenty hours across that same interval and `UpdateLongTermFatigue` is
+told the character stayed exhausted for all of them. Against a `LongTermFatigueDecayTau` of one week the
+driver's own transient is an eighth of the integrator's time constant; `AcuteFatigueGainTau` maps to nearly
+seven game hours against a three-day `LongTermFatigueGainTau`.
+
+The chronic integrators therefore cannot treat their drivers as quasi-static, which is the property the
+words *acute* and *long-term* are meant to promise. That is the whole of it: the ratio is fixed at the
+timescale rather than accumulating, the exponential steps are exact so it does not depend on frame rate,
+and the downward coupling does not carry it back. The two durations are irreducible because neither layer
+can move, and each layer is right about the thing it is observed through - the beat is heard in real time,
+and progression is read off the calendar.
+
+Two consequences follow. Progression pace measured in real play hours is a chronic time constant divided by
+the timescale, so it is set partly by a game setting this model does not own. And the training stimulus
+reaching `UpdateFitness` runs at whatever fraction of the calendar the player spends moving, which for an
+adventurer is most of it, where the published adaptation timescales behind `FitnessGainTau` were measured
+on programs occupying a few percent of a week. That duty-cycle gap belongs to the driver rather than to the
+clock; [#28](https://github.com/GrazedAnkle/SHR-SKSE64/issues/28) brackets those rates and must account
+for it.
+
 ## Heart rate
 
 Perceived HR is a two-component (bi-exponential) response: a **fast** vagal component (`m_FastHR`,
@@ -127,7 +181,10 @@ bracketed: acute fatigue uses a roughly 20-minute build and about an hour of rec
 fatigue multi-day accumulation and a rough one-to-two-week waking recovery scale, and
 `SleepRecoveryRate` encodes the working assumption that an eight-hour sleep clears about 55% of the
 state. [#28](https://github.com/GrazedAnkle/SHR-SKSE64/issues/28) brackets those rates and must audit the
-coupled trajectories rather than retuning one fatigue constant in isolation. The saturation policy that
+coupled trajectories rather than retuning one fatigue constant in isolation. It also inherits both
+consequences recorded in [Clocks](#clocks): `UpdateLongTermFatigue` takes its driver from the other side
+of the clock seam, and the stimulus reaching these integrators runs at a duty cycle no training program
+resembles, so neither rate can be read straight off a published calendar duration. The saturation policy that
 makes `UpdateAcuteFatigue` clamp normalized exertion where `NormalizedExertion` does not belongs to
 [#27](https://github.com/GrazedAnkle/SHR-SKSE64/issues/27), which has to choose a saturation convention
 for the driver model anyway.
@@ -203,11 +260,21 @@ known compensatory-pause scheduling defect.
 
 Gameplay notifications enter through `Runtime` and feed the sim asynchronously: `NotifyJump` (an exertion
 impulse), `NotifyCombatEntry` and `NotifyHit` (adrenaline), and `NotifySleep` / `NotifyFastTravel`
-(time-skip). A time-skip advances the slow states (fitness, fatigue, long-term recovery) by the elapsed
-in-game hours without simulating every frame. State persists across saves via a co-save record (see
+(time-skip), which covers sleeping, waiting, and fast travel. A time-skip notification advances the
+*acute* states over the skipped interval through `AdvanceTimeSkip`, which is what [Clocks](#clocks) means
+by experienced time; sleep takes its own path instead, setting the sleeping heart rate and respiration
+directly and clearing long-term fatigue at `SleepRecoveryRate`. The chronic states need no notification,
+because the skipped hours reach them as an ordinary large `StepInput::GameHoursDelta` on the next live
+frame; advancing them in the skip as well would credit it twice.
+
+Each skip measures its interval from the game clock's held reading rather than from its event, so all three
+agree on what was skipped and an interrupted wait credits what the calendar actually advanced rather than
+what the player asked for. Fast travel assumes upright walking with no new adrenaline spikes across the
+interval; waiting settles to the stationary baseline instead. State persists across saves via a co-save
+record (see
 `SkyrimHeartRate.cpp`); adapter translation supplies legacy missing-field defaults, including equilibrium
 contractility, and the runtime's `Restore` reconstructs the target HR so the first `Step` after a load is
-consistent. Fast travel assumes upright walking with no new adrenaline spikes during the skipped interval.
+consistent.
 
 ## Dynamics work in progress
 

@@ -21,9 +21,11 @@
 
 namespace SHR
 {
+    // Time-skip sinks take their interval from the game clock, not from their event.
+    // SIMULATION_MODEL.md (Clocks) owns why.
     class EventHandler final
-        : public RE::BSTEventSink<RE::TESSleepStartEvent>
-        , public RE::BSTEventSink<RE::TESSleepStopEvent>
+        : public RE::BSTEventSink<RE::TESSleepStopEvent>
+        , public RE::BSTEventSink<RE::TESWaitStopEvent>
         , public RE::BSTEventSink<RE::TESFastTravelEndEvent>
         , public RE::BSTEventSink<RE::TESCombatEvent>
         , public RE::BSTEventSink<RE::TESHitEvent>
@@ -32,13 +34,13 @@ namespace SHR
         static void Register();
 
         RE::BSEventNotifyControl ProcessEvent(
-            const RE::TESSleepStartEvent *event,
-            RE::BSTEventSource<RE::TESSleepStartEvent> *source
+            const RE::TESSleepStopEvent *event,
+            RE::BSTEventSource<RE::TESSleepStopEvent> *source
         ) override;
 
         RE::BSEventNotifyControl ProcessEvent(
-            const RE::TESSleepStopEvent *event,
-            RE::BSTEventSource<RE::TESSleepStopEvent> *source
+            const RE::TESWaitStopEvent *event,
+            RE::BSTEventSource<RE::TESWaitStopEvent> *source
         ) override;
 
         RE::BSEventNotifyControl ProcessEvent(
@@ -57,7 +59,6 @@ namespace SHR
         ) override;
 
     private:
-        float                   m_Timestamp = 0.0F;
         CombatEngagementTracker m_Combat;
     };
 }

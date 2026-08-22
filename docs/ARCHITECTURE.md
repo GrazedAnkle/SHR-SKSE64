@@ -207,8 +207,9 @@ callback site across two in-game sessions on the supported runtime.
 | --- | --- | --- |
 | `PlayerCharacter::Update` hook | Update thread | Reference row for the table |
 | Serialization save/load/revert | Update thread | Both sessions |
-| `TESSleepStartEvent`, `TESSleepStopEvent` | Update thread | One session only |
-| `TESFastTravelEndEvent` | Update thread | Both sessions |
+| `TESSleepStopEvent` | Update thread | Two sessions |
+| `TESWaitStopEvent` | Update thread | One session |
+| `TESFastTravelEndEvent` | Update thread | Three sessions |
 | Plugin `Init` (`kDataLoaded`) | Its own thread | Strictly precedes any step |
 | `TESCombatEvent`, `TESHitEvent` | **Engine worker pool** | Six distinct threads, never the update thread |
 | Input events | **Engine worker pool**, plus update and menu threads | Overflowed an eight-thread cap |
@@ -221,10 +222,15 @@ a typed event from whatever thread it arrives on, and the update thread drains t
 `Step`. The simulation's notification entry points are consequently single-writer and hold plain scalars
 rather than atomics.
 
-All five notification kinds route through the mailbox, including the ones observed on the update thread.
-Sleep and fast-travel were each seen only a handful of times, and combat looked equally settled after its
-first observation; uniform routing costs a few posts per second and removes the need for that sampling to
-have been representative.
+`GameClock` is the one deliberate exception. Time-skip sinks measure their interval by reading its held
+calendar sample, and they land on the update thread in every session that observed them - but the table
+above is observation rather than contract, so that reading is atomic instead of resting on a row no
+published interface guarantees. Sampling and rebasing stay on the update thread regardless.
+
+Every notification kind routes through the mailbox, including the ones observed on the update thread. The
+time-skip kinds were each seen only a handful of times, and combat looked equally settled after its first
+observation; uniform routing costs a few posts per second and removes the need for that sampling to have
+been representative.
 
 Physiology is read cross-thread in exactly one place: input events need a heart rate for their notification
 text. `PhysiologySnapshot` is a wide non-atomic copy and tears if read during a step, so `Runtime` publishes

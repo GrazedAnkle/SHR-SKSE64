@@ -16,6 +16,7 @@
 #include "plugin/EventHandler.hpp"
 
 #include "core/Constants.hpp"
+#include "plugin/PluginState.hpp"
 #include "plugin/SkyrimHeartRate.hpp"
 
 namespace
@@ -23,26 +24,29 @@ namespace
     namespace C = SHR::Constants;
 
     SHR::EventHandler s_EventHandler;
+
+    // The calendar the game clock has not consumed, which across a paused skip is the interval no
+    // frame simulated. Zero before the clock's first sample: there is nothing to difference against.
+    float SkippedSeconds()
+    {
+        const float currentHours = RE::Calendar::GetSingleton()->GetHoursPassed();
+        const std::optional<float> held = SHR::PluginState::Get().PeekGameHours();
+        if (!held)
+        {
+            return 0.0F;
+        }
+        return std::max(currentHours - *held, 0.0F) * C::SecondsPerHour;
+    }
 }
 
 void SHR::EventHandler::Register()
 {
     auto *eventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton();
-    eventSourceHolder->AddEventSink<RE::TESSleepStartEvent>(&s_EventHandler);
     eventSourceHolder->AddEventSink<RE::TESSleepStopEvent>(&s_EventHandler);
+    eventSourceHolder->AddEventSink<RE::TESWaitStopEvent>(&s_EventHandler);
     eventSourceHolder->AddEventSink<RE::TESFastTravelEndEvent>(&s_EventHandler);
     eventSourceHolder->AddEventSink<RE::TESCombatEvent>(&s_EventHandler);
     eventSourceHolder->AddEventSink<RE::TESHitEvent>(&s_EventHandler);
-}
-
-RE::BSEventNotifyControl SHR::EventHandler::ProcessEvent(
-    const RE::TESSleepStartEvent *event,
-    RE::BSTEventSource<RE::TESSleepStartEvent> *source
-)
-{
-    const float currentTime = RE::Calendar::GetSingleton()->GetHoursPassed();
-    m_Timestamp = currentTime;
-    return RE::BSEventNotifyControl::kContinue;
 }
 
 RE::BSEventNotifyControl SHR::EventHandler::ProcessEvent(
@@ -50,10 +54,16 @@ RE::BSEventNotifyControl SHR::EventHandler::ProcessEvent(
     RE::BSTEventSource<RE::TESSleepStopEvent> *source
 )
 {
-    const float currentTime = RE::Calendar::GetSingleton()->GetHoursPassed();
-    const float durationHours = currentTime - m_Timestamp;
-    m_Timestamp = currentTime;
-    HeartRateManager::NotifySleep(durationHours * C::SecondsPerHour);
+    HeartRateManager::NotifySleep(SkippedSeconds());
+    return RE::BSEventNotifyControl::kContinue;
+}
+
+RE::BSEventNotifyControl SHR::EventHandler::ProcessEvent(
+    const RE::TESWaitStopEvent *event,
+    RE::BSTEventSource<RE::TESWaitStopEvent> *source
+)
+{
+    HeartRateManager::NotifyWait(SkippedSeconds());
     return RE::BSEventNotifyControl::kContinue;
 }
 
@@ -62,7 +72,9 @@ RE::BSEventNotifyControl SHR::EventHandler::ProcessEvent(
     RE::BSTEventSource<RE::TESFastTravelEndEvent> *source
 )
 {
-    HeartRateManager::NotifyFastTravel(event->fastTravelEndHours * C::SecondsPerHour);
+    // event->fastTravelEndHours carries the same duration despite its name, but every skip reads
+    // the clock so one rule covers them all.
+    HeartRateManager::NotifyFastTravel(SkippedSeconds());
     return RE::BSEventNotifyControl::kContinue;
 }
 

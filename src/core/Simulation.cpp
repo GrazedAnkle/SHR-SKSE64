@@ -123,6 +123,11 @@ void SHR::HeartRateSimulation::NotifyFastTravel(float duration)
     m_FastTravelDuration = duration;
 }
 
+void SHR::HeartRateSimulation::NotifyWait(float duration)
+{
+    m_WaitDuration = duration;
+}
+
 void SHR::HeartRateSimulation::NotifyCombatEntry()
 {
     m_Adrenaline += m_Coefficients.AdrenalineCombatEntry;
@@ -470,32 +475,48 @@ void SHR::HeartRateSimulation::UpdateExertion(PlayerState state, float delta)
         UpdateContractility(durationSeconds);
     }
 
-    if (const float duration = std::exchange(m_FastTravelDuration, Sentinel); duration != Sentinel)
+    // Defensive: at most one skip per step. Both measure the calendar the clock has not consumed,
+    // so two arriving before a frame rebases it would describe one interval twice.
+    const float travel = std::exchange(m_FastTravelDuration, Sentinel);
+    const float waited = std::exchange(m_WaitDuration, Sentinel);
+    if (travel != Sentinel)
     {
-        m_Adrenaline *= AdrenalineDecayFactor(duration, m_Coefficients.AdrenalineHalfLife);
-
-        const float difference = m_Coefficients.WalkingMets - m_Exertion;
-        const float rate = difference > 0.0F ?
-            m_Coefficients.ExertionAccumulationRate :
-            m_Coefficients.ExertionRecoveryRate;
-        m_Exertion += std::copysign(std::min(std::abs(difference), rate * duration), difference);
-
-        const float walkFraction = std::max(
-            (m_Coefficients.WalkingMets - m_Coefficients.IdleMets) /
-                (EffectiveFitness() - m_Coefficients.IdleMets),
-            0.0F
-        );
-        const float walkTargetRR  = ComputeTargetRespRate(walkFraction);
-        const float rrDifference  = walkTargetRR - m_RespRate;
-        const float rrTau         = rrDifference > 0.0F ?
-            m_Coefficients.RespOnsetTau :
-            m_Coefficients.RespRecoveryTau;
-        m_RespRate  += (1.0F - std::exp(-duration / rrTau)) * rrDifference;
-        UpdateRespDepth(duration, ComputeTargetRespDepth(walkFraction));
-        m_RespPhase  = std::fmod(m_RespPhase + m_RespRate / 60.0F * duration, 1.0F);
-        // Advance contractility over the full travel duration.
-        UpdateContractility(duration);
+        AdvanceTimeSkip(travel, m_Coefficients.WalkingMets);
     }
+    else if (waited != Sentinel)
+    {
+        AdvanceTimeSkip(waited, m_Coefficients.IdleMets);
+    }
+}
+
+// The acute states only: the same Step credits the chronic pair its elapsed calendar hours, so
+// advancing them here too would count the skip twice. SIMULATION_MODEL.md (Clocks) owns the rule.
+void SHR::HeartRateSimulation::AdvanceTimeSkip(float duration, float targetMets)
+{
+    m_Adrenaline *= AdrenalineDecayFactor(duration, m_Coefficients.AdrenalineHalfLife);
+
+    const float difference = targetMets - m_Exertion;
+    const float rate = difference > 0.0F ?
+        m_Coefficients.ExertionAccumulationRate :
+        m_Coefficients.ExertionRecoveryRate;
+    m_Exertion += std::copysign(std::min(std::abs(difference), rate * duration), difference);
+
+    // Ordered as Step orders them: fatigue moves effective fitness, which the targets below divide by.
+    UpdateAcuteFatigue(m_Exertion, duration);
+
+    const float fraction = std::clamp(NormalizedExertion(m_Exertion), 0.0F, 1.0F);
+    const float targetRespRate = ComputeTargetRespRate(fraction);
+    const float rrDifference = targetRespRate - m_RespRate;
+    const float rrTau = rrDifference > 0.0F ?
+        m_Coefficients.RespOnsetTau :
+        m_Coefficients.RespRecoveryTau;
+    m_RespRate += (1.0F - std::exp(-duration / rrTau)) * rrDifference;
+    UpdateRespDepth(duration, ComputeTargetRespDepth(fraction));
+    m_RespPhase = std::fmod(m_RespPhase + m_RespRate / 60.0F * duration, 1.0F);
+
+    m_TargetHeartRate = ComputeTargetHeartRate(m_Exertion);
+    UpdateContractility(duration);
+    UpdateCurrentHeartRate(duration);
 }
 
 float SHR::HeartRateSimulation::ContractilityTarget() const

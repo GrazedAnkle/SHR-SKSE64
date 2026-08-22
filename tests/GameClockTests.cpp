@@ -70,3 +70,22 @@ TEST_CASE("Resetting a clock that never sampled leaves it fresh", "[game-clock]"
     CHECK(clock.Consume(42.0F) == 0.0F);
     CHECK(clock.Consume(43.0F) == 1.0F);
 }
+
+TEST_CASE("Peeking reports the held reading without rebasing it", "[game-clock]")
+{
+    SHR::GameClock clock;
+
+    CHECK_FALSE(clock.Peek().has_value());
+
+    REQUIRE(clock.Consume(300.0F) == 0.0F);
+    REQUIRE(clock.Peek() == 300.0F);
+
+    // Peeking must leave the next difference intact.
+    CHECK(clock.Peek() == 300.0F);
+    CHECK(clock.Consume(308.0F) == 8.0F);
+    CHECK(clock.Peek() == 308.0F);
+
+    clock.Reset();
+
+    CHECK_FALSE(clock.Peek().has_value());
+}

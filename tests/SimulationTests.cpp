@@ -263,6 +263,45 @@ TEST_CASE_METHOD(SimFixture, "Fast travel decays lingering contractility toward 
     REQUIRE(sim.GetSnapshot().Contractility < 0.3F);
 }
 
+TEST_CASE_METHOD(SimFixture, "Waiting settles the acute state toward a stationary baseline", "[simulation]")
+{
+    SHR::PlayerState sprinting = { };
+    sprinting.IsSprinting = true;
+    sim.NotifyCombatEntry();
+    RunFor(sim, sprinting, 120.0F);
+    REQUIRE(sim.GetSnapshot().Contractility > 0.8F);
+    REQUIRE(sim.GetSnapshot().Adrenaline > 0.5F);
+
+    // Four hours the character lived through, not the single frame the paused menu cost.
+    sim.NotifyWait(4.0F * C::SecondsPerHour);
+    sim.Step(SHR::PlayerState{ }, 0.1F);
+
+    const SHR::PhysiologySnapshot settled = sim.GetSnapshot();
+    CHECK_THAT(settled.Exertion, Catch::Matchers::WithinAbs(C::IdleMets, 0.01F));
+    CHECK(settled.Adrenaline < 0.001F);
+    CHECK(settled.Contractility < 0.01F);
+    CHECK(settled.AcuteFatigue < 0.01F);
+    CHECK_THAT(
+        settled.HeartRate,
+        Catch::Matchers::WithinAbs(DefaultSimulationSettings.RestingHeartRate, 1.0F)
+    );
+}
+
+TEST_CASE_METHOD(SimFixture, "A time skip leaves the chronic states to the calendar", "[simulation]")
+{
+    RunFor(sim, SHR::PlayerState{ }, 1.0F);
+    const SHR::PhysiologySnapshot before = sim.GetSnapshot();
+
+    // Passing no game hours is what makes a double-credit visible: the chronic pair may move only
+    // on the calendar delta, never on the skip.
+    sim.NotifyWait(8.0F * C::SecondsPerHour);
+    sim.Step(SHR::PlayerState{ }, 0.1F, 0.0F);
+
+    const SHR::PhysiologySnapshot after = sim.GetSnapshot();
+    CHECK_THAT(after.Fitness, Catch::Matchers::WithinAbs(before.Fitness, 1.0e-6F));
+    CHECK_THAT(after.LongTermFatigue, Catch::Matchers::WithinAbs(before.LongTermFatigue, 1.0e-6F));
+}
+
 TEST_CASE_METHOD(SimFixture, "Restore sets HR and exertion for co-save loading", "[simulation]")
 {
     RestoreLegacyState(sim, 72.0F, 3.5F);

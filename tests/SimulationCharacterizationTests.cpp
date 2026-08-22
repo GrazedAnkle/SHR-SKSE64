@@ -173,18 +173,20 @@ TEST_CASE("Simulation time skips match the extraction baseline", "[simulation][c
 
         sim.NotifyFastTravel(C::SecondsPerHour);
         sim.Step(SHR::PlayerState{ }, 0.1F, 1.0F);
+        // An hour of walking ends near its walking steady state, the pre-skip sprint having had
+        // the whole interval to decay rather than the single frame that follows it.
         RequireCheckpoint("fast-travel", sim, {
-            .HeartRate       = 176.571960F,
-            .FastHeartRate   = 118.518059F,
+            .HeartRate       = 71.8635178F,
+            .FastHeartRate   = 43.1181145F,
             .Exertion        = 3.0F,
             .Adrenaline      = 1.97449901e-9F,
-            .Contractility   = 0.111816563F,
+            .Contractility   = 0.112733506F,
             .Fitness         = 15.0005188F,
-            .AcuteFatigue    = 0.0851814600F,
-            .LongTermFatigue = 0.000489540000F,
-            .RespRate        = 15.7890654F,
-            .RespDepth       = 0.126725391F,
-            .RespPhase       = 0.091134444F,
+            .AcuteFatigue    = 0.194283530F,
+            .LongTermFatigue = 0.00111655300F,
+            .RespRate        = 15.8037386F,
+            .RespDepth       = 0.127764687F,
+            .RespPhase       = 0.971468985F,
         });
     }
 }
