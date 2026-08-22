@@ -263,6 +263,28 @@ TEST_CASE_METHOD(SimFixture, "Fast travel decays lingering contractility toward 
     REQUIRE(sim.GetSnapshot().Contractility < 0.3F);
 }
 
+TEST_CASE_METHOD(SimFixture, "A nap decays acute fatigue rather than clearing it", "[simulation]")
+{
+    SHR::PlayerState sprinting = { };
+    sprinting.IsSprinting = true;
+    RunFor(sim, sprinting, C::AcuteFatigueGainTau, 0.5F);
+    const float earned = sim.GetSnapshot().AcuteFatigue;
+    REQUIRE(earned > 0.5F);
+
+    // One hour is one AcuteFatigueDecayTau, so a third of the fatigue survives the shortest sleep
+    // the game offers. A full night is many time constants and does clear it.
+    sim.NotifySleep(C::SecondsPerHour);
+    sim.Step(SHR::PlayerState{ }, 0.1F);
+    CHECK_THAT(
+        sim.GetSnapshot().AcuteFatigue,
+        Catch::Matchers::WithinRel(earned * std::exp(-1.0F), 0.02F)
+    );
+
+    sim.NotifySleep(8.0F * C::SecondsPerHour);
+    sim.Step(SHR::PlayerState{ }, 0.1F);
+    CHECK(sim.GetSnapshot().AcuteFatigue < 0.01F);
+}
+
 TEST_CASE_METHOD(SimFixture, "Waiting settles the acute state toward a stationary baseline", "[simulation]")
 {
     SHR::PlayerState sprinting = { };

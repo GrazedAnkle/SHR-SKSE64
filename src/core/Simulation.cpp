@@ -457,14 +457,16 @@ void SHR::HeartRateSimulation::UpdateExertion(PlayerState state, float delta)
         m_Exertion = std::min(m_Exertion + m_Coefficients.JumpMets, exertionCap);
     }
 
-    // Sleep lasts at least one hour, so advance affected states analytically.
+    // Sleep lasts at least one hour, so advance affected states analytically. Adrenaline and
+    // exertion are set rather than relaxed because an hour is already many of their time constants;
+    // acute fatigue's is an hour itself, so a nap must decay it rather than clear it.
     if (const float durationSeconds = std::exchange(m_SleepDuration, Sentinel); durationSeconds != Sentinel)
     {
         const float durationHours = durationSeconds / SHR::Constants::SecondsPerHour;
         m_Adrenaline = 0.0F;
-        m_AcuteFatigue = 0.0F;
-        m_LongTermFatigue *= std::exp(-durationHours * m_Coefficients.SleepRecoveryRate);
         m_Exertion = m_Coefficients.IdleMets;
+        UpdateAcuteFatigue(m_Exertion, durationSeconds);
+        m_LongTermFatigue *= std::exp(-durationHours * m_Coefficients.SleepRecoveryRate);
         const float sleepHR =
             ComputeTargetHeartRate(m_Coefficients.IdleMets) * m_Coefficients.SleepFraction;
         m_FastHR = m_Coefficients.HRFastFraction * sleepHR;

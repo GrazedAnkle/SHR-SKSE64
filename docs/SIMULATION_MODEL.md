@@ -259,11 +259,12 @@ known compensatory-pause scheduling defect.
 ## Events and time-skip
 
 Gameplay notifications enter through `Runtime` and feed the sim asynchronously: `NotifyJump` (an exertion
-impulse), `NotifyCombatEntry` and `NotifyHit` (adrenaline), and `NotifySleep` / `NotifyFastTravel`
-(time-skip), which covers sleeping, waiting, and fast travel. A time-skip notification advances the
-*acute* states over the skipped interval through `AdvanceTimeSkip`, which is what [Clocks](#clocks) means
-by experienced time; sleep takes its own path instead, setting the sleeping heart rate and respiration
-directly and clearing long-term fatigue at `SleepRecoveryRate`. The chronic states need no notification,
+impulse), `NotifyCombatEntry` and `NotifyHit` (adrenaline), and `NotifySleep`, `NotifyFastTravel` and
+`NotifyWait` (time-skip). A time-skip advances the *acute* states over the skipped interval through
+`AdvanceTimeSkip`, which is what [Clocks](#clocks) means by experienced time. Sleep takes its own path,
+since it also sets the sleeping heart rate and respiration directly and accelerates long-term recovery
+through `SleepRecoveryRate`; what it sets rather than relaxes are only those states an hour already
+carries past, which is why acute fatigue decays there instead. The chronic states need no notification,
 because the skipped hours reach them as an ordinary large `StepInput::GameHoursDelta` on the next live
 frame; advancing them in the skip as well would credit it twice.
 
